@@ -63,17 +63,27 @@ class MarkdownExporter:
         return preserved
 
     @classmethod
-    def export_page_markdown(cls, page: ExtractedPage, image_prefix: str = "../images") -> str:
+    def export_page_markdown(
+        cls,
+        page: ExtractedPage,
+        image_prefix: str = "../images",
+        include_running_headers_footers: bool = False,
+    ) -> str:
         lines: List[str] = [f"# Trang {page.page_num}\n"]
 
         # 1. Separate Header, Footer, and Body blocks
-        header_blocks = [b for b in page.blocks if b.block_type == "header"]
-        footer_blocks = [b for b in page.blocks if b.block_type == "footer"]
-        body_blocks = [b for b in page.blocks if b.block_type not in ("header", "footer")]
+        header_blocks = [b for b in page.blocks if b.block_type in ("header", "running_header")]
+        footer_blocks = [b for b in page.blocks if b.block_type in ("footer", "running_footer")]
+        body_blocks = [b for b in page.blocks if b.block_type not in ("header", "footer", "running_header", "running_footer")]
 
         for hb in header_blocks:
             htext = hb.text.strip()
-            if htext:
+            if not htext:
+                continue
+            if hb.block_type == "running_header":
+                if include_running_headers_footers:
+                    lines.append(f"> **Running Header**: {htext}\n")
+            else:
                 lines.append(f"> **Header**: {htext}\n")
 
         # V4.0 Diagram & Mermaid Rendering (Pillar 4)
@@ -353,7 +363,12 @@ class MarkdownExporter:
         # 4. Render Footers at bottom of page
         for fb in footer_blocks:
             ftext = fb.text.strip()
-            if ftext:
+            if not ftext:
+                continue
+            if fb.block_type == "running_footer":
+                if include_running_headers_footers:
+                    lines.append(f"> *Running Footer*: {ftext}\n")
+            else:
                 lines.append(f"> *Footer*: {ftext}\n")
 
         # 5. V3.1.2 Region Preservation — render UNKNOWN and standalone IMAGE regions
@@ -373,7 +388,12 @@ class MarkdownExporter:
         return "\n".join(lines).strip()
 
     @classmethod
-    def export_document_markdown(cls, doc: ExtractedDocument) -> str:
+    def export_document_markdown(
+        cls,
+        doc: ExtractedDocument,
+        image_prefix: str = "images",
+        include_running_headers_footers: bool = False,
+    ) -> str:
         doc_lines: List[str] = [
             f"# Báo cáo trích xuất tài liệu: {doc.document_id}",
             f"*Tổng số trang*: {doc.total_pages} | *Profile*: {doc.profile}\n",
@@ -381,7 +401,11 @@ class MarkdownExporter:
         ]
 
         for page in doc.pages:
-            page_md = cls.export_page_markdown(page, image_prefix="images")
+            page_md = cls.export_page_markdown(
+                page,
+                image_prefix=image_prefix,
+                include_running_headers_footers=include_running_headers_footers
+            )
             doc_lines.append(page_md)
             doc_lines.append("\n---\n")
 

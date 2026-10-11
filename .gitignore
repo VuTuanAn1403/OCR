@@ -34,15 +34,19 @@ wheels/
 *.egg
 
 # Testing & Coverage
-# Testing & Coverage
 .pytest_cache/
 .pytest-tmp*
+pytest_temp*/
+pytest-cache*/
+pytest_cache*/
+*.pytest_cache/
+pytest_results.*
+nosetests.xml
+coverage.xml
 .coverage
 .coverage.*
 .cache
 .cache/
-nosetests.xml
-coverage.xml
 *.cover
 *.py,cover
 .hypothesis/

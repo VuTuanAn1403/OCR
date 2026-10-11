@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any
 from src.ocr.domain.models.document import ExtractedDocument
 
-PIPELINE_VERSION = "4.3.0"
+PIPELINE_VERSION = "5.0.0"
 
 class ManifestExporter:
     """

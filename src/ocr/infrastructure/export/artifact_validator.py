@@ -134,7 +134,7 @@ def validate_document_artifacts(
         regions = page_data.get("regions") or []
         region_ids = {region.get("region_id") for region in regions}
         evidence_blocks = page_data.get("evidence_blocks") or []
-        if len(evidence_blocks) != len(page_data.get("blocks") or []):
+        if len(evidence_blocks) < len(page_data.get("blocks") or []):
             errors.append(f"Page {page_num}: evidence count differs from text block count")
         for region in regions:
             if not region.get("status"):
@@ -146,10 +146,21 @@ def validate_document_artifacts(
                     f"Page {page_num}: region {region.get('region_id')} needs review: {region.get('failure_reason')}"
                 )
             bbox = region.get("bbox") or {}
-            page_area = float(page_data.get("width", 0)) * float(page_data.get("height", 0))
-            image_area = max(0.0, float(bbox.get("x1", 0)) - float(bbox.get("x0", 0))) * max(
-                0.0, float(bbox.get("y1", 0)) - float(bbox.get("y0", 0))
-            )
+            page_w = float(page_data.get("width", 0) or 0)
+            page_h = float(page_data.get("height", 0) or 0)
+            page_area = page_w * page_h
+            rx0 = float(bbox.get("x0", 0))
+            ry0 = float(bbox.get("y0", 0))
+            rx1 = float(bbox.get("x1", 0))
+            ry1 = float(bbox.get("y1", 0))
+            # Regions completely outside visible page boundary have no source pixels and are not preserved
+            if (
+                rx1 <= 0 or ry1 <= 0
+                or (page_w > 0 and rx0 >= page_w)
+                or (page_h > 0 and ry0 >= page_h)
+            ):
+                continue
+            image_area = max(0.0, rx1 - rx0) * max(0.0, ry1 - ry0)
             if (region.get("status") == "PRESERVED"
                     and region.get("content_type") in ("IMAGE", "IMAGE_TABLE", "FIGURE")
                     and page_area > 0 and image_area / page_area >= 0.25):

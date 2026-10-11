@@ -35,6 +35,12 @@ class PageQualityReport(BaseModel):
     region_types: Dict[str, int] = Field(default_factory=dict)  # e.g. {"TEXT": 5, "IMAGE": 2}
     content_status: str = "UNRESOLVED"
     content_reason: Optional[str] = None
+    native_quality: Optional[float] = None
+    ocr_quality: Optional[float] = None
+    low_confidence_line_count: int = 0
+    min_region_quality: Optional[float] = None
+    ocr_calls: int = 0
+    errors: int = 0
 
 class DocumentQualityReport(BaseModel):
     document_id: str

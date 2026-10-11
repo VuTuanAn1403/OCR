@@ -1,10 +1,17 @@
+from __future__ import annotations
 import sys
 import time
 import math
 import re
-from typing import Dict, Any, Optional, List
+import hashlib
+import logging
+from typing import Dict, Any, Optional, List, Tuple
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+import numpy as np
 import pymupdf
 import cv2
+
+logger = logging.getLogger(__name__)
 
 if sys.platform == "win32":
     try:
@@ -43,6 +50,11 @@ class ProcessPageUseCase:
     Orchestrates extraction for a single PDF page:
     Route -> Native Extract or OCR -> Quality Gate -> Regional Fallback -> Layout/Tables -> Reading Order -> Cache.
     """
+    _current_page_ocr_calls: int = 0
+    _page_errors: int = 0
+    _crop_cache: Dict[str, Any] = {}
+    _rejected_evidence: List[Any] = []
+
     def __init__(
         self,
         doc: pymupdf.Document,
@@ -73,6 +85,29 @@ class ProcessPageUseCase:
             ocr_engine=self.ocr_engine,
         )
         self.reocr_use_case = ReocrRegionUseCase(self.renderer, self.fallback_engine)
+        self._current_page_ocr_calls = 0
+        self._page_errors = 0
+        self._crop_cache: Dict[str, Any] = {}
+        self._rejected_evidence: List[Any] = []
+
+    def _predict_image_counted(
+        self, img_bgr: np.ndarray, timeout_seconds: Optional[float] = None
+    ) -> List[Dict[str, Any]]:
+        self._current_page_ocr_calls = getattr(self, "_current_page_ocr_calls", 0) + 1
+        timeout = timeout_seconds or getattr(self, "_active_page_deadline", None)
+        if timeout is not None and timeout > 0:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(self.ocr_engine.predict_image, img_bgr)
+                try:
+                    return future.result(timeout=timeout)
+                except FutureTimeoutError:
+                    logger.error("OCR execution timed out after %.2fs", timeout)
+                    self._page_errors = getattr(self, "_page_errors", 0) + 1
+                    return []
+                except Exception as e:
+                    logger.error("OCR execution failed: %s", e)
+                    return []
+        return self.ocr_engine.predict_image(img_bgr)
 
     def execute(
         self,
@@ -81,9 +116,13 @@ class ProcessPageUseCase:
         router: RoutePageUseCase,
         resume: bool = False
     ) -> ExtractedPage:
-        t0 = time.time()
+        t0 = time.perf_counter()
+        self._current_page_ocr_calls = 0
+        self._page_errors = 0
         profile_name = self.config.get("profile", "balanced")
         render_dpi = self.config.get("render_dpi", 180)
+        page_timeout_seconds = float(self.config.get("page_timeout_seconds", 120))
+        self._active_page_deadline = page_timeout_seconds
 
         # 1. Check cache if resume is active
         if resume and self.cache:
@@ -102,10 +141,15 @@ class ProcessPageUseCase:
         # 2b. V3.1.2 Content Composition — decompose page into regions
         doc_page = self.doc[page_num - 1]
         regions = self.content_analyzer.analyze(meta, doc_page)
-        inspect_duration = time.time() - t0
+        inspect_duration = time.perf_counter() - t0
+        native_extract_duration = 0.0
         render_duration = 0.0
         ocr_duration = 0.0
+        image_region_ocr_duration = 0.0
+        orientation_retry_duration = 0.0
         fallback_duration = 0.0
+        table_duration = 0.0
+        reading_order_duration = 0.0
         recognized_lines = 0
         recognizer_confidences: List[float] = []
         from collections import Counter
@@ -115,10 +159,13 @@ class ProcessPageUseCase:
 
         blocks: List[TextBlock] = []
         self._current_page_diagrams: List[Any] = []
+        self._rejected_evidence: List[EvidenceBlock] = []
+        page_errors: List[str] = []
         fallback_count = 0
         suspicious_lines: List[str] = []
         candidates_for_fallback: List[TextBlock] = []
         actual_dpi = None
+        page_timeout_seconds = float(self.config.get("page_timeout_seconds", 120))
 
         char_count = meta.get("char_count", 0)
         is_native_eligible = (
@@ -134,54 +181,79 @@ class ProcessPageUseCase:
         ) and not meta.get("native_extraction_failed", False)
 
         if is_native_eligible:
+            t_nat_start = time.perf_counter()
             # Extract digital native text directly (accuracy-first, 0 OCR corruption)
             blocks = self.native_extractor.extract_blocks(page_num)
             for b in blocks:
-                b.quality_score = 1.0
-                b.confidence = 1.0
+                b.quality_score = round(native_score, 4)
+                b.confidence = round(native_score, 4)
+                if b.bbox and len(b.bbox) >= 4:
+                    dla = getattr(self.content_analyzer, "dla_engine", None)
+                    if dla and hasattr(dla, "_classify_text_block"):
+                        try:
+                            res = dla._classify_text_block(
+                                text=b.text,
+                                bbox=BoundingBox(x0=b.bbox[0], y0=b.bbox[1], x1=b.bbox[2], y1=b.bbox[3]),
+                                page_h=page_h,
+                                page_w=page_w,
+                                page_num=page_num,
+                                base_font_size=11.0,
+                                header_band_y=page_h * 0.10,
+                                footer_band_y=page_h * 0.90,
+                            )
+                            if isinstance(res, (tuple, list)) and len(res) >= 2:
+                                b.block_type = res[1]
+                        except Exception as e:
+                            logger.warning("Page %d layout classification failed for native block: %s", page_num, e)
 
             if not blocks and page_type == PageType.MIXED:
                 # Defensive fallback: If native extractor returned 0 blocks on mixed page,
                 # fall through to OCR to avoid content loss.
                 is_native_eligible = False
+            native_extract_duration = time.perf_counter() - t_nat_start
 
         if is_native_eligible:
-            # Determine which regions require regional OCR (V4.0 Pillar 2: Vector & Diagram preservation):
-            # - For MIXED or TWO_UP pages: all non-decorative image, vector and diagram regions
-            # - For NATIVE_TEXT pages: any IMAGE_TABLE or DIAGRAM regions
-            page_area = max(1.0, page_w * page_h)
-            if page_type == PageType.PRODUCT_SHOWCASE_COLLAGE:
-                target_regions = [
-                    r for r in regions
-                    if r.content_type in (ContentType.IMAGE_TABLE, ContentType.DIAGRAM)
-                    or (r.content_type in (ContentType.IMAGE, ContentType.FIGURE)
-                        and r.bbox.area / page_area >= 0.02)
-                ]
-            elif page_type == PageType.MIXED or meta.get("layout_type") in ("TWO_UP", "MULTI_REGION"):
-                target_regions = [
-                    r for r in regions
-                    if r.content_type in (ContentType.IMAGE, ContentType.IMAGE_TABLE, ContentType.VECTOR, ContentType.DIAGRAM)
-                ]
+            image_ocr_blocks: List[TextBlock] = []
+            if (time.perf_counter() - t0) > page_timeout_seconds:
+                logger.warning("Page %d exceeded timeout (%ss) before image region OCR", page_num, page_timeout_seconds)
+                page_errors.append(f"Page timeout ({page_timeout_seconds}s) exceeded before image OCR")
             else:
-                target_regions = [
-                    r for r in regions
-                    if r.content_type in (ContentType.IMAGE_TABLE, ContentType.DIAGRAM)
-                    or (r.content_type in (ContentType.IMAGE, ContentType.FIGURE)
-                        and r.bbox.area / page_area >= 0.20)
-                ]
+                # Determine which regions require regional OCR (V4.0 Pillar 2: Vector & Diagram preservation):
+                page_area = max(1.0, page_w * page_h)
+                if page_type == PageType.PRODUCT_SHOWCASE_COLLAGE:
+                    target_regions = [
+                        r for r in regions
+                        if r.content_type in (ContentType.IMAGE_TABLE, ContentType.DIAGRAM)
+                        or (r.content_type in (ContentType.IMAGE, ContentType.FIGURE)
+                            and r.bbox.area / page_area >= 0.02)
+                    ]
+                elif page_type == PageType.MIXED or meta.get("layout_type") in ("TWO_UP", "MULTI_REGION"):
+                    target_regions = [
+                        r for r in regions
+                        if r.content_type in (ContentType.IMAGE, ContentType.IMAGE_TABLE, ContentType.VECTOR, ContentType.DIAGRAM)
+                    ]
+                else:
+                    target_regions = [
+                        r for r in regions
+                        if r.content_type in (ContentType.IMAGE_TABLE, ContentType.DIAGRAM)
+                        or (r.content_type in (ContentType.IMAGE, ContentType.FIGURE)
+                            and r.bbox.area / page_area >= 0.20)
+                    ]
 
-            image_ocr_blocks = self._extract_image_regions(
-                doc_page,
-                page_num,
-                target_regions,
-                blocks,
-                render_dpi,
-                evaluate_all_orientations=meta.get("layout_type") in ("TWO_UP", "MULTI_REGION"),
-            )
-            if image_ocr_blocks:
-                blocks.extend(image_ocr_blocks)
-                recognized_lines += len(image_ocr_blocks)
-                recognizer_confidences.extend(b.confidence for b in image_ocr_blocks)
+                t_img_ocr = time.perf_counter()
+                image_ocr_blocks = self._extract_image_regions(
+                    doc_page,
+                    page_num,
+                    target_regions,
+                    blocks,
+                    render_dpi,
+                    evaluate_all_orientations=meta.get("layout_type") in ("TWO_UP", "MULTI_REGION"),
+                )
+                image_region_ocr_duration = time.perf_counter() - t_img_ocr
+                if image_ocr_blocks:
+                    blocks.extend(image_ocr_blocks)
+                    recognized_lines += len(image_ocr_blocks)
+                    recognizer_confidences.extend(b.confidence for b in image_ocr_blocks)
 
             if page_type == PageType.MIXED:
                 print(f"[{page_num}/{total_pages}] mixed composition: native={len(blocks) - len(image_ocr_blocks)} image_ocr={len(image_ocr_blocks)} lines")
@@ -193,7 +265,7 @@ class ProcessPageUseCase:
         else:
             # Route to full-page OCR (scanned pages, corrupted native text, low-quality OCR layers)
             actual_dpi = render_dpi
-            t_render_start = time.time()
+            t_render_start = time.perf_counter()
             img_bgr = self.renderer.render_page(page_num, dpi=render_dpi)
             refined_regions = regions
             if self.config.get("two_up_detection_enabled", True) or self.config.get("multi_region_detection_enabled", True):
@@ -204,8 +276,8 @@ class ProcessPageUseCase:
                 regions = refined_regions
                 region_type_counts = dict(Counter(r.content_type.value for r in regions))
                 meta["region_count"] = len(regions)
-            render_duration = time.time() - t_render_start
-            t_ocr_start = time.time()
+            render_duration = time.perf_counter() - t_render_start
+            t_ocr_start = time.perf_counter()
             if meta.get("layout_type") in ("TWO_UP", "MULTI_REGION") and len(regions) >= 2:
                 ocr_results, orientation_fallback = self._predict_region_ocr(
                     img_bgr,
@@ -222,7 +294,7 @@ class ProcessPageUseCase:
             if orientation_fallback:
                 meta["orientation_fallback"] = orientation_fallback
                 print(f"[{page_num}/{total_pages}] orientation_fallback={orientation_fallback}")
-            ocr_duration = time.time() - t_ocr_start
+            ocr_duration = time.perf_counter() - t_ocr_start
             recognized_lines = len(ocr_results)
             recognizer_confidences = [float(result.get("confidence", 0.0)) for result in ocr_results]
             print(f"[{page_num}/{total_pages}] primary={len(ocr_results)} lines time={ocr_duration:.2f}s")
@@ -269,11 +341,57 @@ class ProcessPageUseCase:
                     round(raw_bbox[3] * scale_y, 2)
                 ]
                 text = UnicodeNormalizer.normalize(res["text"])
-                if TextCleaner.is_connector_line_artifact(text):
+                conf = float(res.get("confidence", 0.0))
+
+                # Filter hallucination / low confidence (A1)
+                is_valid, reject_reason = self.classify_ocr_hallucination(text, conf)
+                if not is_valid:
+                    mid_x = (scaled_bbox[0] + scaled_bbox[2]) / 2.0
+                    mid_y = (scaled_bbox[1] + scaled_bbox[3]) / 2.0
+                    matching_region = next((r for r in regions if r.bbox.contains_point(mid_x, mid_y)), None)
+                    if matching_region is None and regions:
+                        matching_region = regions[0]
+                    if matching_region is None:
+                        matching_region = Region(
+                            region_id=f"p{page_num}_rej_{len(self._rejected_evidence) + 1}",
+                            bbox=BoundingBox(x0=scaled_bbox[0], y0=scaled_bbox[1], x1=scaled_bbox[2], y1=scaled_bbox[3]),
+                            content_type=ContentType.IMAGE,
+                            source="ocr",
+                            orientation_status="UNCERTAIN",
+                            failure_reason="Region inferred for rejected OCR candidate",
+                        )
+                        regions.append(matching_region)
+
+                    self._rejected_evidence.append(EvidenceBlock(
+                        block_id=f"B_{page_num:04d}_REJ_{len(self._rejected_evidence) + 1:04d}",
+                        page=page_num,
+                        region_id=matching_region.region_id,
+                        bbox=scaled_bbox,
+                        bbox_original=scaled_bbox,
+                        bbox_normalized=scaled_bbox,
+                        text=text,
+                        content_type=ContentType.IMAGE,
+                        source="ocr",
+                        confidence=conf,
+                        orientation=0.0,
+                        quality_score=conf,
+                        block_type="noise",
+                        is_bold=False,
+                        font_size=None,
+                        reading_order=0,
+                        status=reject_reason,
+                        failure_reason=f"Rejected: {reject_reason} (conf={conf:.2f})",
+                    ))
                     continue
-                conf = res["confidence"]
 
                 q_score, needs_fb, reasons = self.ocr_quality.evaluate_ocr_result(text, conf)
+
+                # A4: Numeric Verification Retry for profile balanced/accuracy
+                num_threshold = float(self.config.get("numeric_retry_threshold", 0.85))
+                contains_digit = bool(re.search(r"\d", text))
+                if contains_digit and conf < num_threshold:
+                    needs_fb = True
+                    reasons.append(f"Numeric token with confidence {conf:.2f} < {num_threshold:.2f} (A4 check)")
 
                 block = TextBlock(
                     text=text,
@@ -286,6 +404,24 @@ class ProcessPageUseCase:
                     line_index=idx,
                     region_id=res.get("region_id")
                 )
+                if scaled_bbox and len(scaled_bbox) >= 4:
+                    dla = getattr(self.content_analyzer, "dla_engine", None)
+                    if dla and hasattr(dla, "_classify_text_block"):
+                        try:
+                            c_res = dla._classify_text_block(
+                                text=text,
+                                bbox=BoundingBox(x0=scaled_bbox[0], y0=scaled_bbox[1], x1=scaled_bbox[2], y1=scaled_bbox[3]),
+                                page_h=page_h,
+                                page_w=page_w,
+                                page_num=page_num,
+                                base_font_size=11.0,
+                                header_band_y=page_h * 0.10,
+                                footer_band_y=page_h * 0.90,
+                            )
+                            if isinstance(c_res, (tuple, list)) and len(c_res) >= 2:
+                                block.block_type = c_res[1]
+                        except Exception as e:
+                            logger.warning("Page %d layout classification failed for OCR block: %s", page_num, e)
                 blocks.append(block)
 
                 if needs_fb:
@@ -293,14 +429,15 @@ class ProcessPageUseCase:
                     suspicious_lines.append(f"{text} (reasons: {', '.join(reasons)})")
 
             # 4. Adaptive Regional Fallback (if enabled)
-            if self.config.get("fallback_enabled", True) and candidates_for_fallback:
+            fallback_enabled = self.config.get("fallback_enabled", True) or self.config.get("fallback_only_on_review", False)
+            if fallback_enabled and candidates_for_fallback:
                 max_ratio = self.config.get("max_fallback_region_ratio", 0.15)
                 max_count = self.config.get("max_fallback_regions_per_page", 20)
                 total_lines = len(blocks)
 
                 budget = min(max_count, max(1, math.ceil(total_lines * max_ratio))) if total_lines else 0
                 if budget > 0:
-                    t_fallback_start = time.time()
+                    t_fallback_start = time.perf_counter()
                     upscale_dpi = self.config.get("fallback_upscale_dpi", 250)
                     priority_candidates = sorted(
                         candidates_for_fallback,
@@ -312,7 +449,7 @@ class ProcessPageUseCase:
                         upscale_dpi=upscale_dpi
                     )
                     fallback_count = improved
-                    fallback_duration = time.time() - t_fallback_start
+                    fallback_duration = time.perf_counter() - t_fallback_start
 
             for candidate in candidates_for_fallback:
                 if candidate.fallback_reason != "OCR candidates disagree on numeric text":
@@ -327,8 +464,36 @@ class ProcessPageUseCase:
                         region.failure_reason = candidate.fallback_reason
                         break
 
+        # Defensive Native Text Recovery: If OCR produced 0 blocks but the underlying PDF page
+        # contains clean digital native text, recover native text to prevent accidental empty pages
+        # and IMAGE_PRESERVED_NO_TEXT degeneration.
+        if not blocks and meta.get("char_count", 0) >= 20 and not meta.get("unicode_corruption_detected", False):
+            logger.info("Page %d: OCR returned 0 blocks but native text exists (%d chars). Applying defensive native recovery.", page_num, meta.get("char_count", 0))
+            blocks = self.native_extractor.extract_blocks(page_num)
+            for b in blocks:
+                b.quality_score = round(native_score, 4)
+                b.confidence = round(native_score, 4)
+                if b.bbox and len(b.bbox) >= 4:
+                    dla = getattr(self.content_analyzer, "dla_engine", None)
+                    if dla and hasattr(dla, "_classify_text_block"):
+                        try:
+                            res = dla._classify_text_block(
+                                text=b.text,
+                                bbox=BoundingBox(x0=b.bbox[0], y0=b.bbox[1], x1=b.bbox[2], y1=b.bbox[3]),
+                                page_h=page_h,
+                                page_w=page_w,
+                                page_num=page_num,
+                                base_font_size=11.0,
+                                header_band_y=page_h * 0.10,
+                                footer_band_y=page_h * 0.90,
+                            )
+                            if isinstance(res, (tuple, list)) and len(res) >= 2:
+                                b.block_type = res[1]
+                        except Exception as e:
+                            logger.warning("Page %d layout classification failed for fallback native block: %s", page_num, e)
+
         # 5. Extract tables (doc_page already obtained during content analysis)
-        t_table_start = time.time()
+        t_table_start = time.perf_counter()
         allow_vector_tables = (
             page_type in (PageType.NATIVE_TEXT, PageType.MIXED)
             and native_score >= self.config.get("vector_table_min_native_score", 0.90)
@@ -349,11 +514,13 @@ class ProcessPageUseCase:
         # Filter out text blocks that fall inside legitimate tables to prevent duplication
         if tables:
             blocks = [b for b in blocks if not self.layout_engine.is_block_inside_any_table(b.bbox, tables)]
-        table_duration = time.time() - t_table_start
+        table_duration = time.perf_counter() - t_table_start
 
         # 6. Sort Reading Order
+        t_ro_start = time.perf_counter()
         order_sorter = ReadingOrderSorter(page_width=page_w, page_height=page_h)
         sorted_blocks = order_sorter.sort_blocks(blocks)
+        reading_order_duration = time.perf_counter() - t_ro_start
 
         block_regions = self._link_blocks_to_regions(sorted_blocks, regions, page_num)
         orientation_angle = {
@@ -389,14 +556,34 @@ class ProcessPageUseCase:
             else:
                 region.failure_reason = region.failure_reason or "No matching extracted block or table"
 
-        total_time = round(time.time() - t0, 2)
+        total_time = round(time.perf_counter() - t0, 2)
         mean_conf = (
             sum(recognizer_confidences) / len(recognizer_confidences)
             if recognizer_confidences else 0.0
         )
-        mean_q = sum(b.quality_score for b in sorted_blocks) / len(sorted_blocks) if sorted_blocks else 0.0
+        # Weighted character average for quality score (Proposal R1)
+        total_chars = sum(len(b.text.strip()) for b in sorted_blocks)
+        if total_chars > 0:
+            calibrated_q = sum(b.quality_score * len(b.text.strip()) for b in sorted_blocks) / total_chars
+        else:
+            calibrated_q = sum(b.quality_score for b in sorted_blocks) / len(sorted_blocks) if sorted_blocks else 0.0
+
         if not sorted_blocks and tables:
-            mean_q = sum(t.confidence for t in tables) / len(tables)
+            calibrated_q = sum(t.confidence for t in tables) / len(tables)
+
+        native_blocks_list = [b for b in sorted_blocks if b.source == "native"]
+        ocr_blocks_list = [b for b in sorted_blocks if b.source in ("primary_ocr", "image_ocr", "fallback_ocr")]
+        native_q = (
+            sum(b.quality_score for b in native_blocks_list) / len(native_blocks_list)
+            if native_blocks_list else None
+        )
+        ocr_q = (
+            sum(b.quality_score for b in ocr_blocks_list) / len(ocr_blocks_list)
+            if ocr_blocks_list else None
+        )
+        min_reg_q = min((b.quality_score for b in sorted_blocks), default=1.0)
+        low_conf_line_count = len(self._rejected_evidence) + sum(1 for b in sorted_blocks if b.confidence < 0.60)
+
         if sorted_blocks or tables or self._current_page_diagrams:
             content_status, content_reason = "EXTRACTED", None
         elif any(r.content_type in (ContentType.IMAGE, ContentType.IMAGE_TABLE, ContentType.FIGURE) for r in regions):
@@ -409,22 +596,35 @@ class ProcessPageUseCase:
         quality_report = PageQualityReport(
             page=page_num,
             page_type=page_type.value,
-            native_text_score=native_score,
+            native_text_score=round(native_score, 4),
             ocr_confidence=round(mean_conf, 4),
-            quality_score=round(mean_q, 4),
+            quality_score=round(calibrated_q, 4),
+            native_quality=round(native_q, 4) if native_q is not None else None,
+            ocr_quality=round(ocr_q, 4) if ocr_q is not None else None,
+            low_confidence_line_count=low_conf_line_count,
+            min_region_quality=round(min_reg_q, 4) if min_reg_q is not None else 1.0,
+            ocr_calls=self._current_page_ocr_calls,
+            errors=len(page_errors),
             total_blocks=len(sorted_blocks),
             recognized_lines=recognized_lines,
             fallback_count=fallback_count,
-            review_required_count=sum(not block.reviewed for block in candidates_for_fallback),
+            review_required_count=(
+                sum(not block.reviewed for block in candidates_for_fallback)
+                + len(self._rejected_evidence)
+                + sum(1 for r in regions if getattr(r, "needs_fallback", False))
+            ),
             suspicious_lines=suspicious_lines[:10],
             time_taken_seconds=total_time,
             stage_seconds={
                 "inspect": round(inspect_duration, 3),
+                "native_extract": round(native_extract_duration, 3),
+                "image_region_ocr": round(image_region_ocr_duration, 3),
                 "render_and_refine": round(render_duration, 3),
                 "primary_ocr": round(ocr_duration, 3),
                 "fallback": round(fallback_duration, 3),
                 "table": round(table_duration, 3),
-                "postprocess": round(max(0.0, total_time - inspect_duration - render_duration - ocr_duration - fallback_duration - table_duration), 3),
+                "reading_order": round(reading_order_duration, 3),
+                "postprocess": round(max(0.0, total_time - (inspect_duration + native_extract_duration + image_region_ocr_duration + render_duration + ocr_duration + fallback_duration + table_duration + reading_order_duration)), 3),
             },
             unicode_corruption_detected=bool(
                 meta.get("unicode_corruption_detected", False)
@@ -445,12 +645,13 @@ class ProcessPageUseCase:
         for idx, b in enumerate(sorted_blocks):
             src = "native" if b.source == "native" else "ocr"
             ct = ContentType.TEXT if src == "native" else ContentType.IMAGE
-            block_region = region_by_id[b.region_id]
+            block_region = region_by_id.get(b.region_id)
+            rot = block_region.rotation if block_region else 0.0
             needs_review = b.quality_score < 0.75
             evidence_blocks.append(EvidenceBlock(
                 block_id=f"B_{page_num:04d}_{idx + 1:04d}",
                 page=page_num,
-                region_id=b.region_id,
+                region_id=b.region_id or f"p{page_num}_inferred",
                 bbox=b.bbox if b.bbox else [],
                 bbox_original=b.bbox if b.bbox else [],
                 bbox_normalized=b.bbox if b.bbox else [],
@@ -458,7 +659,7 @@ class ProcessPageUseCase:
                 content_type=ct,
                 source=src,
                 confidence=b.confidence,
-                orientation=block_region.rotation,
+                orientation=rot,
                 quality_score=b.quality_score,
                 block_type=b.block_type or "paragraph",
                 is_bold=b.is_bold,
@@ -467,6 +668,7 @@ class ProcessPageUseCase:
                 status="UNRESOLVED" if needs_review else "EXTRACTED",
                 failure_reason="Low OCR quality score" if needs_review else None,
             ))
+        evidence_blocks.extend(self._rejected_evidence)
 
         extracted_page = ExtractedPage(
             page_num=page_num,
@@ -490,7 +692,7 @@ class ProcessPageUseCase:
         if self.cache:
             self.cache.save_cached_page(self.doc_hash, extracted_page, profile_name, render_dpi)
 
-        print(f"[{page_num}/{total_pages}] quality={mean_q:.2f} fallback={fallback_count}/{len(sorted_blocks)}")
+        print(f"[{page_num}/{total_pages}] quality={calibrated_q:.2f} fallback={fallback_count}/{len(sorted_blocks)}")
         print(f"[{page_num}/{total_pages}] completed time={total_time:.2f}s")
 
         return extracted_page
@@ -541,8 +743,77 @@ class ProcessPageUseCase:
         "doanh", "thương", "mại", "dịch", "vụ", "hoạt", "động", "lợi", "nhuận",
         "thuế", "tài", "sản", "ngân", "hàng", "khoản", "mục", "vay", "vốn",
         "chủ", "sở", "hữu", "lưu", "chuyển", "hàng", "tồn", "kho", "người",
-        "đại", "diện", "theo", "pháp", "luật", "kế", "toán", "trưởng"
+        "đại", "diện", "theo", "pháp", "luật", "kế", "toán", "trưởng",
+        "bctc", "tnhh", "ctcp", "hđqt", "bks", "bgđ", "cbtt", "usd", "tổng", "cộng"
     }
+
+    VN_VOWELS = set("aeiouyàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ")
+    EN_COMMON_WORDS = {
+        "the", "and", "of", "to", "in", "for", "is", "on", "that", "by", "this",
+        "with", "from", "at", "as", "page", "report", "total", "net", "revenue",
+        "profit", "date", "company", "no", "item", "note", "assets", "equity",
+        "cash", "tax", "year", "quarter", "annual", "audit", "balance", "sheet",
+        "income", "statement", "financial", "growth", "cost", "sales", "per", "share"
+    }
+
+    @classmethod
+    def classify_ocr_hallucination(cls, text: str, conf: float) -> Tuple[bool, Optional[str]]:
+        """
+        Evaluates whether an OCR text line is genuine content or hallucination/garbage noise (A1).
+        Returns:
+            (True, None) if valid.
+            (False, reason) if rejected:
+                - 'REJECTED_LOW_CONFIDENCE' if conf < 0.60
+                - 'REJECTED_HALLUCINATION' if non-lexical noise or repeated artifacts
+        """
+        if conf < 0.60:
+            return False, "REJECTED_LOW_CONFIDENCE"
+
+        stripped = text.strip()
+        if not stripped:
+            return False, "REJECTED_HALLUCINATION"
+
+        if TextCleaner.is_connector_line_artifact(stripped):
+            return False, "REJECTED_HALLUCINATION"
+
+        alnum_chars = [c for c in stripped if c.isalnum()]
+        if not alnum_chars:
+            return False, "REJECTED_HALLUCINATION"
+
+        if conf < 0.80:
+            has_digit = any(c.isdigit() for c in stripped)
+            if has_digit:
+                digits_count = sum(1 for c in stripped if c.isdigit())
+                if digits_count >= 2 or any(sym in stripped for sym in ("%", "$", "đ", "₫", "€", "¥", "VND", "vnd")):
+                    return True, None
+
+            words = [w.lower().strip(".,;:()[]{}'\"") for w in stripped.split()]
+            for w in words:
+                clean_w = "".join(c for c in w if c.isalpha())
+                if clean_w in cls.VN_LEXICON_WORDS or clean_w in cls.EN_COMMON_WORDS:
+                    return True, None
+
+            has_vn_diacritic = any(c in "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ" for c in stripped)
+            if has_vn_diacritic:
+                return True, None
+
+            letters = [c.lower() for c in stripped if c.isalpha()]
+            if len(letters) >= 3:
+                vowels_count = sum(1 for c in letters if c in cls.VN_VOWELS)
+                vowel_ratio = vowels_count / len(letters)
+                if vowel_ratio < 0.15 or vowel_ratio > 0.85:
+                    return False, "REJECTED_HALLUCINATION"
+                return True, None
+            elif len(letters) > 0 and not has_digit:
+                return False, "REJECTED_HALLUCINATION"
+
+        letters = [c.lower() for c in stripped if c.isalpha()]
+        if len(letters) >= 5 and not any(c.isdigit() for c in stripped):
+            vowels_count = sum(1 for c in letters if c in cls.VN_VOWELS)
+            if vowels_count == 0:
+                return False, "REJECTED_HALLUCINATION"
+
+        return True, None
 
     @classmethod
     def _calculate_vn_lexicon_ratio(cls, results: List[Dict[str, Any]]) -> float:
@@ -572,7 +843,7 @@ class ProcessPageUseCase:
         Evaluates orientations when first pass fails, produces vertical glyph noise,
         has low Vietnamese lexicon ratio (< 12%), or when evaluate_all_orientations is requested.
         """
-        results = self.ocr_engine.predict_image(img_bgr)
+        results = self._predict_image_counted(img_bgr)
         is_noise = self._is_glyph_noise(results)
         vn_ratio = self._calculate_vn_lexicon_ratio(results)
 
@@ -583,6 +854,7 @@ class ProcessPageUseCase:
             and (vn_ratio >= 0.12 or self._is_readable_ocr_layout(results))
         ):
             return results, None
+
         if not enabled:
             return results, None
 
@@ -598,11 +870,13 @@ class ProcessPageUseCase:
             (cv2.ROTATE_90_COUNTERCLOCKWISE, "rotate_90_ccw"),
             (cv2.ROTATE_180, "rotate_180"),
         ):
+
             rotated = cv2.rotate(img_bgr, code)
-            rotated_results = self.ocr_engine.predict_image(rotated)
+            rotated_results = self._predict_image_counted(rotated)
             if not rotated_results or self._is_glyph_noise(rotated_results):
                 continue
 
+            found_any = True
             rot_vn_ratio = self._calculate_vn_lexicon_ratio(rotated_results)
 
             mapped = []
@@ -918,13 +1192,29 @@ class ProcessPageUseCase:
             if crop_bgr.size == 0 or crop_bgr.shape[0] < 16 or crop_bgr.shape[1] < 16:
                 continue
 
+            # P1: Fast variance pre-filter to skip blank/flat/gradient images in < 1ms
+            crop_gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY) if len(crop_bgr.shape) == 3 else crop_bgr
+            if crop_bgr.sum() > 0 and float(np.std(crop_gray)) < 15.0:
+                continue
+
             crop_h, crop_w = crop_bgr.shape[:2]
             try:
-                ocr_results, orientation_label = self._predict_with_orientation_fallback(
-                    crop_bgr,
-                    enabled=self.config.get("orientation_fallback_enabled", True),
-                    evaluate_all_orientations=evaluate_all_orientations,
-                )
+                # P4: SHA-256 crop caching across identical graphical headers/logos
+                _crop_cache = getattr(self, "_crop_cache", None)
+                if _crop_cache is None:
+                    _crop_cache = self._crop_cache = {}
+
+                crop_hash = hashlib.sha256(crop_bgr.tobytes()).hexdigest()
+                if crop_hash in _crop_cache:
+                    ocr_results, orientation_label = _crop_cache[crop_hash]
+                else:
+                    ocr_results, orientation_label = self._predict_with_orientation_fallback(
+                        crop_bgr,
+                        enabled=self.config.get("orientation_fallback_enabled", True),
+                        evaluate_all_orientations=evaluate_all_orientations,
+                    )
+                    _crop_cache[crop_hash] = (ocr_results, orientation_label)
+
                 mean_confidence = (
                     sum(float(item.get("confidence", 0.0)) for item in ocr_results) / len(ocr_results)
                     if ocr_results else 0.0
@@ -933,12 +1223,16 @@ class ProcessPageUseCase:
                     not ocr_results or self._is_glyph_noise(ocr_results)
                     or mean_confidence < self.config.get("min_confidence", 0.85)
                 )
-                if (
-                    self.config.get("regional_retry_enabled", False)
-                    and retry_risk
-                    and bb.area / page_area >= 0.10
-                    and self.config.get("fallback_upscale_dpi", render_dpi) > render_dpi
-                ):
+                num_threshold = float(self.config.get("numeric_retry_threshold", 0.85))
+                has_low_conf_number = any(
+                    bool(re.search(r"\d", item.get("text", ""))) and float(item.get("confidence", 0.0)) < num_threshold
+                    for item in ocr_results
+                ) if ocr_results else False
+                should_retry_region = (
+                    (self.config.get("regional_retry_enabled", False) and retry_risk and bb.area / page_area >= 0.10)
+                    or has_low_conf_number
+                ) and self.config.get("fallback_upscale_dpi", render_dpi) > render_dpi
+                if should_retry_region:
                     retry_crop, retry_rect = RegionCropper.crop_page_region(
                         doc_page, bb,
                         dpi=self.config["fallback_upscale_dpi"], margin=3.0,
@@ -1015,7 +1309,37 @@ class ProcessPageUseCase:
                     continue
 
                 text = UnicodeNormalizer.normalize(res.get("text", ""))
-                if not text.strip() or TextCleaner.is_connector_line_artifact(text):
+                conf = float(res.get("confidence", 0.85))
+
+                # Check hallucination / low confidence filter (A1)
+                is_valid, reject_reason = self.classify_ocr_hallucination(text, conf)
+                if not is_valid:
+                    mapped_bbox = RegionCropper.map_crop_bbox_to_page(
+                        raw_bbox, actual_crop_rect, crop_w, crop_h
+                    )
+                    _rejected_list = getattr(self, "_rejected_evidence", None)
+                    if _rejected_list is None:
+                        _rejected_list = self._rejected_evidence = []
+                    _rejected_list.append(EvidenceBlock(
+                        block_id=f"B_{page_num:04d}_REJ_{len(_rejected_list) + 1:04d}",
+                        page=page_num,
+                        region_id=region.region_id,
+                        bbox=mapped_bbox,
+                        bbox_original=mapped_bbox,
+                        bbox_normalized=mapped_bbox,
+                        text=text,
+                        content_type=ContentType.IMAGE,
+                        source="ocr",
+                        confidence=conf,
+                        orientation=region.rotation,
+                        quality_score=conf,
+                        block_type="noise",
+                        is_bold=False,
+                        font_size=None,
+                        reading_order=0,
+                        status=reject_reason,
+                        failure_reason=f"Rejected: {reject_reason} (conf={conf:.2f})"
+                    ))
                     continue
 
                 mapped_bbox = RegionCropper.map_crop_bbox_to_page(
@@ -1032,7 +1356,6 @@ class ProcessPageUseCase:
                 if is_duplicate:
                     continue  # Native clean text takes priority
 
-                conf = res.get("confidence", 0.85)
                 q_score, _, _ = self.ocr_quality.evaluate_ocr_result(text, conf)
 
                 block = TextBlock(

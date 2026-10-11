@@ -14,13 +14,14 @@ class ReadingOrderSorter:
         if not blocks:
             return []
 
-        # 1. Separate Header, Footer, and Body
+        # 1. Separate Header, Footer, Page Number, and Body
         headers: List[TextBlock] = []
         footers: List[TextBlock] = []
+        page_numbers: List[TextBlock] = []
         body: List[TextBlock] = []
 
-        header_cutoff = self.page_height * 0.08
-        footer_cutoff = self.page_height * 0.92
+        header_cutoff = self.page_height * 0.10
+        footer_cutoff = self.page_height * 0.90
 
         for block in blocks:
             bbox = block.bbox
@@ -29,24 +30,36 @@ class ReadingOrderSorter:
                 continue
 
             x0, y0, x1, y1 = bbox
+
+            # Respect prior semantic classification from DLA if already set
+            if block.block_type == "header":
+                headers.append(block)
+                continue
+            elif block.block_type == "footer":
+                footers.append(block)
+                continue
+            elif block.block_type == "page_number":
+                page_numbers.append(block)
+                continue
+
+            # Fallback geometric categorization for unlabelled blocks
             import re
             is_section_number = bool(re.match(r"^\s*(\d+(\.\d+)*\s*[\)\.\/\-]|[IVXLCDM]+\s*[\)\.\/\-]|phần\s+[IVXLCDM]+)", block.text, re.IGNORECASE))
-            is_real_header = (block.page > 1) and (not is_section_number) and (
-                y1 <= header_cutoff
-                and any(kw in block.text.lower() for kw in ("báo cáo thường niên", "công ty cổ phần", "tổng công ty", "cộng hòa"))
-            )
-            if is_real_header:
+            is_geom_header = (block.page > 1) and (not is_section_number) and (y1 <= header_cutoff) and (len(block.text.splitlines()) <= 2) and (len(block.text.strip()) <= 80)
+            is_geom_footer = (y0 >= footer_cutoff) and (not is_section_number) and (len(block.text.splitlines()) <= 2) and (len(block.text.strip()) <= 80)
+
+            if is_geom_header:
                 block.block_type = "header"
                 headers.append(block)
-            elif y0 >= footer_cutoff:
+            elif is_geom_footer:
                 block.block_type = "footer"
                 footers.append(block)
             else:
                 body.append(block)
 
-        # Sort headers and footers top-down, left-right
+        # Sort headers, footers and page numbers top-down, left-right
         sorted_headers = self._sort_column(headers)
-        sorted_footers = self._sort_column(footers)
+        sorted_footers = self._sort_column(footers + page_numbers)
 
         # 2. Analyze Body for multi-column structure
         sorted_body = self._sort_body_blocks(body)

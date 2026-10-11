@@ -1,0 +1,19 @@
+file,section,claim,value,run_id,gt_hash,output_hash,code_hash,status
+ACADEMIC_RESEARCH_PAPER.md,Abstract,"CER on complex financial Vietnamese documents",1.8%,run_20261009_pilot,synthetic_gt_hash,pred_hash,git_head_v5,TARGET_SPECIFICATION
+ACADEMIC_RESEARCH_PAPER.md,Abstract,"TEDS table structure accuracy",89.7%,run_20261009_pilot,synthetic_gt_hash,pred_hash,git_head_v5,TARGET_SPECIFICATION
+ACADEMIC_RESEARCH_PAPER.md,Abstract,"End-to-end CPU processing latency (healthy native)",<=0.15s/page,batch_run_168p,N/A,output_phc_pnj,git_head_v5,MEASURED
+ACADEMIC_RESEARCH_PAPER.md,Section 4,"Batch OCR execution on 12 corporate PDFs",875/875 pages,batch_run_875p,N/A,output_12files,git_head_v5,MEASURED
+ACADEMIC_RESEARCH_PAPER.md,Section 4,"Batch OCR execution on 5 new corporate PDFs",168/168 pages,batch_run_168p,N/A,output_5files,git_head_v5,MEASURED
+ACADEMIC_RESEARCH_PAPER.md,Section 4,"Weighted average processing time on 5 new PDFs",6.59s/page,batch_run_168p,N/A,output_5files,git_head_v5,MEASURED
+ACADEMIC_RESEARCH_PAPER.md,Section 4,"System throughput on 5 new PDFs",9.07 pages/min,batch_run_168p,N/A,output_5files,git_head_v5,MEASURED
+ACADEMIC_RESEARCH_PAPER.md,Section 4,"Mean Quality Score on PNJ (73 pages)",0.99,batch_run_168p,N/A,output_pnj,git_head_v5,MEASURED
+ACADEMIC_RESEARCH_PAPER.md,Section 4,"Mean Quality Score on PHC (32 pages)",0.99,batch_run_168p,N/A,output_phc,git_head_v5,MEASURED
+ACADEMIC_RESEARCH_PAPER.md,Section 4,"Mean Quality Score on PGC (28 pages)",0.92,batch_run_168p,N/A,output_pgc,git_head_v5,MEASURED
+ACADEMIC_RESEARCH_PAPER.md,Section 4,"Mean Quality Score on PTC (14 pages)",0.92,batch_run_168p,N/A,output_ptc,git_head_v5,MEASURED
+ACADEMIC_RESEARCH_PAPER.md,Section 4,"Mean Quality Score on PJT (21 pages)",0.88,batch_run_168p,N/A,output_pjt,git_head_v5,MEASURED
+ACADEMIC_RESEARCH_PAPER.md,Section 4,"Full-page human-annotated Ground Truth for 12 input PDFs",N/A,none,none,none,none,NO_GROUND_TRUTH
+RESEARCH_READINESS_20261009.md,Section 1,"Test suite automation pass rate",179/179 (100%),pytest_run,fixture_hash,pred_hash,git_head_v5,METRIC_IMPLEMENTATION_VERIFIED
+RESEARCH_READINESS_20261009.md,Section 2,"Review queue risk items analyzed",3419 items,excel_analysis,N/A,output_5files_orig,git_head_v5,MEASURED
+RESEARCH_PROTOCOL_V5.md,Section 5,"CPU processing target: native <= 0.15s/page",0.07-0.15s,batch_run_168p,N/A,output_native,git_head_v5,MEASURED
+RESEARCH_PROTOCOL_V5.md,Section 5,"CPU processing target: mixed <= 1.8s/page",0.8-1.8s,batch_run_168p,N/A,output_mixed,git_head_v5,MEASURED
+RESEARCH_PROTOCOL_V5.md,Section 5,"CPU processing target: scan <= 2.5s/page",5.5-10.8s,batch_run_168p,N/A,output_scan,git_head_v5,MEASURED_EXCEEDS_TARGET

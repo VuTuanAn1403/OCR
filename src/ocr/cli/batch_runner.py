@@ -198,7 +198,7 @@ class BatchOCRRunner:
             return None
 
     def classify_document(self, doc_entry: Dict[str, Any], doc_obj: Any) -> List[str]:
-        """Classifies document by content patterns."""
+        """Classifies document by content patterns (Calibrated per Proposal R7)."""
         classes = []
         tot = doc_entry.get("total_pages", 0)
         p_nat = doc_entry.get("pages_native", 0) or 0
@@ -208,25 +208,30 @@ class BatchOCRRunner:
         if tot <= 0:
             return ["FAILED"]
 
-        if p_nat == tot:
+        ocr_ratio = (p_ocr + p_mix) / float(tot)
+        if ocr_ratio < 0.10:
             classes.append("NATIVE_TEXT_HEALTHY")
-        elif p_ocr == tot:
+        elif ocr_ratio > 0.90:
             classes.append("SCANNED")
         else:
             classes.append("MIXED")
 
-        # Table / Diagram / Image checks
-        total_tables = 0
-        total_diagram_blocks = 0
-        if hasattr(doc_obj, "pages"):
+        # Table / Diagram checks based on percentage of pages (R7: >= 30% tables, >= 10% diagrams)
+        pages_with_tables = 0
+        pages_with_diagrams = 0
+        if hasattr(doc_obj, "pages") and doc_obj.pages:
             for p in doc_obj.pages:
-                total_tables += len(getattr(p, "tables", []))
-                if getattr(p, "tables", None) == [] and len(getattr(p, "blocks", [])) < 25:
-                    total_diagram_blocks += 1
+                if getattr(p, "tables", None):
+                    pages_with_tables += 1
+                if getattr(p, "diagrams", None) or (
+                    getattr(p, "tables", None) == [] and len(getattr(p, "blocks", [])) < 15
+                    and any(getattr(r, "content_type", None) and r.content_type.value in ("DIAGRAM", "FIGURE") for r in getattr(p, "regions", []))
+                ):
+                    pages_with_diagrams += 1
 
-        if total_tables >= max(5, tot * 0.4):
+        if (pages_with_tables / float(tot)) >= 0.30:
             classes.append("TABLE_HEAVY")
-        if total_diagram_blocks >= 2:
+        if (pages_with_diagrams / float(tot)) >= 0.10:
             classes.append("DIAGRAM_HEAVY")
 
         return classes
@@ -425,25 +430,180 @@ class BatchOCRRunner:
         mixed_files = sum(1 for e in manifest if "MIXED" in e.get("classifications", []))
         table_heavy = sum(1 for e in manifest if "TABLE_HEAVY" in e.get("classifications", []))
         diagram_heavy = sum(1 for e in manifest if "DIAGRAM_HEAVY" in e.get("classifications", []))
+        # Build Review Queue (Proposal R2 / Review V5 Item 10: Region-level and page-level precision)
+        review_queue: List[Dict[str, Any]] = []
+        seen_queue_keys = set()
 
-        # Build Review Queue
-        review_queue = []
         for e in manifest:
-            q_score = e.get("mean_quality_score")
-            q_score = 1.0 if q_score is None else q_score
-            fb_r = e.get("fallback_ratio") or 0.0
-            cer_v = e.get("cer")
-
+            doc_id = e.get("document_id")
+            file_name = e.get("file_name", doc_id)
             if e["status"] in ("FAILED_INPUT", "FAILED_PROCESSING"):
-                review_queue.append({"priority": "CRITICAL", "file": e["file_name"], "reason": f"Processing failed: {e.get('error')}"})
-            elif cer_v is not None and cer_v > 0.20:
-                review_queue.append({"priority": "CRITICAL", "file": e["file_name"], "reason": f"High CER: {cer_v:.2%}"})
-            elif q_score < 0.85:
-                review_queue.append({"priority": "WARNING", "file": e["file_name"], "reason": f"Low quality score: {q_score:.4f}"})
-            elif fb_r > 0.12:
-                review_queue.append({"priority": "WARNING", "file": e["file_name"], "reason": f"High fallback ratio: {fb_r:.2%}"})
-            elif e.get("seconds_per_page") and e["seconds_per_page"] > 25.0:
-                review_queue.append({"priority": "REVIEW", "file": e["file_name"], "reason": f"Slow processing: {e['seconds_per_page']}s/page"})
+                item = {
+                    "priority": "CRITICAL",
+                    "file": file_name,
+                    "page": None,
+                    "region_id": None,
+                    "reason": f"Processing failed: {e.get('error')}",
+                    "affected_lines": 0,
+                    "snippet": None,
+                }
+                q_key = (file_name, None, None, item["reason"])
+                if q_key not in seen_queue_keys:
+                    seen_queue_keys.add(q_key)
+                    review_queue.append(item)
+                continue
+
+            doc_dir = self.output_dir / doc_id if doc_id else None
+            pages_data: List[Dict[str, Any]] = []
+
+            # 1. Inspect page-level artifacts (pages/page-*.json or result.json)
+            if doc_dir and doc_dir.is_dir():
+                pages_dir = doc_dir / "pages"
+                if pages_dir.is_dir():
+                    for p_json in sorted(pages_dir.glob("page-*.json")):
+                        try:
+                            pages_data.append(json.loads(p_json.read_text(encoding="utf-8")))
+                        except Exception:
+                            pass
+                elif (doc_dir / "result.json").is_file():
+                    try:
+                        r_data = json.loads((doc_dir / "result.json").read_text(encoding="utf-8"))
+                        pages_data = r_data.get("pages", [])
+                    except Exception:
+                        pass
+
+            collected_region_ids = set()
+
+            # 2. Extract risk signals from individual regions (e.g. numeric disagreement, orientation conflict)
+            for p_dict in pages_data:
+                p_num = p_dict.get("page_num", 1)
+
+                for reg in p_dict.get("regions", []):
+                    r_id = reg.get("region_id")
+                    r_needs_fallback = reg.get("needs_fallback", False)
+                    r_reason = reg.get("failure_reason")
+
+                    if r_needs_fallback or r_reason:
+                        collected_region_ids.add((p_num, r_id))
+                        reason_str = r_reason or "regional_fallback_triggered"
+                        prio = "WARNING" if any(w in reason_str.lower() for w in ["disagree", "uncertain", "fail"]) else "REVIEW"
+                        item = {
+                            "priority": prio,
+                            "file": file_name,
+                            "page": p_num,
+                            "region_id": r_id,
+                            "reason": reason_str,
+                            "affected_lines": 1,
+                            "snippet": f"Region {r_id} ({reg.get('content_type', 'UNKNOWN')}): {reason_str}",
+                        }
+                        q_key = (file_name, p_num, r_id, reason_str)
+                        if q_key not in seen_queue_keys:
+                            seen_queue_keys.add(q_key)
+                            review_queue.append(item)
+
+                # 3. Extract risk signals from evidence blocks (UNRESOLVED, REJECTED_*)
+                for eb in p_dict.get("evidence_blocks", []):
+                    eb_id = eb.get("region_id")
+                    eb_status = eb.get("status")
+                    eb_reason = eb.get("failure_reason")
+
+                    if eb_status in ("UNRESOLVED", "REJECTED_LOW_CONFIDENCE", "REJECTED_HALLUCINATION") or eb_reason:
+                        collected_region_ids.add((p_num, eb_id))
+                        reason_str = eb_reason or f"evidence_status_{eb_status}"
+                        prio = "WARNING" if "REJECTED" in (eb_status or "") else "REVIEW"
+                        txt = eb.get("text", "")
+                        snippet_str = txt[:120] if txt else reason_str
+                        item = {
+                            "priority": prio,
+                            "file": file_name,
+                            "page": p_num,
+                            "region_id": eb_id,
+                            "reason": reason_str,
+                            "affected_lines": 1,
+                            "snippet": snippet_str,
+                        }
+                        q_key = (file_name, p_num, eb_id, reason_str)
+                        if q_key not in seen_queue_keys:
+                            seen_queue_keys.add(q_key)
+                            review_queue.append(item)
+
+            # 4. Extract page-level quality signals (quality.json)
+            quality_path = doc_dir / "quality.json" if doc_dir else None
+            if quality_path and quality_path.is_file():
+                try:
+                    q_data = json.loads(quality_path.read_text(encoding="utf-8"))
+                    for pr in q_data.get("page_reports", []):
+                        p_num = pr.get("page", 1)
+                        if pr.get("suspicious_lines"):
+                            for s_line in pr["suspicious_lines"][:3]:
+                                item = {
+                                    "priority": "WARNING",
+                                    "file": file_name,
+                                    "page": p_num,
+                                    "region_id": None,
+                                    "reason": "suspicious_line_detected",
+                                    "affected_lines": 1,
+                                    "snippet": s_line,
+                                }
+                                q_key = (file_name, p_num, None, s_line[:60])
+                                if q_key not in seen_queue_keys:
+                                    seen_queue_keys.add(q_key)
+                                    review_queue.append(item)
+
+                        if pr.get("orientation_fallback") == "orientation_uncertain":
+                            reason_str = "orientation_uncertain"
+                            item = {
+                                "priority": "WARNING",
+                                "file": file_name,
+                                "page": p_num,
+                                "region_id": None,
+                                "reason": reason_str,
+                                "affected_lines": 0,
+                                "snippet": None,
+                            }
+                            q_key = (file_name, p_num, None, reason_str)
+                            if q_key not in seen_queue_keys:
+                                seen_queue_keys.add(q_key)
+                                review_queue.append(item)
+
+                        if pr.get("content_status") == "PARTIAL":
+                            reason_str = pr.get("content_reason") or "partial_content_extraction"
+                            item = {
+                                "priority": "WARNING",
+                                "file": file_name,
+                                "page": p_num,
+                                "region_id": None,
+                                "reason": reason_str,
+                                "affected_lines": pr.get("errors", 1),
+                                "snippet": None,
+                            }
+                            q_key = (file_name, p_num, None, reason_str)
+                            if q_key not in seen_queue_keys:
+                                seen_queue_keys.add(q_key)
+                                review_queue.append(item)
+
+                        # If low confidence OCR blocks were reported and no region item was collected
+                        req_count = pr.get("review_required_count", 0)
+                        if req_count > 0 and not any(p == p_num for p, _ in collected_region_ids):
+                            reason_str = "low_confidence_ocr_blocks"
+                            item = {
+                                "priority": "REVIEW",
+                                "file": file_name,
+                                "page": p_num,
+                                "region_id": None,
+                                "reason": reason_str,
+                                "affected_lines": req_count,
+                                "snippet": None,
+                            }
+                            q_key = (file_name, p_num, None, reason_str)
+                            if q_key not in seen_queue_keys:
+                                seen_queue_keys.add(q_key)
+                                review_queue.append(item)
+                except Exception:
+                    pass
+
+            # Update manifest entry review_required_count
+            e["review_required_count"] = sum(1 for item in review_queue if item["file"] == file_name)
 
         with open(self.review_queue_path, "w", encoding="utf-8") as f:
             json.dump(review_queue, f, ensure_ascii=False, indent=2)

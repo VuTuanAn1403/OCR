@@ -4,14 +4,22 @@ from pydantic import BaseModel, Field
 
 
 class ContentType(str, Enum):
-    """V3.1.2 Content Composition region types."""
+    """V5.0 Scientific Document Layout Analysis region types."""
     TEXT = "TEXT"
-    IMAGE = "IMAGE"
-    VECTOR = "VECTOR"
+    TITLE = "TITLE"
+    SECTION_HEADER = "SECTION_HEADER"
+    HEADER = "HEADER"
+    FOOTER = "FOOTER"
+    PAGE_NUMBER = "PAGE_NUMBER"
     TABLE = "TABLE"
     IMAGE_TABLE = "IMAGE_TABLE"
     FIGURE = "FIGURE"
+    CAPTION = "CAPTION"
+    LIST = "LIST"
+    FORMULA = "FORMULA"
+    VECTOR = "VECTOR"
     DIAGRAM = "DIAGRAM"
+    IMAGE = "IMAGE"
     OUTLINED_TEXT = "OUTLINED_TEXT"
     UNKNOWN = "UNKNOWN"
 
@@ -60,22 +68,24 @@ class BoundingBox(BaseModel):
 
 class Region(BaseModel):
     """
-    V3.1.2 Content Composition region.
+    V5.0 Document Layout Analysis region.
 
     Each page is decomposed into regions with explicit content_type, source,
-    and coordinate metadata.  Regions that cannot be classified are kept as
-    UNKNOWN — never silently dropped.
+    category metadata, and coordinate geometry.
     """
     region_id: str
     bbox: BoundingBox
-    # --- V3.1.1 fields (kept for backward compat) ---
-    region_type: str = "text"  # text, table, figure, header, footer
+    # --- Backward compatibility fields ---
+    region_type: str = "text"  # text, table, figure, header, footer, caption, title
     confidence: float = 1.0
     quality_score: float = 1.0
     needs_fallback: bool = False
     failure_reason: Optional[str] = None
-    # --- V3.1.2 Content Composition fields ---
+    # --- V5.0 Layout Analysis fields ---
     content_type: ContentType = ContentType.TEXT
+    label: str = "text"
+    category_id: Optional[int] = None
+    dla_score: float = 1.0
     source: Literal["native", "ocr", "vector", "image", "unknown"] = "unknown"
     rotation: float = 0.0
     reading_order: int = -1

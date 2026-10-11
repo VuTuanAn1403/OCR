@@ -429,8 +429,31 @@ class TableStructure(BaseModel):
         return sep.join(lines)
 
     def to_html(self, max_line_len: int = 80) -> str:
-        """Returns table rendered as clean Word-like table."""
-        return self.to_markdown()
+        """
+        Renders standard HTML <table> representation for TEDS evaluation
+        and rich display, preserving row_span and col_span.
+        """
+        if not self.cells and (self.num_rows == 0 or self.num_cols == 0):
+            return "<table></table>"
+
+        rows_dict = {}
+        for c in self.cells:
+            rows_dict.setdefault(c.row_idx, []).append(c)
+
+        html_lines = ["<table>"]
+        for r_idx in sorted(rows_dict.keys()):
+            html_lines.append("  <tr>")
+            for c in sorted(rows_dict[r_idx], key=lambda x: x.col_idx):
+                spans = ""
+                if c.row_span > 1:
+                    spans += f' rowspan="{c.row_span}"'
+                if c.col_span > 1:
+                    spans += f' colspan="{c.col_span}"'
+                clean_text = c.text.strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                html_lines.append(f"    <td{spans}>{clean_text}</td>")
+            html_lines.append("  </tr>")
+        html_lines.append("</table>")
+        return "\n".join(html_lines)
 
     def to_box_table(self, max_table_width: int = 100) -> str:
         """Renders strictly as a Word-like Unicode Box Drawing Table."""

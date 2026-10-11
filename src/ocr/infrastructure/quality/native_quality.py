@@ -58,8 +58,12 @@ class NativeQualityEvaluator:
             penalty = min(0.5, (replacement_count / max(1, char_count)) * 50)
             score -= penalty
 
-        # 2. Check for control characters (other than \n, \r, \t)
-        control_chars = sum(1 for c in text if unicodedata.category(c).startswith("C") and c not in "\r\n\t")
+        # 2. Check for control characters (excluding standard bullet points / private-use symbols)
+        bullet_symbols = {"\uf0a7", "\uf0b7", "\uf02d", "\uf076", "\uf0a8", "\u2022", "\u2023", "\u25e6", "\u2043"}
+        control_chars = sum(
+            1 for c in text
+            if unicodedata.category(c).startswith("C") and c not in "\r\n\t" and c not in bullet_symbols
+        )
         if control_chars > 0:
             score -= min(0.4, (control_chars / char_count) * 20)
 
@@ -70,7 +74,7 @@ class NativeQualityEvaluator:
                 score -= min(0.35, matches * 0.15)
 
         # 4. Check for printable characters ratio
-        printable_count = sum(1 for c in text if c.isprintable() or c in "\r\n\t")
+        printable_count = sum(1 for c in text if c.isprintable() or c in "\r\n\t" or c in bullet_symbols)
         printable_ratio = printable_count / char_count
         if printable_ratio < 0.95:
             score -= (0.95 - printable_ratio) * 2
@@ -86,7 +90,10 @@ class NativeQualityEvaluator:
         # 6. Check for random single-letter lines or high punctuation noise
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         if lines:
-            short_garbage_lines = sum(1 for line in lines if len(line) <= 2 and not line.isdigit())
+            short_garbage_lines = sum(
+                1 for line in lines
+                if len(line) <= 2 and not line.isdigit() and line not in bullet_symbols
+            )
             if short_garbage_lines / len(lines) > 0.25:
                 score -= 0.20
 

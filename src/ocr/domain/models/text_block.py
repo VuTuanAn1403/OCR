@@ -9,7 +9,7 @@ class TextBlock(BaseModel):
     confidence: float = 1.0
     quality_score: float = 1.0
     reviewed: bool = False
-    block_type: str = "paragraph"  # paragraph, title, header, footer, list_item, table_cell, caption
+    block_type: str = "paragraph"  # paragraph, title, section_header, header, footer, page_number, list_item, table_cell, caption, formula
     line_index: int = 0
     column_index: int = 0
     font_size: Optional[float] = None

@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-10-09T09:25:00Z",
+  "description": "Registry of official reference implementations and evaluators pinned for scientific verification under RESEARCH_PROTOCOL_V5.",
+  "evaluators": [
+    {
+      "id": "T1",
+      "name": "JiWER",
+      "role": "Reference Character and Word Error Rate Evaluator",
+      "canonical_repository": "https://github.com/jitsi/jiwer",
+      "pinned_version": "3.0.4",
+      "license": "Apache-2.0",
+      "status": "VERIFIED_ADAPTER",
+      "parity_scope": "Unclamped edit distance calculation on Unicode NFC text with character-level and whitespace-tokenized alignments",
+      "zero_denominator_policy": "Returns None/null when reference length is zero, reporting insertion count separately"
+    },
+    {
+      "id": "T2",
+      "name": "PubTabNet Official Metric",
+      "role": "Tree-Edit-Distance-based Similarity (TEDS) Evaluator for Table Recognition",
+      "canonical_repository": "https://github.com/ibm-aur-nlp/PubTabNet",
+      "pinned_commit": "e8395ec1a0a574ec8c1c4f4daae124e18d6e9f51",
+      "source_file": "src/metric.py",
+      "license": "Apache-2.0",
+      "status": "VERIFIED_ADAPTER",
+      "parity_scope": "Table HTML structure and content tree comparison using APTED algorithm",
+      "table_detection_separation": "TEDS evaluates matched tables; Precision/Recall/F1 and spurious/missing counts are reported independently"
+    },
+    {
+      "id": "T3",
+      "name": "COCOeval (pycocotools)",
+      "role": "Document Layout Analysis Object Detection Evaluator (mAP@50, mAP@[.50:.95])",
+      "canonical_repository": "https://github.com/cocodataset/cocoapi",
+      "pinned_package": "pycocotools>=2.0.7",
+      "license": "BSD-2-Clause",
+      "status": "VERIFIED_ADAPTER",
+      "parity_scope": "Bounding box AP evaluation using standard [x, y, width, height] format and IoU thresholds",
+      "absent_class_policy": "Classes with zero ground truth boxes are marked not_evaluated_no_ground_truth (None) and never artificially assigned 1.0"
+    },
+    {
+      "id": "T4",
+      "name": "DER_VN_v1 (Project Custom Metric)",
+      "role": "Vietnamese-Specific Diacritic Error Rate Evaluator",
+      "canonical_repository": "Internal project implementation adhering to Protocol Section 4.2",
+      "specification": "docs/RESEARCH_PROTOCOL_V5.md#42",
+      "status": "PROJECT_DEFINED_SPECIFICATION",
+      "parity_scope": "Full character sequence alignment decomposed into 3 slots: shape (breve/circumflex/horn), tone (sắc/huyền/hỏi/ngã/nặng), and stroke (đ/Đ)",
+      "denominator": "Total count of active diacritic slots in ground truth text"
+    },
+    {
+      "id": "T5",
+      "name": "NumericExact_v1 (Project Custom Metric)",
+      "role": "Financial & Numerical Exact Match Evaluator",
+      "canonical_repository": "Internal project implementation adhering to Protocol Section 4.6",
+      "specification": "docs/RESEARCH_PROTOCOL_V5.md#46",
+      "status": "PROJECT_DEFINED_SPECIFICATION",
+      "parity_scope": "Location- and context-aware numerical matching preserving raw signs, brackets, decimal delimiters, leading zeros, units, and dates",
+      "metrics": "NumericExact_Precision, NumericExact_Recall, NumericExact_F1, CellExactMatch"
+    }
+  ]
+}

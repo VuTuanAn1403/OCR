@@ -30,13 +30,18 @@ FULL_PAGE_IMAGE_RATIO = 0.75
 DECORATIVE_TEXT_OVERLAP_RATIO = 0.80
 
 
+from src.ocr.infrastructure.layout.dla_engine import DLAEngine
+
+
 class PageContentAnalyzer:
     """
     Analyzes a PDF page and produces a list of typed Regions.
 
-    Uses the metadata dict from PDFInspector and the raw pymupdf.Page
-    to decompose the page into its content composition.
+    Uses the metadata dict from PDFInspector, the raw pymupdf.Page,
+    and DLAEngine to decompose the page into its content composition.
     """
+    def __init__(self, dla_engine: Optional[DLAEngine] = None):
+        self.dla_engine = dla_engine or DLAEngine()
 
     def analyze(
         self,
@@ -49,6 +54,8 @@ class PageContentAnalyzer:
         extraction or OCR happens here.
         """
         page_num = meta["page_num"]
+        page_w = meta.get("width", 595.0)
+        page_h = meta.get("height", 842.0)
         page_area = meta.get("page_area", 1.0)
         image_rects = meta.get("image_rects", [])
         char_count = meta.get("char_count", 0)
@@ -72,11 +79,24 @@ class PageContentAnalyzer:
                         )
                         if bb.area > 0:
                             text_block_bboxes.append(bb)
+                            c_type, label, cid = self.dla_engine._classify_text_block(
+                                text=b[4],
+                                bbox=bb,
+                                page_h=page_h,
+                                page_w=page_w,
+                                page_num=page_num,
+                                base_font_size=11.0,
+                                header_band_y=page_h * 0.10,
+                                footer_band_y=page_h * 0.90,
+                            )
                             region_counter += 1
                             regions.append(Region(
                                 region_id=f"p{page_num}_r{region_counter}",
                                 bbox=bb,
                                 content_type=ContentType.TEXT,
+                                region_type=label,
+                                label=label,
+                                category_id=cid,
                                 source="native",
                                 confidence=1.0,
                                 reading_order=region_counter,
@@ -97,6 +117,13 @@ class PageContentAnalyzer:
             )
             if bb.area < MIN_IMAGE_AREA_PT2:
                 continue  # too small — likely icon/logo
+
+            if (
+                bb.x1 <= 0 or bb.y1 <= 0
+                or (page_w > 0 and bb.x0 >= page_w)
+                or (page_h > 0 and bb.y0 >= page_h)
+            ):
+                continue
 
             image_bboxes.append(bb)
 

@@ -6,6 +6,11 @@ Checks Python version, essential dependencies, and OCR engine availability.
 
 import sys
 import importlib
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 REQUIRED_PACKAGES = [
     ("pymupdf", "PyMuPDF (fitz)"),
@@ -20,6 +25,9 @@ REQUIRED_PACKAGES = [
     ("yaml", "PyYAML"),
     ("pytest", "Pytest"),
     ("tabulate", "Tabulate"),
+    ("bs4", "BeautifulSoup4"),
+    ("scipy", "SciPy"),
+    ("apted", "APTED (TEDS Metric)"),
 ]
 
 def check_python_version() -> bool:
@@ -80,11 +88,30 @@ def check_ocr_engines() -> bool:
         print(f"    [FAIL] VietOCR Engine Error: {e}", file=sys.stderr)
         all_ok = False
 
+    # 3. DLA Engine check
+    try:
+        from src.ocr.infrastructure.layout.dla_engine import DLAEngine
+        dla = DLAEngine()
+        print("    [OK] V5.0 Document Layout Analysis (DLA) Engine: Ready")
+    except Exception as e:
+        print(f"    [FAIL] DLA Engine Error: {e}", file=sys.stderr)
+        all_ok = False
+
+    # 4. Scientific TEDS Metric check
+    try:
+        from benchmark.scientific_evaluation.teds_metric import compute_teds
+        test_teds = compute_teds("<table><tr><td>1</td></tr></table>", "<table><tr><td>1</td></tr></table>")
+        assert test_teds == 1.0
+        print("    [OK] V5.0 Scientific Benchmark (TEDS/mAP/DER): Ready")
+    except Exception as e:
+        print(f"    [FAIL] TEDS Metric Error: {e}", file=sys.stderr)
+        all_ok = False
+
     return all_ok
 
 def main():
     print("=" * 60)
-    print("VIETNAMESE OCR V3.1 - ENVIRONMENT VERIFICATION")
+    print("VIETNAMESE OCR V5.0 - RESEARCH ENVIRONMENT VERIFICATION")
     print("=" * 60)
 
     py_ok = check_python_version()

@@ -1,0 +1,418 @@
+{
+  "renderer": "Microsoft Word native PDF export and bundled pypdfium2 rasterization",
+  "source_sha256": "f9383989f6d77408ed424b10c903bd07f1f4109c1d91cd7e9acb334d2d0543b6",
+  "docx_sha256": "7dd25ba7873c37a9088a23ccee0360bbba05dc785c322e77a0b898f123cdc5c3",
+  "page_count": 37,
+  "toc_entries": [
+    {
+      "title": "Phần I Đặc tả dự án",
+      "page": 4,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "1 Mục đích cách sử dụng và căn cứ",
+      "page": 4,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "2 Hiện trạng được đối chiếu và giới hạn của đối chiếu",
+      "page": 4,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "3 Bài toán và phạm vi",
+      "page": 5,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "4 Câu hỏi nghiên cứu và đóng góp cần chứng minh",
+      "page": 6,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "5 Kiến trúc mục tiêu và phân chia trách nhiệm",
+      "page": 7,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "6 Yêu cầu chức năng",
+      "page": 9,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "7 Hợp đồng dữ liệu và đầu ra",
+      "page": 11,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "8 Trạng thái lỗi và tính tin cậy vận hành",
+      "page": 13,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "9 Dữ liệu nghiên cứu và ground truth",
+      "page": 13,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "10 Hệ chỉ số độ chính xác",
+      "page": 15,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "11 Đo hiệu năng CPU",
+      "page": 16,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "12 Thiết kế thực nghiệm thống kê và tái lập",
+      "page": 17,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "13 Nguồn nghiên cứu và cách áp dụng",
+      "page": 18,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "14 Cổng nghiệm thu và bằng chứng",
+      "page": 19,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "15 Ca nghiệm thu toàn dự án bổ sung",
+      "page": 20,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "16 Kế hoạch thực hiện cho Antigravity",
+      "page": 21,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "17 Các quyết định còn cần khóa trước final benchmark",
+      "page": 22,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "Phần II Thiết kế hệ thống",
+      "page": 23,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "18 Mục tiêu thiết kế và các quyết định kiến trúc",
+      "page": 23,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "19 Phân rã thành phần và giao diện",
+      "page": 24,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "20 Thiết kế dữ liệu và định danh",
+      "page": 25,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "21 Luồng xử lý và thuật toán theo trang",
+      "page": 26,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "22 Thiết kế layout bảng và thứ tự đọc",
+      "page": 28,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "23 Thiết kế retry deadline và review queue",
+      "page": 28,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "24 Thiết kế cache lưu trữ và xuất Markdown",
+      "page": 29,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "25 Thiết kế bộ đánh giá khoa học",
+      "page": 30,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "26 Thiết kế thực nghiệm và báo cáo có thể tái lập",
+      "page": 32,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "27 Thiết kế hiệu năng CPU và giới hạn tài nguyên",
+      "page": 32,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "28 Triển khai môi trường bảo mật và migration",
+      "page": 33,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "29 Kiểm thử thiết kế và điều kiện hoàn thành",
+      "page": 33,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "30 Trình tự phát triển và các điểm cần quyết định",
+      "page": 34,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "Phần III Truy vết và kiểm chứng",
+      "page": 35,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "31 Ma trận yêu cầu thiết kế và bằng chứng",
+      "page": 35,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "32 Hồ sơ bàn giao và cách sử dụng báo cáo",
+      "page": 36,
+      "heading_found_on_page": true
+    },
+    {
+      "title": "33 Nguồn tài liệu và lịch sử hợp nhất",
+      "page": 37,
+      "heading_found_on_page": true
+    }
+  ],
+  "missing_requirement_or_case_ids": [],
+  "validation_issues": [],
+  "pages": [
+    {
+      "page": 1,
+      "characters": 1350,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-001.png"
+    },
+    {
+      "page": 2,
+      "characters": 4298,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-002.png"
+    },
+    {
+      "page": 3,
+      "characters": 1049,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-003.png"
+    },
+    {
+      "page": 4,
+      "characters": 2477,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-004.png"
+    },
+    {
+      "page": 5,
+      "characters": 2373,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-005.png"
+    },
+    {
+      "page": 6,
+      "characters": 2450,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-006.png"
+    },
+    {
+      "page": 7,
+      "characters": 875,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-007.png"
+    },
+    {
+      "page": 8,
+      "characters": 2557,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-008.png"
+    },
+    {
+      "page": 9,
+      "characters": 2520,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-009.png"
+    },
+    {
+      "page": 10,
+      "characters": 2341,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-010.png"
+    },
+    {
+      "page": 11,
+      "characters": 2232,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-011.png"
+    },
+    {
+      "page": 12,
+      "characters": 2651,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-012.png"
+    },
+    {
+      "page": 13,
+      "characters": 2553,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-013.png"
+    },
+    {
+      "page": 14,
+      "characters": 2653,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-014.png"
+    },
+    {
+      "page": 15,
+      "characters": 2552,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-015.png"
+    },
+    {
+      "page": 16,
+      "characters": 2085,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-016.png"
+    },
+    {
+      "page": 17,
+      "characters": 2722,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-017.png"
+    },
+    {
+      "page": 18,
+      "characters": 2723,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-018.png"
+    },
+    {
+      "page": 19,
+      "characters": 2475,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-019.png"
+    },
+    {
+      "page": 20,
+      "characters": 2269,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-020.png"
+    },
+    {
+      "page": 21,
+      "characters": 2120,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-021.png"
+    },
+    {
+      "page": 22,
+      "characters": 2239,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-022.png"
+    },
+    {
+      "page": 23,
+      "characters": 2280,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-023.png"
+    },
+    {
+      "page": 24,
+      "characters": 1988,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-024.png"
+    },
+    {
+      "page": 25,
+      "characters": 2710,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-025.png"
+    },
+    {
+      "page": 26,
+      "characters": 2565,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-026.png"
+    },
+    {
+      "page": 27,
+      "characters": 2318,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-027.png"
+    },
+    {
+      "page": 28,
+      "characters": 2967,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-028.png"
+    },
+    {
+      "page": 29,
+      "characters": 3273,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-029.png"
+    },
+    {
+      "page": 30,
+      "characters": 2542,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-030.png"
+    },
+    {
+      "page": 31,
+      "characters": 2416,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-031.png"
+    },
+    {
+      "page": 32,
+      "characters": 2780,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-032.png"
+    },
+    {
+      "page": 33,
+      "characters": 2921,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-033.png"
+    },
+    {
+      "page": 34,
+      "characters": 2287,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-034.png"
+    },
+    {
+      "page": 35,
+      "characters": 2131,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-035.png"
+    },
+    {
+      "page": 36,
+      "characters": 1973,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-036.png"
+    },
+    {
+      "page": 37,
+      "characters": 1911,
+      "image": "C:\\kk_2\\OCR_pdf\\docs\\specifications\\combined_report_qa\\render\\page-037.png"
+    }
+  ],
+  "visual_inspection_status": "PASS",
+  "visually_inspected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37
+  ],
+  "visual_inspection_notes": "Inspected all final rendered pages at original resolution; readable Vietnamese text and tables, repeated table headers, no clipping or blank spillover page, TOC and page footers consistent."
+}

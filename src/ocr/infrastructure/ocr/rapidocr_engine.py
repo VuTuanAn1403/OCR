@@ -35,8 +35,15 @@ class RapidOCREngine(BaseOCREngine):
 
         try:
             raw_results, _ = self._engine(img_bgr)
-        except Exception:
-            return []
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("RapidOCR prediction failed: %s. Re-initializing engine for retry.", exc)
+            try:
+                self._engine = RapidOCR()
+                raw_results, _ = self._engine(img_bgr)
+            except Exception as retry_exc:
+                logging.getLogger(__name__).error("RapidOCR retry also failed: %s", retry_exc)
+                return []
         if not raw_results:
             return []
 

@@ -1,5 +1,6 @@
 import time
 import os
+import gc
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import pymupdf
@@ -150,6 +151,7 @@ class ConvertDocumentUseCase:
                 pages_ocr += 1
 
             total_fallback += p_result.quality.fallback_count
+            gc.collect()
 
         total_duration = time.time() - t0
         mean_native_score = sum(p.quality.native_text_score for p in extracted_pages) / len(extracted_pages) if extracted_pages else 1.0

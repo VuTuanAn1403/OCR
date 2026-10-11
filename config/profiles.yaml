@@ -12,6 +12,7 @@ profiles:
     skip_vector_tables_on_restricted_pdf: true
     two_up_detection_enabled: true
     multi_region_detection_enabled: true
+    page_timeout_seconds: 120
     native_quality:
       reliable_threshold: 0.90
       review_threshold: 0.70
@@ -28,12 +29,14 @@ profiles:
     max_fallback_regions_per_page: 5
     fallback_upscale_dpi: 250
     min_confidence: 0.80
+    numeric_retry_threshold: 0.85
     batch_size: 8
     orientation_fallback_enabled: true
     vector_table_min_native_score: 0.90
     skip_vector_tables_on_restricted_pdf: true
     two_up_detection_enabled: true
     multi_region_detection_enabled: true
+    page_timeout_seconds: 120
     native_quality:
       reliable_threshold: 0.90
       review_threshold: 0.70
@@ -51,12 +54,14 @@ profiles:
     fallback_upscale_dpi: 300
     regional_retry_enabled: true
     min_confidence: 0.85
+    numeric_retry_threshold: 0.85
     batch_size: 8
     orientation_fallback_enabled: true
     vector_table_min_native_score: 0.92
     skip_vector_tables_on_restricted_pdf: true
     two_up_detection_enabled: true
     multi_region_detection_enabled: true
+    page_timeout_seconds: 180
     native_quality:
       reliable_threshold: 0.92
       review_threshold: 0.75

@@ -1,0 +1,153 @@
+[
+  {
+    "timestamp": "2026-10-09T02:55:58.667296",
+    "evaluated_count": 4,
+    "aggregate": {
+      "cer": 1.0,
+      "wer": 1.0,
+      "der": 1.0,
+      "numeric_accuracy": 0.0
+    },
+    "per_document": [
+      {
+        "doc_id": "clw_page_0001",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 2255,
+        "gt_words": 471
+      },
+      {
+        "doc_id": "clw_page_0003",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 306,
+        "gt_words": 71
+      },
+      {
+        "doc_id": "clw_page_0005",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 2037,
+        "gt_words": 445
+      },
+      {
+        "doc_id": "clw_page_0011",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 2660,
+        "gt_words": 637
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-10-09T02:56:06.942783",
+    "evaluated_count": 4,
+    "aggregate": {
+      "cer": 1.0,
+      "wer": 1.0,
+      "der": 1.0,
+      "numeric_accuracy": 0.0
+    },
+    "per_document": [
+      {
+        "doc_id": "clw_page_0001",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 2255,
+        "gt_words": 471
+      },
+      {
+        "doc_id": "clw_page_0003",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 306,
+        "gt_words": 71
+      },
+      {
+        "doc_id": "clw_page_0005",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 2037,
+        "gt_words": 445
+      },
+      {
+        "doc_id": "clw_page_0011",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 2660,
+        "gt_words": 637
+      }
+    ]
+  },
+  {
+    "status": "COMPLETED",
+    "timestamp": "2026-10-09T12:23:40.210084",
+    "evaluated_count": 4,
+    "aggregate": {
+      "cer": 1.0,
+      "wer": 1.0,
+      "der": 1.0,
+      "numeric_accuracy": 0.0
+    },
+    "per_document": [
+      {
+        "doc_id": "clw_page_0001",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 2255,
+        "gt_words": 471,
+        "pred_chars": 0
+      },
+      {
+        "doc_id": "clw_page_0003",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 306,
+        "gt_words": 71,
+        "pred_chars": 0
+      },
+      {
+        "doc_id": "clw_page_0005",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 2037,
+        "gt_words": 445,
+        "pred_chars": 0
+      },
+      {
+        "doc_id": "clw_page_0011",
+        "cer": 1.0,
+        "wer": 1.0,
+        "der": 1.0,
+        "numeric_accuracy": 0.0,
+        "gt_chars": 2660,
+        "gt_words": 637,
+        "pred_chars": 0
+      }
+    ],
+    "has_regression": false,
+    "is_baseline": false
+  }
+]

@@ -1,0 +1,826 @@
+{
+  "schema_version": 1,
+  "updated_at_utc": "2026-10-10T09:01:01.712710+00:00",
+  "automation_id": "gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf",
+  "status": "REPORT_SC5_COUNTS_UPDATED_FALSE_PASS_REVIEW_OMISSIONS_NOT_ACCEPTED",
+  "previous_state": "REPORT_SC5_COUNTS_UPDATED_FALSE_PASS_REVIEW_OMISSIONS_NOT_ACCEPTED",
+  "run_directory": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261010T090053Z",
+  "git_head": "bc187a1f90aadcc5d3448211f380fd21c6e75cf8",
+  "last_observed_code_sha256": "2c9158fd35a00d050635fe2de85fa6c4f57427d28142704e7e6babb4a2f1f61a",
+  "hash_scope": "SHA256 sorted JSON path:sha256; src/scripts/tests/config/benchmark sources and root Python/requirements/pytest; excludes GT/results, bytecode",
+  "snapshot": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261010T090053Z\\snapshot_final.json",
+  "last_tested_code_sha256": "95a4d57dfe5cc49b4192182448e9870c4a20e2d9b787616c9fbc224192ab5ed3",
+  "last_tested_result": {
+    "utc": "2026-10-09T10:11:27.006434+00:00",
+    "tests": 56,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 56,
+    "junit_seconds": 10.366,
+    "failed": 0,
+    "pytest_seconds_reported": 10.37,
+    "pytest_exit": 0,
+    "code_sha256": "95a4d57dfe5cc49b4192182448e9870c4a20e2d9b787616c9fbc224192ab5ed3",
+    "scientific_tests": 49,
+    "related_tests": 7,
+    "full_code_stable": true,
+    "original_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\pytest_recovery.log",
+    "original_junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\pytest_recovery.xml",
+    "source_archive": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\source_pretest.zip",
+    "infrastructure_retry": "Initial sandbox WinError5 pytest temporary directory, one authorized identical-suite recovery. Supervisor audit UTF8/marker-count corrections occurred outside tests and pipeline.",
+    "scope_note": "Conservative dependencies. Exactly56 cases re-executed,49 scientific/7 regression, no pipeline21 or queue1 re-execution; older scope results retained as historical only. No actual PDF accuracy or timing acceptance.",
+    "original_nine_acceptance_functions_unchanged": true,
+    "new_acceptance_cases": 6,
+    "a01_a20_added_cases": 20,
+    "scientific_scope_sha256": "9399d691f62cadbc740e8e63d2577ee6fc93f4f9924a94f3de9ffc36df3fec96"
+  },
+  "current_tree_tested": false,
+  "observed_current_changes": [],
+  "scientific_modules_currently_present": true,
+  "missing_required_protocol": null,
+  "cpu_final_mean_end_to_end_seconds_per_page": {
+    "native": 0.15,
+    "mixed": 1.8,
+    "scan": 2.5
+  },
+  "intermediate_only": {
+    "mixed_median": 5.0,
+    "batch_mean": 5.5
+  },
+  "accuracy_accepted": false,
+  "performance_accepted": false,
+  "independent_gt_for_observed_outputs": false,
+  "before_after_comparison_accepted": false,
+  "baseline_directory": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T191720Z\\baseline_observed_unverified",
+  "baseline_status": "Historical artifacts observed, no independently accepted comparison",
+  "artifact_counts": {
+    "page_reports": 387,
+    "review_required_count": 1036,
+    "suspicious_lines_stored": 544,
+    "low_conf_image_ocr_blocks": 292,
+    "low_conf_blocks_found_in_page_markdown": 292
+  },
+  "review_queue_items": 0,
+  "pipeline_run_this_supervision": false,
+  "full_batch_run_this_supervision": false,
+  "rerun_policy": "Do not repeat round38 focused tests or historical cache/science tests while their tested dependencies are unchanged. Audit new artifacts only; run acceptance plus related tests on new stable relevant code.",
+  "next_actions": [
+    "Remove false PASS/accuracy/complete-restoration claims; regenerate full review queue for3980 lines, including68pages omitted from current workbook.",
+    "Fix retry exhaustion accounting and four cache acceptance failures; only retest new stable relevant dependencies.",
+    "Independent matched multi-type GT, final Markdown scoring, evaluator parity, real ablations and compatible baseline; confirm CPU end-to-end means .15/1.8/2.5."
+  ],
+  "notification": null,
+  "previous_tested_result": {
+    "source": "Reconstructed from observed tool output; original log and XML disappeared with docs/supervision_runs during concurrent workspace changes",
+    "tests": 23,
+    "passed": 14,
+    "failed": 9,
+    "errors": 0,
+    "skipped": 0,
+    "pytest_seconds_reported": 1.55,
+    "code_sha256": "7a337870362b525453f74dd5e506696e89ed53a219a4565f30ae0941fd807dbf",
+    "ocr_metric_sha256": "812f190834e1e3bbebac918be9b13e8bbb9e8bcf430d88b1ca959fcacd3b6b6a",
+    "failed_cases": [
+      "unrelated_ground_truth",
+      "missing_prediction_latency",
+      "gt_page_missing_prediction",
+      "partial_processed_pages",
+      "final_markdown_loss",
+      "missing_single_reading_block",
+      "der_inserted_accent",
+      "teds_denominator",
+      "invalid_tables"
+    ],
+    "stable_through_utc": "2026-10-08T19:20:08Z"
+  },
+  "last_tested_scientific_sha256": "9399d691f62cadbc740e8e63d2577ee6fc93f4f9924a94f3de9ffc36df3fec96",
+  "tested_scope_manifest": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\tested_scope.json",
+  "new_counterexamples": {
+    "cli_no_timing_no_gt": {
+      "completed": false,
+      "exception_type": "KeyError",
+      "exception": "'upper_limit_seconds'",
+      "stdout": "=================================================================\nV5.0 SCIENTIFIC BENCHMARK & EVALUATION SUITE (PROTOCOL V5)\n=================================================================\nPrediction:   C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T193219Z\\probe_fixtures\\no_timing\nGround Truth: None\n=================================================================\n"
+    },
+    "cli_valid_text_gt_missing_layout_teds": {
+      "completed": false,
+      "exception_type": "TypeError",
+      "exception": "unsupported format string passed to NoneType.__format__",
+      "stdout": "=================================================================\nV5.0 SCIENTIFIC BENCHMARK & EVALUATION SUITE (PROTOCOL V5)\n=================================================================\nPrediction:   C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T193219Z\\probe_fixtures\\valid_text_gt\nGround Truth: C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T193219Z\\probe_fixtures\\gt\n=================================================================\n╒════════════════════════════╤══════════════════════╕\n│ Scientific Metric          │ Score / Status       │\n╞════════════════════════════╪══════════════════════╡\n│ DLA Layout mAP@50          │ not_evaluated        │\n├────────────────────────────┼──────────────────────┤\n│ DLA Layout mAP@50:95       │ not_evaluated        │\n├────────────────────────────┼──────────────────────┤\n│ Character Error Rate (CER) │ 0.0                  │\n├────────────────────────────┼──────────────────────┤\n│ Word Error Rate (WER)      │ 0.0                  │\n├────────────────────────────┼──────────────────────┤\n│ Diacritic Error Rate (DER) │ 0.0                  │\n├────────────────────────────┼──────────────────────┤\n│ Reading Order Score        │ 1.0                  │\n├────────────────────────────┼──────────────────────┤\n│ Throughput (Pages / sec)   │ 0.5 PPS              │\n├────────────────────────────┼──────────────────────┤\n│ Avg Latency per page       │ 2.0 s                │\n├────────────────────────────┼──────────────────────┤\n│ CPU Latency Compliance     │ FAIL (limit <= 1.8s) │\n╘════════════════════════════╧══════════════════════╛\n\n[OK] Saved scientific report JSON: C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T193219Z\\probe_cli_outputs\\valid_text_gt_scientific_protocol_report.json\n"
+    },
+    "source_pages_without_processed_count": {
+      "total_pages": 100,
+      "wall_clock_seconds": 2.0,
+      "seconds_per_page": 0.02,
+      "throughput_pps": 50.0,
+      "category": "MIXED",
+      "cpu_latency_compliance": {
+        "category": "MIXED",
+        "measured_seconds_per_page": 0.02,
+        "upper_limit_seconds": 1.8,
+        "expected_range": "0.80 - 1.80s",
+        "is_compliant": true
+      }
+    },
+    "rounding_before_limit_check": {
+      "total_pages": 1,
+      "wall_clock_seconds": 1.8004,
+      "seconds_per_page": 1.8,
+      "throughput_pps": 0.56,
+      "category": "MIXED",
+      "cpu_latency_compliance": {
+        "category": "MIXED",
+        "measured_seconds_per_page": 1.8,
+        "upper_limit_seconds": 1.8,
+        "expected_range": "0.80 - 1.80s",
+        "is_compliant": true
+      }
+    },
+    "extra_hallucinated_table": {
+      "mean_teds": 1.0,
+      "mean_teds_struct": 1.0,
+      "matched_tables": 1,
+      "gt_table_count": 1,
+      "pred_table_count": 2,
+      "missing_table_count": 0,
+      "hallucinated_table_count": 1
+    },
+    "ablation_measured_only": [
+      {
+        "name": "V5.0 (Full System)",
+        "description": "Full DLA + Hybrid Routing + TableNet + VietOCR Fallback",
+        "map50": null,
+        "teds": null,
+        "cer": 0.01,
+        "der": 0.01,
+        "sec_per_page": 2,
+        "throughput_pps": 0.5
+      }
+    ]
+  },
+  "artifact_manifest": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261010T090053Z\\artifact_manifest_final.json",
+  "last_related_test_result": {
+    "tests": 5,
+    "passed": 3,
+    "failed": 0,
+    "collection_errors": 2,
+    "skipped": 0,
+    "pytest_seconds_reported": 4.7,
+    "pytest_exit": 1,
+    "original_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T200221Z\\pytest_related_recovery.log",
+    "original_junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T200221Z\\pytest_related_recovery.xml",
+    "source_archive": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T200221Z\\test_sources.zip",
+    "archive_vs_pretest_changes": [],
+    "full_code_stable": true,
+    "full_pipeline_passed": false,
+    "modules": [
+      "test_regression_runner.py",
+      "test_phase_b_mixed_composition.py",
+      "test_two_up_mixed_orientation_v321.py"
+    ],
+    "infrastructure_retry": "First attempt sandbox WinError 5; identical suite with new temp path recovered via approved escalation. Recovery launcher print failed cp1252 after logs/XML had been saved; no third test run."
+  },
+  "scientific_suite_run_this_supervision": false,
+  "scientific_test_scope_changes": [
+    "benchmark/scientific_evaluation/__init__.py",
+    "benchmark/scientific_evaluation/dla_metric.py",
+    "benchmark/scientific_evaluation/markdown_evaluator.py",
+    "benchmark/scientific_evaluation/ocr_metric.py",
+    "benchmark/scientific_evaluation/teds_metric.py"
+  ],
+  "scientific_suite_skip_reason": "No code, artifact or document changes since round79. Historical broad scope deltas covered by round26 metrics and round38 RapidOCR retry. No tests/probes/validator/OCR/batch repeated; historical results only.",
+  "artifact_files_hashed": 1660,
+  "artifact_changes_this_round": [],
+  "new_pipeline_import_regression": {
+    "utc": "2026-10-08T19:49:20.397366+00:00",
+    "command": [
+      "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+      "-B",
+      "-c",
+      "from src.ocr.application.process_page import ProcessPageUseCase; print(\"IMPORT_OK\")"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"C:\\kk_2\\OCR_pdf\\src\\ocr\\application\\process_page.py\", line 46, in <module>\n    class ProcessPageUseCase:\n  File \"C:\\kk_2\\OCR_pdf\\src\\ocr\\application\\process_page.py\", line 686, in ProcessPageUseCase\n    def classify_ocr_hallucination(cls, text: str, conf: float) -> Tuple[bool, Optional[str]]:\n                                                                   ^^^^^\nNameError: name 'Tuple' is not defined. Did you mean: 'tuple'?\n",
+    "note": "Import only; no OCR/output, no code mutation"
+  },
+  "new_header_counterexamples": {
+    "same_page_duplicates": {
+      "page_count": 10,
+      "distinct_pages_with_header": 1,
+      "input_counts": {
+        "1": 3
+      },
+      "block_types": [
+        "running_header",
+        "running_header",
+        "running_header"
+      ],
+      "running_headers_marked": 3,
+      "rendered_header_occurrences": 3,
+      "page_markdown": [
+        "# Trang 1\n\n> **Running Header**: Sample running heading\n\n> **Running Header**: Sample running heading\n\n> **Running Header**: Sample running heading",
+        "# Trang 2",
+        "# Trang 3",
+        "# Trang 4",
+        "# Trang 5",
+        "# Trang 6",
+        "# Trang 7",
+        "# Trang 8",
+        "# Trang 9",
+        "# Trang 10"
+      ]
+    },
+    "below_thirty_percent": {
+      "page_count": 9,
+      "distinct_pages_with_header": 2,
+      "input_counts": {
+        "1": 1,
+        "2": 1
+      },
+      "block_types": [
+        "running_header",
+        "running_header"
+      ],
+      "running_headers_marked": 2,
+      "rendered_header_occurrences": 2,
+      "page_markdown": [
+        "# Trang 1\n\n> **Running Header**: Sample running heading",
+        "# Trang 2\n\n> **Running Header**: Sample running heading",
+        "# Trang 3",
+        "# Trang 4",
+        "# Trang 5",
+        "# Trang 6",
+        "# Trang 7",
+        "# Trang 8",
+        "# Trang 9"
+      ]
+    },
+    "note": "Synthetic fixtures, actual header detector and Markdown exporter; no OCR, GT or output writes"
+  },
+  "previous_related_test_result": null,
+  "code_stable_during_round": true,
+  "latest_related_test_scope_manifest": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\related_test_scope.json",
+  "new_regression_runner_counterexamples": {
+    "utc": "2026-10-08T20:04:49.811482+00:00",
+    "note": "Isolated synthetic counterexamples; no OCR, workspace outputs or human verification labels.",
+    "missing_gt_and_prediction": {
+      "summary": {
+        "timestamp": "2026-10-09T03:04:49.819617",
+        "evaluated_count": 1,
+        "aggregate": {
+          "cer": 0.0,
+          "wer": 0.0,
+          "der": 0.0,
+          "numeric_accuracy": 1.0
+        },
+        "per_document": [
+          {
+            "doc_id": "sample_internal_verification",
+            "cer": 0.0,
+            "wer": 0.0,
+            "der": 0.0,
+            "numeric_accuracy": 1.0,
+            "gt_chars": 93,
+            "gt_words": 19
+          }
+        ]
+      },
+      "has_regression": false,
+      "saved_as_history": [
+        {
+          "timestamp": "2026-10-09T03:04:49.819617",
+          "evaluated_count": 1,
+          "aggregate": {
+            "cer": 0.0,
+            "wer": 0.0,
+            "der": 0.0,
+            "numeric_accuracy": 1.0
+          },
+          "per_document": [
+            {
+              "doc_id": "sample_internal_verification",
+              "cer": 0.0,
+              "wer": 0.0,
+              "der": 0.0,
+              "numeric_accuracy": 1.0,
+              "gt_chars": 93,
+              "gt_words": 19
+            }
+          ]
+        }
+      ],
+      "stdout": "\n=======================================================\n      OCR BENCHMARK REGRESSION RUNNER (PROPOSAL A3)    \n=======================================================\nGround Truth Dir: C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T200221Z\\probe_fixtures\\missing_gt\nPredictions Dir : C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T200221Z\\probe_fixtures\\missing_prediction\nAlert Threshold : 2.0%\n\n[WARN] Ground truth directory does not exist: C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T200221Z\\probe_fixtures\\missing_gt\n[INFO] No ground truth files found. Running synthetic internal verification...\n+------------------------------+-----------+-----------+-----------+--------------+\n| Item / Doc ID                | CER (↓)   | WER (↓)   | DER (↓)   | NumAcc (↑)   |\n+==============================+===========+===========+===========+==============+\n| sample_internal_verification | 0.00%     | 0.00%     | 0.00%     | 100.00%      |\n+------------------------------+-----------+-----------+-----------+--------------+\n| --- AGGREGATE (WEIGHTED) --- | 0.00%     | 0.00%     | 0.00%     | 100.00%      |\n+------------------------------+-----------+-----------+-----------+--------------+\n\n[INFO] Initializing new regression baseline in history.\nSaved run record to: C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T200221Z\\probe_fixtures\\empty_gt_history.json\n"
+    },
+    "unrelated_doc_in_clw_named_parent": {
+      "gt_stem": "clw_page_0001",
+      "prediction_directory": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T200221Z\\probe_fixtures\\clw_folder",
+      "actual_document": "docA",
+      "selected_prediction": "Unrelated document A, page 1"
+    },
+    "incomparable_history": {
+      "prior_doc": "other_dataset",
+      "prior_count": 999,
+      "current_summary": {
+        "timestamp": "2026-10-09T03:04:49.843976",
+        "evaluated_count": 1,
+        "aggregate": {
+          "cer": 0.0,
+          "wer": 0.0,
+          "der": 0.0,
+          "numeric_accuracy": 1.0
+        },
+        "per_document": [
+          {
+            "doc_id": "docA",
+            "cer": 0.0,
+            "wer": 0.0,
+            "der": 0.0,
+            "numeric_accuracy": 1.0,
+            "gt_chars": 24,
+            "gt_words": 6
+          }
+        ]
+      },
+      "has_regression": false,
+      "stdout": "\n=======================================================\n      OCR BENCHMARK REGRESSION RUNNER (PROPOSAL A3)    \n=======================================================\nGround Truth Dir: C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T200221Z\\probe_fixtures\\gtA\nPredictions Dir : C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T200221Z\\probe_fixtures\\predA\nAlert Threshold : 2.0%\n\n+------------------------------+-----------+-----------+-----------+--------------+\n| Item / Doc ID                | CER (↓)   | WER (↓)   | DER (↓)   | NumAcc (↑)   |\n+==============================+===========+===========+===========+==============+\n| docA                         | 0.00%     | 0.00%     | 0.00%     | 100.00%      |\n+------------------------------+-----------+-----------+-----------+--------------+\n| --- AGGREGATE (WEIGHTED) --- | 0.00%     | 0.00%     | 0.00%     | 100.00%      |\n+------------------------------+-----------+-----------+-----------+--------------+\n\n--- BASELINE COMPARISON ---\nCER: 0.00% -> 0.00% (Δ +0.00%)\nWER: 0.00% -> 0.00% (Δ +0.00%)\nDER: 0.00% -> 0.00% (Δ +0.00%)\nNumAcc: 100.00% -> 100.00% (Δ -0.00%)\n\n[SUCCESS] All metrics are within or better than the baseline tolerance.\n"
+    },
+    "truncated_prediction": {
+      "gt_chars": 3,
+      "pred_a_chars": 5000,
+      "pred_b_chars": 8000,
+      "score_a": {
+        "cer": 1665.6667,
+        "wer": 1.0,
+        "der": 0.0,
+        "numeric_accuracy": 1.0,
+        "gt_chars": 3,
+        "gt_words": 1
+      },
+      "score_b": {
+        "cer": 1665.6667,
+        "wer": 1.0,
+        "der": 0.0,
+        "numeric_accuracy": 1.0,
+        "gt_chars": 3,
+        "gt_words": 1
+      }
+    }
+  },
+  "new_regression_artifact_audit": {
+    "path": "benchmark/results/regression_history.json",
+    "entries": 2,
+    "evaluated_count_per_entry": 4,
+    "all_four_clw_predictions_missing_penalty": true,
+    "accepted_as_measured_accuracy": false,
+    "manifest_absent": true,
+    "note": "Read-only artifact: CER/WER/DER=1 and NumAcc=0 are missing-prediction penalties; no matched predictions or independent GT coverage, not measured OCR accuracy."
+  },
+  "latest_monitoring_result": {
+    "utc": "2026-10-10T09:01:01.712710+00:00",
+    "meaningful_change": false,
+    "actionable_change": false,
+    "tests_run": false,
+    "batch_run": false,
+    "artifact_files": 1660,
+    "accepted": false,
+    "evidence": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261010T090053Z\\closing_audit.json"
+  },
+  "latest_related_test_result": {
+    "utc": "2026-10-09T10:11:27.006434+00:00",
+    "tests": 56,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 56,
+    "junit_seconds": 10.366,
+    "failed": 0,
+    "pytest_seconds_reported": 10.37,
+    "pytest_exit": 0,
+    "code_sha256": "95a4d57dfe5cc49b4192182448e9870c4a20e2d9b787616c9fbc224192ab5ed3",
+    "scientific_tests": 49,
+    "related_tests": 7,
+    "full_code_stable": true,
+    "original_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\pytest_recovery.log",
+    "original_junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\pytest_recovery.xml",
+    "source_archive": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\source_pretest.zip",
+    "infrastructure_retry": "Initial sandbox WinError5 pytest temporary directory, one authorized identical-suite recovery. Supervisor audit UTF8/marker-count corrections occurred outside tests and pipeline.",
+    "scope_note": "Conservative dependencies. Exactly56 cases re-executed,49 scientific/7 regression, no pipeline21 or queue1 re-execution; older scope results retained as historical only. No actual PDF accuracy or timing acceptance.",
+    "original_nine_acceptance_functions_unchanged": true,
+    "new_acceptance_cases": 6,
+    "a01_a20_added_cases": 20,
+    "scientific_scope_sha256": "9399d691f62cadbc740e8e63d2577ee6fc93f4f9924a94f3de9ffc36df3fec96"
+  },
+  "resolved_findings_this_round": [],
+  "new_counterexamples_this_round": [],
+  "historical_finding_note": "Prior results and counters remain historical. Current findings are resolved_findings_this_round/new_counterexamples_this_round. 79 tests passed on pretest snapshot; engine subsequently changed and only isolated shape probes cover that version.",
+  "historical_prior_monitoring_result": {
+    "utc": "2026-10-09T05:06:01.650395+00:00",
+    "meaningful_change": true,
+    "tests_run": true,
+    "probes_run": true,
+    "batch_run": false,
+    "code_stable": true,
+    "artifacts_unchanged": true,
+    "protocol_present": false,
+    "preserved_baseline": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T191720Z\\baseline_observed_unverified",
+    "acceptance": false
+  },
+  "historical_prior_scientific_result": {
+    "tests": 23,
+    "passed": 23,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "pytest_seconds_reported": 1.27,
+    "scientific_scope_sha256": "d0592b149e9ada516c57a08180e02fb3b1c4b05d0b8c9cdfcfcd563fccaf0df5",
+    "original_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T193219Z\\pytest_recovery.log",
+    "original_junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261008T193219Z\\pytest_recovery.xml",
+    "tests_unchanged_from_prior": true,
+    "full_pipeline_stable": false,
+    "infrastructure_retry": "Initial sandbox WinError 5; identical suite recovered with authorized escalation and fresh temp directory."
+  },
+  "historical_prior_related_result": {
+    "utc": "2026-10-09T05:06:01.650395+00:00",
+    "tests": 40,
+    "passed": 40,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "pytest_seconds_reported": 4.96,
+    "code_sha256": "7e71c3830de8cdbc3434929161cd1ee19e8a117f26969bee329f34392868ad87",
+    "log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T050153Z\\pytest_related_recovery.log",
+    "junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T050153Z\\pytest_related_recovery.xml",
+    "suite_modules": [
+      "test_regression_runner.py",
+      "test_phase_b_mixed_composition.py",
+      "test_two_up_mixed_orientation_v321.py",
+      "test_one_up_landscape_v322.py",
+      "test_v31_special_cases.py",
+      "test_v42_readable_layout.py",
+      "test_phase_e_f_orientation.py"
+    ],
+    "infrastructure_retry": "Initial sandbox pytest temp WinError5; approved identical-suite retry with fresh temp directory.",
+    "scientific_suite_reused": true,
+    "whole_pipeline_accepted": false
+  },
+  "code_stable_during_tests": true,
+  "code_changes_after_tests": [
+    {
+      "path": "src/ocr/infrastructure/ocr/vietnamese_seq2seq_engine.py",
+      "before": "9c8163dca0d4918901eb057abfa6b28bc0a2fe11fe3d6f1d1cbaffe63548bc0b",
+      "after": "fbcc4ae127aefbeac9643c500e9c1b5c2ae93587b1ab248dacfe4198b6e72217"
+    }
+  ],
+  "latest_engine_probe_scope_manifest": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T051626Z\\engine_probe_scope.json",
+  "new_sample_artifact_audit": {
+    "evidence": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T051626Z\\sample_output_audit.json",
+    "read_snapshot_stable": true,
+    "pages_benchmarked": [
+      1
+    ],
+    "reported_seconds_per_page": 7.41,
+    "validation_status": "FAIL",
+    "validation_errors": [
+      "Page 1: evidence count differs from text block count",
+      "Page 1: evidence B_0001_REJ_0001 has no valid region",
+      "Page 1: evidence B_0001_REJ_0002 has no valid region"
+    ],
+    "ground_truth_cases": 0,
+    "accepted": false,
+    "comparison_accepted": false,
+    "note": "Observed concurrently produced sample output; not run by supervisor, no independent GT or comparable before/after manifest."
+  },
+  "post_recording_changes_untested": [
+    {
+      "path": "src/ocr/application/process_page.py",
+      "before": "2c80779e60592042ee1099a1d485939e0ca581d995681f0c69ccc6b6aedc8573",
+      "after": "5cd81cf664d7b749cdfbfa7ab27c8950d2126cdc2fa3eb5624e9a679fcb66d26"
+    },
+    {
+      "path": "src/ocr/infrastructure/export/artifact_validator.py",
+      "before": "513dd2187c76681bd3893638581a1c23ccfaa4ba58a66cf1bba20e2ea44ae478",
+      "after": "ee56cbca99e5d263b8253fc31b7cdea89d69d8f69541f5f175397bc43cac5dab"
+    }
+  ],
+  "sample_output_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T053145Z\\sample_output_audit.json",
+  "rejected_evidence_probe": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T053145Z\\rejected_evidence_probe_results.json",
+  "verified_progress_this_round": [],
+  "latest_test_attempt": {
+    "utc": "2026-10-09T05:51:34.668471+00:00",
+    "tests": 37,
+    "passed": 35,
+    "failed": 2,
+    "errors": 0,
+    "skipped": 0,
+    "pytest_seconds_reported": 7.93,
+    "pytest_exit": 1,
+    "original_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T054625Z\\pytest_recovery.log",
+    "original_junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T054625Z\\pytest_recovery.xml",
+    "initial_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T054625Z\\pytest.log",
+    "command": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T054625Z\\pytest_command_recovery.json",
+    "full_code_stable": false,
+    "pretest_code_sha256": "179e3e7773ed8cf88219aa47d7c74566d958c23b4497aed674f747aab984cf69",
+    "posttest_code_sha256": "93c02804b5d002483893d5e8a1ac508297d35997f6a809d37b2d7295eed30d90",
+    "unstable_paths": [
+      "tests/scientific/test_supervisor_acceptance.py"
+    ],
+    "failures_observed": [
+      "new header fixture import extracted_page failed; traceback source line changed during run",
+      "new engine fixture actual bbox10,10,100,40 vs loaded expectation8,8,102,42; current source expectation changed during run"
+    ],
+    "note": "Test file changed during pytest and after. Do not assign failures or passing suite to closing revision. Initial sandbox WinError5 recovered once with identical-suite authorized escalation; no third run. Actual engine initialized local models before mock detector/recognizer; no PDF/OCR batch."
+  },
+  "scientific_test_attempt_accepted": false,
+  "related_suite_run_this_supervision": false,
+  "latest_verified_probe_scope": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T054625Z\\probe_scope.json",
+  "late_changes_after_recording": [
+    "tests/scientific/test_supervisor_acceptance.py"
+  ],
+  "previous_successful_scientific_result": {
+    "utc": "2026-10-09T05:24:41.024157+00:00",
+    "tests": 26,
+    "passed": 26,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "scientific_scope_sha256": "5c793c8aa7587314627dc3acd609703f1af0b0c207748afe7e25df2f0fead840",
+    "original_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T051626Z\\pytest_recovery.log",
+    "original_junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T051626Z\\pytest_recovery.xml",
+    "original_nine_acceptance_functions_unchanged": true,
+    "new_acceptance_cases": 3,
+    "scope_note": "26 scientific cases are a subset of the actual 79-case run; 5.88 seconds is suite time, not OCR latency."
+  },
+  "previous_unstable_test_attempt": null,
+  "last_test_attempt": {
+    "utc": "2026-10-09T11:54:45.950471+00:00",
+    "tests": 19,
+    "passed": 15,
+    "failed": 4,
+    "errors": 0,
+    "skipped": 0,
+    "junit_seconds": 13.539,
+    "pytest_exit": 1,
+    "code_sha256": "f1bf020afbbea11e5afd7a2326aaca420069d350ea7b6692db3fbdb990e60c2a",
+    "full_code_stable": true,
+    "failed_names": [
+      "test_cache_must_match_requested_run[different_pages]",
+      "test_cache_must_match_requested_run[all_pages_partial]",
+      "test_cache_must_match_requested_run[different_input_profile]",
+      "test_missing_cache_timing_is_not_zero_measurement"
+    ],
+    "original_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T114719Z\\pytest_recovery.log",
+    "original_junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T114719Z\\pytest_recovery.xml",
+    "source_archive": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T114719Z\\source_pretest.zip",
+    "infrastructure_retry": "One authorized identical-suite recovery after sandbox temp WinError5. No third run.",
+    "scope_note": "15 unchanged supervisor acceptance pass, four new isolated cache fixtures fail. Other unchanged tests not rerun. No PDF/OCR batch; existing engine acceptance fixture initializes local models before mock."
+  },
+  "current_tested_scopes_stable": true,
+  "artifact_changes_during_round": [],
+  "new_pdf_output_audit": {
+    "file": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T060232Z\\new_outputs_audit.json",
+    "documents": 7,
+    "pages": 14,
+    "review_lines": 110,
+    "gt_cases": 0,
+    "actual_validator_status": "NEEDS_REVIEW for all7",
+    "reported_summary_status": "PASS for all7",
+    "source_model_gt_unchanged": true
+  },
+  "new_helper_status_counterexample": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T060232Z\\helper_status_probe.json",
+  "post_recording_code_changes": [],
+  "latest_batch_output_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T083221Z\\late_batch_audit.json",
+  "closing_source_changes": [],
+  "code_changes_after_recording": [],
+  "latest_review_queue_items": 530,
+  "closing_utc": "2026-10-10T09:01:01.712710+00:00",
+  "supervision_round": 80,
+  "latest_supervisor_evidence": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261010T090053Z\\closing_audit.json",
+  "latest_acceptance_queue_result": {
+    "utc": "2026-10-09T08:08:44.184151+00:00",
+    "tests": 16,
+    "passed": 16,
+    "errors": 0,
+    "failed": 0,
+    "skipped": 0,
+    "junit_seconds": 12.702,
+    "pytest_seconds_reported": 12.7,
+    "pytest_exit": 0,
+    "code_sha256": "ddc2cc067cf82330a966f02cf3d9a5cf3de9437011c37e294420067f9951c45c",
+    "scope_note": "15 supervisor acceptance +1 review queue test; engine fixture initializes models before mock, no PDF/OCR batch. Changed queue fixture adds excel_path isolation only; original assertions unchanged. Previous50/50round19 retained historically, not rerun wholesale.",
+    "original_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T080206Z\\pytest_recovery.log",
+    "original_junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T080206Z\\pytest_recovery.xml",
+    "source_archive": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T080206Z\\source_pretest.zip",
+    "stability": {
+      "changes": []
+    },
+    "late_source_changes": [],
+    "infrastructure_retry": "One authorized identical-suite sandbox WinError5 recovery with private temporary directory; no third test run."
+  },
+  "latest_acceptance_queue_scope": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T080206Z\\acceptance_queue_test_scope.json",
+  "current_workspace_artifact_observation": {
+    "input_pdfs": 5,
+    "previous_input_pdfs_absent": 12,
+    "prior_output_files_absent": 2822,
+    "historical_output875_currently_available": false,
+    "gt_model_hashes_unchanged": true,
+    "main_review_queue_present": false,
+    "new_independent_gt_added": false,
+    "prior_output_files_absent_at_start": 2822,
+    "prior_output_files_absent_at_final_inventory": 2821,
+    "new_manifest_replaces_old": true,
+    "new_batch_manifest_observation": {
+      "utc": "2026-10-09T08:09:43.732326+00:00",
+      "sha256": "205df823b29d26c34515cbc3c7b23088ec3407caf526d007fa7eb3cce65a7725",
+      "file": "C:\\kk_2\\OCR_pdf\\output\\batch_manifest.json",
+      "files": 5,
+      "total_source_pages": 168,
+      "statuses": {
+        "PENDING": 5
+      },
+      "ground_truth_statuses": {
+        "NOT_AVAILABLE_NO_GROUND_TRUTH": 5
+      },
+      "note": "New dataset manifest, not restoration of historical12PDF875pages. Started after initial supervision snapshot; no evidence of completed OCR from manifest alone."
+    }
+  },
+  "historical_artifact_counts_note": "Existing artifact_counts and review_queue fields are first-run historical observations, not current workspace availability; use current_workspace_artifact_observation.",
+  "closing_metadata_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T080206Z\\late_metadata_audit.json",
+  "latest_supplemental_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T103205Z\\supplemental_output_audit.json",
+  "latest_actual_validator_counts": {
+    "pages_json": 168,
+    "pages_markdown": 168,
+    "tables_json": 188,
+    "pipe_tables_markdown": 185,
+    "table_candidates_as_paragraphs": 3,
+    "image_links": 396,
+    "broken_image_links": 0,
+    "evidence_blocks": 7485,
+    "review_required_lines": 642,
+    "large_unread_image_regions": 10,
+    "ground_truth_cases": 0
+  },
+  "latest_batch_summary": {
+    "total_files": 5,
+    "completed": 5,
+    "cached": 0,
+    "failed": 0,
+    "total_pages": 168,
+    "processed_pages": 168,
+    "total_batch_duration_seconds": 1110.95,
+    "average_file_time_seconds": 222.19,
+    "average_seconds_per_page": 6.59,
+    "median_seconds_per_page": 8.34,
+    "p95_seconds_per_page": 10.8,
+    "overall_pages_per_minute": 9.07,
+    "fastest_file": {
+      "file_name": "PHC_Baocaothuongnien_2020.pdf",
+      "seconds_per_page": 1.69
+    },
+    "slowest_file": {
+      "file_name": "PJT_Baocaothuongnien_2020.pdf",
+      "seconds_per_page": 10.89
+    },
+    "classifications": {
+      "native_text_healthy": 1,
+      "scanned": 3,
+      "mixed": 1,
+      "table_heavy": 5,
+      "diagram_heavy": 0
+    },
+    "pipeline_version": "5.0.0",
+    "profile": "balanced"
+  },
+  "protocol_document": "C:\\kk_2\\OCR_pdf\\docs\\RESEARCH_PROTOCOL_V5.md",
+  "protocol_document_sha256": "c5e5e64c93b73cc77391dd458b737c30b605756e3d89f2e5c04e1beae0c100df",
+  "protocol_document_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T091706Z\\protocol_document_audit.json",
+  "document_manifest": {
+    "docs/ACADEMIC_RESEARCH_PAPER.md": "9c83956cfa2a00a6ed62af18c0a0c9be92666206d59af71c9d4ad100ccb15606",
+    "docs/ACCURACY_IMPLEMENTATION_REPORT.md": "b8cfd4f88fa63fb29f9abffb1a362dd2162bf76a5aef02609a1115d2077c936d",
+    "docs/ANTIGRAVITY_ACCURACY_IMPLEMENTATION.md": "a6f720ae409cbe4b1648e2658776bfab487da3615ed0d5757bda2ac73c0a8f1c",
+    "docs/PROPOSAL_FIX_ACCURACY_RELIABILITY_PERFORMANCE.md": "fec1e67afe63ab3d0afc02a6255f0855ebc1aa876134b2f470ba6f625f986198",
+    "docs/PROPOSAL_V5_RESEARCH.md": "51460bc9b1bb66597d40cefb95187e98dfd17e619fba8877261ad541ddc8ae3f",
+    "docs/RESEARCH_PROTOCOL_V5.md": "c5e5e64c93b73cc77391dd458b737c30b605756e3d89f2e5c04e1beae0c100df",
+    "docs/RESEARCH_READINESS_20261009.md": "60d1fd786f7398957658408faabc3a81cd363c99199537ac6b81af6c1eba51c1",
+    "docs/REVIEW_UPDATE_20261009.md": "a1f0617d07f24a9942800ef1ebac37bfe9c6db1899f4bb1918df1d378ee1a10c",
+    "docs/references/accuracy_metrics.bib": "2b8d749a481d69990e5f111eedb96c001915f4d2f623efe9aa45c043145d44c3",
+    "docs/references/ACCURACY_SOURCES.md": "438b95c0d53fa9095dae742a885df6ba0146d6ede9ad7a5167c5acf798711280",
+    "benchmark/research_v1/annotation_guideline.md": "21cc811dfb7affcc99581c3168f8950c0bfba7a8573667b482e15f19b48bf408",
+    "benchmark/research_v1/claim_evidence.csv": "1565064dc3a6391541238142bed09e6d1b31e1bc5ded8d78af1d39278780a633",
+    "benchmark/research_v1/dataset_manifest.json": "32b5a8014e573012f4129aee4ae939d820292dda1f0e26e2cf5b30f17af52a3f",
+    "benchmark/research_v1/reference_implementations.json": "6c6a61d7de4f2b5c194dc33ec2409c822ec4603286e048fa54d320afcb23253c",
+    "CLEANUP_REPORT.md": "0794a610133119c718e40a6c971e75bf064d4692445996e821a91f385a314b1f"
+  },
+  "new_input_runner_probes": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\new_input_runner_probes.json",
+  "document_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\document_audit.json",
+  "output_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T103205Z\\new_output_audit.json",
+  "latest_verified_test_scopes": {
+    "current56": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\tested_scope.json",
+    "historical_pipeline21": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T074725Z\\related_test_scope.json",
+    "historical_acceptance15_queue1": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T080206Z\\acceptance_queue_test_scope.json"
+  },
+  "artifact_changes_after_recording": [],
+  "latest_late_artifact_correction": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T100228Z\\late_artifact_correction.json",
+  "latest_output_artifact_counts": {
+    "SBA_Baocaothuongnien_2020": {
+      "pages_json": 61,
+      "pages_markdown": 61,
+      "tables_json": 84,
+      "pipe_tables_markdown": 83,
+      "table_candidates_as_paragraphs": 1,
+      "image_links": 198,
+      "broken_image_links": 0,
+      "evidence_blocks": 2988,
+      "review_required_lines": 135,
+      "large_unread_image_regions": 7,
+      "ground_truth_cases": 0
+    },
+    "SC5_Baocaothuongnien_2020": {
+      "pages_json": 54,
+      "pages_markdown": 54,
+      "tables_json": 47,
+      "pipe_tables_markdown": 47,
+      "table_candidates_as_paragraphs": 0,
+      "image_links": 108,
+      "broken_image_links": 0,
+      "evidence_blocks": 2096,
+      "review_required_lines": 416,
+      "large_unread_image_regions": 0,
+      "ground_truth_cases": 0
+    }
+  },
+  "supervision_metadata_correction": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T113201Z\\provenance_correction.md",
+  "latest_cache_acceptance_result": {
+    "utc": "2026-10-09T11:54:45.950471+00:00",
+    "tests": 19,
+    "passed": 15,
+    "failed": 4,
+    "errors": 0,
+    "skipped": 0,
+    "junit_seconds": 13.539,
+    "pytest_exit": 1,
+    "code_sha256": "f1bf020afbbea11e5afd7a2326aaca420069d350ea7b6692db3fbdb990e60c2a",
+    "full_code_stable": true,
+    "failed_names": [
+      "test_cache_must_match_requested_run[different_pages]",
+      "test_cache_must_match_requested_run[all_pages_partial]",
+      "test_cache_must_match_requested_run[different_input_profile]",
+      "test_missing_cache_timing_is_not_zero_measurement"
+    ],
+    "original_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T114719Z\\pytest_recovery.log",
+    "original_junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T114719Z\\pytest_recovery.xml",
+    "source_archive": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T114719Z\\source_pretest.zip",
+    "infrastructure_retry": "One authorized identical-suite recovery after sandbox temp WinError5. No third run.",
+    "scope_note": "15 unchanged supervisor acceptance pass, four new isolated cache fixtures fail. Other unchanged tests not rerun. No PDF/OCR batch; existing engine acceptance fixture initializes local models before mock."
+  },
+  "latest_cache_acceptance_scope": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T114719Z\\cache_acceptance_scope.json",
+  "latest_sfc_output_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T114719Z\\new_output_audit.json",
+  "latest_full_sfc_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T114719Z\\new_output_audit.json",
+  "closing_artifact_changes": [],
+  "closing_document_changes": [],
+  "latest_seven_pdf_output_audit": {
+    "evidence": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T121701Z\\batch_summary_audit.json",
+    "pages": 494,
+    "coverage_matches": true,
+    "review_lines": 3980,
+    "summary_pass": 7,
+    "stored_needs_review": 7,
+    "queue_present": false,
+    "independent_ground_truth": false,
+    "actual_new_validator_scope": "SGN only",
+    "timing_accepted": false,
+    "sc5_updated_evidence": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T131719Z\\new_output_audit.json"
+  },
+  "latest_excel_report_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T124722Z\\excel_audit.json",
+  "latest_rapidocr_retry_scope": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T130211Z\\rapidocr_retry_test_scope.json",
+  "latest_rapidocr_retry_result": {
+    "utc": "2026-10-09T13:06:51.127435+00:00",
+    "tests": 25,
+    "passed": 23,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 0,
+    "junit_seconds": 17.765,
+    "pytest_exit": 1,
+    "original_log": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T130211Z\\pytest_recovery.log",
+    "original_junit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T130211Z\\pytest_recovery.xml",
+    "source_archive": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T130211Z\\source_pretest.zip",
+    "code_sha256": "2c9158fd35a00d050635fe2de85fa6c4f57427d28142704e7e6babb4a2f1f61a",
+    "scope_note": "Re-executed acceptance15, mixed composition5, isolated RapidOCR retry5; remaining scientific/regression/cache suites are historical only. No real OCR extraction/batch or measured accuracy/speed.",
+    "infrastructure_retry": "One identical-suite authorized recovery after sandbox pytest temp WinError5; initial log preserved. No third run.",
+    "failed_cases": [
+      "test_exhausted_retry_is_not_silent_empty_success",
+      "test_exhausted_retry_reaches_page_error_accounting"
+    ]
+  },
+  "latest_sc5_output_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T131719Z\\new_output_audit.json",
+  "latest_sc5_report_audit": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261009T131719Z\\sc5_supplement.json",
+  "supervisor_metadata_correction": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261010T040449Z\\supervisor_metadata_correction.json",
+  "supervisor_metadata_incident": {
+    "utc": "2026-10-10T04:50:08.692472+00:00",
+    "report": "C:\\Users\\ASUS\\.codex\\automations\\gi-m-s-t-antigravity-c-i-ti-n-ocr-pdf\\evidence\\20261010T044842Z\\supervisor_metadata_correction.json",
+    "status": "RECOVERED_STATE_JOURNAL_OLD_TIMESTAMPS_SUPERSEDED",
+    "affected_prior_round": 63
+  }
+}

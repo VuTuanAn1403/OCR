@@ -1,0 +1,328 @@
+{
+  "date": "2026-10-11",
+  "evidence_type": "SYNTHETIC_IMPLEMENTATION_DIAGNOSTICS",
+  "not_an_extraction_benchmark": true,
+  "competitors_executed": [],
+  "probe_count": 14,
+  "records": [
+    {
+      "id": "legacy_cross_document_and_final_output",
+      "inputs": {
+        "prediction_document": "doc_A",
+        "reference_document": "doc_B",
+        "page_markdown": "Đoạn văn của tài liệu B.",
+        "final_markdown": ""
+      },
+      "actual": {
+        "document_id": "doc_A",
+        "mean_cer": 0.0,
+        "mean_wer": 0.0,
+        "mean_diacritic_accuracy": 1.0,
+        "mean_table_accuracy": null,
+        "mean_reading_order_accuracy": 1.0,
+        "pages_evaluated": 1,
+        "page_reports": {
+          "1": {
+            "page": 1,
+            "cer": 0.0,
+            "wer": 0.0,
+            "diacritic_accuracy": 1.0,
+            "table_accuracy": null,
+            "reading_order_accuracy": 1.0,
+            "ref_char_count": 24,
+            "pred_char_count": 24,
+            "ref_word_count": 6,
+            "pred_word_count": 6
+          }
+        }
+      },
+      "interpretation": "Legacy evaluator accepts the wrong document's GT and ignores empty final Markdown."
+    },
+    {
+      "id": "legacy_no_gt_defaults",
+      "inputs": {
+        "gt_files": 0
+      },
+      "actual": {
+        "document_id": "doc_A",
+        "mean_cer": 0.0,
+        "mean_wer": 0.0,
+        "mean_diacritic_accuracy": 1.0,
+        "mean_table_accuracy": null,
+        "mean_reading_order_accuracy": 1.0,
+        "pages_evaluated": 0,
+        "page_reports": {}
+      },
+      "interpretation": "No evaluated pages still emits zero mean CER/WER and perfect default diacritic/order scores."
+    },
+    {
+      "id": "numeric_missing_locations",
+      "inputs": {
+        "reference": [
+          {
+            "value": "100",
+            "location_id": "cell_A"
+          },
+          {
+            "value": "200",
+            "location_id": "cell_B"
+          }
+        ],
+        "prediction": [
+          {
+            "value": "200",
+            "location_id": null
+          },
+          {
+            "value": "100",
+            "location_id": null
+          }
+        ]
+      },
+      "actual": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_gt": 2,
+        "total_pred": 2,
+        "status": "MEASURED"
+      },
+      "interpretation": "Missing prediction locations act as wildcards; location-exact F1 becomes 1.0 without location evidence."
+    },
+    {
+      "id": "reading_order_reused_occurrence",
+      "inputs": {
+        "reference": [
+          "Đoạn văn bản bị lặp lại.",
+          "Đoạn văn bản bị lặp lại."
+        ],
+        "prediction": "Đoạn văn bản bị lặp lại."
+      },
+      "actual": {
+        "result": {
+          "spearman_rho": 1.0,
+          "precedence_accuracy": 0.0,
+          "pairwise_precedence_accuracy": 0.0,
+          "matched_coverage": 1.0,
+          "matched_fraction": 1.0,
+          "penalized_score": 0.0,
+          "matched_blocks": 2,
+          "total_refs": 2,
+          "status": "MEASURED",
+          "matched_block_coverage": 1.0
+        },
+        "warnings": [
+          "An input array is constant; the correlation coefficient is not defined."
+        ]
+      },
+      "interpretation": "One prediction occurrence is matched twice; coverage and Spearman rho are incorrectly perfect."
+    },
+    {
+      "id": "markdown_literal_underscore",
+      "inputs": {
+        "markdown": "price_usd"
+      },
+      "actual": "priceusd",
+      "interpretation": "Markdown cleanup changes literal source text instead of parsing visible text faithfully."
+    },
+    {
+      "id": "markdown_html_entity",
+      "inputs": {
+        "markdown": "<p>A &amp; B</p>"
+      },
+      "actual": "A &amp; B",
+      "interpretation": "Markdown cleanup changes literal source text instead of parsing visible text faithfully."
+    },
+    {
+      "id": "markdown_escaped_pipe",
+      "inputs": {
+        "markdown": "| Value |\n| --- |\n| A\\|B |"
+      },
+      "actual": "<table><tr><th>Value</th></tr><tr><td>A\\</td><td>B</td></tr></table>",
+      "interpretation": "A literal escaped pipe is split into an extra table cell."
+    },
+    {
+      "id": "merged_table_export",
+      "inputs": {
+        "column_span": 2
+      },
+      "actual": {
+        "is_complex": true,
+        "html": "<table>\n  <tr>\n    <td colspan=\"2\">Tiêu đề gộp</td>\n  </tr>\n  <tr>\n    <td>A</td>\n    <td>B</td>\n  </tr>\n</table>",
+        "markdown_pipeline_format": "| Tiêu đề gộp |      |\n| :---------- | :--- |\n| A           | B    |"
+      },
+      "interpretation": "The IR/HTML supports spans, but the pipe-table format used by MarkdownExporter cannot retain colspan."
+    },
+    {
+      "id": "ocr_timeout_waits_for_worker",
+      "inputs": {
+        "timeout_seconds": 0.01,
+        "simulated_worker_seconds": 0.12
+      },
+      "actual": {
+        "elapsed_seconds": 0.12119309999980032,
+        "result": [],
+        "error_counter": 1
+      },
+      "interpretation": "ThreadPoolExecutor context exits by waiting for the worker; this is not an enforceable page deadline."
+    },
+    {
+      "id": "latex_missing_metric",
+      "inputs": {
+        "measured_cer": 0.1,
+        "unmeasured_teds": null,
+        "unmeasured_map": null
+      },
+      "actual": {
+        "rows": [
+          {
+            "name": "V5.0 (Full System)",
+            "description": "Full DLA + Hybrid Routing + TableNet + VietOCR Fallback",
+            "map50": null,
+            "teds": null,
+            "cer": 0.1,
+            "der": 0.1,
+            "sec_per_page": 2.0,
+            "throughput_pps": 0.5
+          }
+        ],
+        "export": {
+          "exception": "TypeError",
+          "message": "unsupported format string passed to NoneType.__format__"
+        }
+      },
+      "interpretation": "A legitimate missing metric crashes publication-table generation; only one measured row is emitted, not an ablation run."
+    },
+    {
+      "id": "invalid_page_selector",
+      "inputs": {
+        "selectors": [
+          "abc",
+          "5-2"
+        ]
+      },
+      "actual": {
+        "abc": null,
+        "5-2": null
+      },
+      "interpretation": "Invalid selectors return None, which the conversion entry point treats as all pages."
+    },
+    {
+      "id": "empty_reference_api_difference",
+      "inputs": {
+        "reference": "",
+        "prediction": ""
+      },
+      "actual": {
+        "detailed": {
+          "cer": null,
+          "status": "EMPTY_REFERENCE",
+          "substitutions": 0,
+          "deletions": 0,
+          "insertions": 0,
+          "hits": 0,
+          "reference_length": 0,
+          "prediction_length": 0,
+          "policy": "visible_strict_v1"
+        },
+        "scalar": 0.0
+      },
+      "interpretation": "Detailed API correctly reports null; scalar API drops that status and emits 0.0. Callers must retain measurement status."
+    },
+    {
+      "id": "partial_gt_flag",
+      "inputs": {
+        "markdown": "Đoạn đã gán nhãn. Đoạn chưa gán nhãn.",
+        "reference": "Đoạn đã gán nhãn."
+      },
+      "actual": {
+        "False": {
+          "cer": 1.176471,
+          "wer": 1.0,
+          "der": 0.833333,
+          "counts": {
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 20,
+            "hits": 17,
+            "reference_length": 17
+          },
+          "status": "MEASURED",
+          "gt_char_count": 17,
+          "extracted_char_count": 37
+        },
+        "True": {
+          "cer": 1.176471,
+          "wer": 1.0,
+          "der": 0.833333,
+          "counts": {
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 20,
+            "hits": 17,
+            "reference_length": 17
+          },
+          "status": "MEASURED",
+          "gt_char_count": 17,
+          "extracted_char_count": 37
+        }
+      },
+      "interpretation": "partial_gt=True does not select covered spans; results are identical to full-document comparison."
+    },
+    {
+      "id": "scientific_partial_gt_falls_back_to_intermediate",
+      "inputs": {
+        "total_pages": 2,
+        "annotated_pages": [
+          1
+        ],
+        "page_markdown": "Đoạn đã gán nhãn.",
+        "final_markdown": "Nội dung khác, đã mất toàn bộ đoạn tham chiếu."
+      },
+      "actual": {
+        "academic_metrics": {
+          "mean_cer": 0.0,
+          "mean_wer": 0.0,
+          "mean_der": 0.0,
+          "mean_reading_order_penalized": 1.0,
+          "evaluated_pages": 1,
+          "dla_coco": null
+        },
+        "final_markdown_text_evaluation": {
+          "cer": 0.0,
+          "wer": 0.0,
+          "der": 0.0,
+          "gt_char_count": 17,
+          "extracted_char_count": 17,
+          "scope": "partial_matching_pages_only"
+        }
+      },
+      "interpretation": "Scientific runner still falls back to intermediate page Markdown when final page markers are absent, masking final-output loss."
+    }
+  ],
+  "verified_test_run": {
+    "passed": 199,
+    "skipped": 3,
+    "skips": [
+      {
+        "class": "tests.golden.test_golden_accuracy",
+        "name": "test_golden_pages_accuracy",
+        "reason": "CLW predictions not yet generated in output/"
+      },
+      {
+        "class": "tests.integration.test_bhn_pages_63_64_68",
+        "name": "test_bhn_pages_63_64_65_68_extraction",
+        "reason": "Input file inputs\\BHN_Baocaothuongnien_2022.pdf not found"
+      },
+      {
+        "class": "tests.integration.test_clw_benchmark_pages",
+        "name": "test_clw_benchmark_four_pages",
+        "reason": "Benchmark PDF inputs/CLW_Baocaothuongnien_2020.pdf not found"
+      }
+    ]
+  },
+  "scanned_source_changes_during_audit": []
+}

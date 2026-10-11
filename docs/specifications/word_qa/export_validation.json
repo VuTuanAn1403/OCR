@@ -1,0 +1,13 @@
+{
+  "source": "C:\\kk_2\\OCR_pdf\\docs\\PROJECT_SPECIFICATION_RESEARCH_V5.md",
+  "output": "C:\\kk_2\\OCR_pdf\\docs\\PROJECT_SPECIFICATION_RESEARCH_V5.docx",
+  "source_sha256": "72ed415721045ff48b6357482f670f6623a8ef3af548d72915d714a6902464ce",
+  "docx_sha256": "b9ee429e61fa67dbf34cfc3aacb162154ad65d99690e90108a618adffe248032",
+  "tables": 15,
+  "headings": 36,
+  "code_blocks": 3,
+  "requirements_retained": 38,
+  "acceptance_cases_retained": 17,
+  "source_lines": 481,
+  "missing_ids": []
+}

@@ -120,10 +120,23 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
         boxes_and_crops = []
         h, w = img_bgr.shape[:2]
 
-        for box_points in raw_det:
+        for item in raw_det:
+            # Handle both full recognition format [polygon, text, conf] and detection-only format polygon
+            if isinstance(item, (list, tuple)) and len(item) in (2, 3) and not isinstance(item[1], (list, tuple, np.ndarray)):
+                box_points = item[0]
+            else:
+                box_points = item
 
-            xs = [pt[0] for pt in box_points]
-            ys = [pt[1] for pt in box_points]
+            try:
+                if isinstance(box_points, np.ndarray):
+                    xs = [float(x) for x in box_points[:, 0]]
+                    ys = [float(y) for y in box_points[:, 1]]
+                else:
+                    xs = [float(pt[0]) for pt in box_points]
+                    ys = [float(pt[1]) for pt in box_points]
+            except Exception:
+                continue
+
             x0 = max(0, int(min(xs)) - 2)
             y0 = max(0, int(min(ys)) - 2)
             x1 = min(w, int(max(xs)) + 2)

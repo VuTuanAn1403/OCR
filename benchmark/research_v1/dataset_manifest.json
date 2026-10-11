@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0.0",
+  "dataset_name": "OCR_PDF_RESEARCH_V1",
+  "created_at": "2026-10-09T16:30:00+07:00",
+  "license": "Research and Evaluation Only",
+  "annotation_protocol": "RESEARCH_PROTOCOL_V5",
+  "categories": [
+    "title", "section_header", "text", "header", "footer",
+    "page_number", "table", "figure", "caption", "formula"
+  ],
+  "verification_tiers": {
+    "TIER_0_UNANNOTATED": "No ground truth annotations available",
+    "TIER_1_AI_CANDIDATE": "AI-generated candidates for pilot validation (not human verified)",
+    "TIER_2_SINGLE_ANNOTATOR": "Annotated by 1 human expert",
+    "TIER_3_DOUBLE_BLIND_VERIFIED": "Double-blind reviewed and consensus reached (Gold Standard)"
+  },
+  "documents": [
+    {
+      "doc_id": "doc_01_pdn_2020",
+      "relative_path": "inputs/PDN_Baocaothuongnien_2020.pdf",
+      "doc_type": "native_digital_financial",
+      "total_pages": 108,
+      "language": "vi",
+      "annotations": {
+        "text_status": "not_annotated",
+        "table_status": "not_annotated",
+        "dla_status": "not_annotated",
+        "numeric_status": "not_annotated",
+        "reading_order_status": "not_annotated"
+      },
+      "reviewer_status": "PENDING_DOUBLE_BLIND",
+      "note": "Representative enterprise financial annual report with dense multi-column balance sheets"
+    },
+    {
+      "doc_id": "doc_02_scanned_receipt",
+      "relative_path": "inputs/test_scan_sample.pdf",
+      "doc_type": "scanned_document",
+      "total_pages": 1,
+      "language": "vi",
+      "annotations": {
+        "text_status": "not_annotated",
+        "table_status": "not_annotated",
+        "dla_status": "not_annotated",
+        "numeric_status": "not_annotated",
+        "reading_order_status": "not_annotated"
+      },
+      "reviewer_status": "PENDING_DOUBLE_BLIND",
+      "note": "Representative scanned administrative receipt"
+    }
+  ],
+  "pilot_evaluation_scope": {
+    "selected_pages": [1, 2, 5, 10, 15, 20],
+    "benchmark_targets": {
+      "native_latency_s": 0.15,
+      "mixed_latency_s": 1.80,
+      "scan_latency_s": 2.50,
+      "accuracy_target": "NOT_SPECIFIED_PENDING_STAKEHOLDER_CONSENSUS"
+    }
+  }
+}

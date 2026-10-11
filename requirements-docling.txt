@@ -1,0 +1,2 @@
+# Isolated worker environment. Do not install into the VietOCR .venv.
+docling-slim[convert-core,format-pdf,models-local,models-vlm-inline,feat-ocr-easyocr]==2.137.0

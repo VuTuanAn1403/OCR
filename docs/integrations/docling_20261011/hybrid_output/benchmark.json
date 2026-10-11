@@ -1,0 +1,17 @@
+{
+  "document_id": "table_formula_fixture",
+  "profile": "accuracy",
+  "pages_benchmarked": [
+    1,
+    2
+  ],
+  "wall_clock_seconds": 83.66,
+  "seconds_per_page": 41.83,
+  "pages_per_minute": 1.43,
+  "primary_lines": 16,
+  "recognized_lines": 21,
+  "fallback_lines": 1,
+  "fallback_ratio": 0.0625,
+  "mean_confidence": 0.8404,
+  "mean_quality_score": 0.7855
+}

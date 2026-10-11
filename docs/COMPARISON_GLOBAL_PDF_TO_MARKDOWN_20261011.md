@@ -2,6 +2,8 @@
 
 Ngày khảo sát: **11/10/2026**. Dự án: **C:/kk_2/OCR_pdf**. Phạm vi đề tài: chuyển nhiều loại PDF sang Markdown, kiểm chứng độ chính xác bằng phương pháp khoa học và đáp ứng mục tiêu thời gian trên CPU đã được người dùng xác nhận.
 
+**Cập nhật cùng ngày:** báo cáo này ghi nhận snapshot trước khi tích hợp TableFormer và công thức Docling. Mã hiện tại đã bổ sung hai thành phần đó; xem [tài liệu tích hợp và kiểm chứng](DOCLING_TABLEFORMER_FORMULA_INTEGRATION.md). Các số liệu khảo sát bên dưới được giữ làm baseline, không dùng để mô tả mọi tính năng của mã sau tích hợp.
+
 **Kết luận:** OCR_pdf có pipeline thực, cơ chế native/OCR, xử lý tiếng Việt, bảng, ảnh và hàng đợi rà soát. Tuy nhiên, hiện chưa có bằng chứng đủ để khẳng định độ chính xác hoặc hiệu năng ngang hay hơn Docling, MinerU, Marker. Khoảng cách rõ nhất là năng lực phân tích cấu trúc phức tạp, tính nhất quán của bộ đo, khả năng tái lập thực nghiệm và ground truth độc lập. Dự án hiện phù hợp làm nền tảng tiếp tục nghiên cứu; các tuyên bố đã đạt chuẩn nghiên cứu quốc tế trong một số tài liệu chưa được hồ sơ hiện có chứng minh.
 
 ## Mục lục

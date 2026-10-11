@@ -1,0 +1,31 @@
+{
+  "status": "NEEDS_REVIEW",
+  "counts": {
+    "formulas_json": 2,
+    "pages_json": 2,
+    "pages_markdown": 2,
+    "tables_json": 2,
+    "pipe_tables_markdown": 2,
+    "table_candidates_as_paragraphs": 0,
+    "image_links": 2,
+    "broken_image_links": 0,
+    "evidence_blocks": 19,
+    "review_required_lines": 12,
+    "large_unread_image_regions": 0,
+    "ground_truth_cases": 0
+  },
+  "errors": [],
+  "warnings": [
+    "Page 1: table p1_docling_table_1 requires independent review",
+    "Page 1: formula p1_docling_formula_1 requires independent review",
+    "Page 1: region p1_r11 orientation unknown",
+    "Page 1: region p1_r10 orientation unknown",
+    "Page 1: region p1_docling_table_13 needs review: Model output has no calibrated confidence or independent verification",
+    "Page 1: region p1_docling_formula_14 needs review: Model output has no calibrated confidence or independent verification",
+    "Page 2: table p2_docling_table_1 requires independent review",
+    "Page 2: formula p2_docling_formula_1 requires independent review",
+    "Page 2: region p2_docling_table_1 needs review: Model output has no calibrated confidence or independent verification",
+    "Page 2: region p2_docling_formula_2 needs review: Model output has no calibrated confidence or independent verification",
+    "12 OCR lines require review"
+  ]
+}

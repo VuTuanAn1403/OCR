@@ -44,6 +44,9 @@ from src.ocr.infrastructure.cache.artifact_cache import ArtifactCache
 from src.ocr.application.route_page import RoutePageUseCase
 from src.ocr.application.reocr_region import ReocrRegionUseCase
 from src.ocr.infrastructure.export.markdown_exporter import MarkdownExporter
+from src.ocr.infrastructure.layout.docling_structure import (
+    DoclingStructureExtractor, DoclingStructureError, block_is_covered,
+)
 
 class ProcessPageUseCase:
     """
@@ -79,6 +82,7 @@ class ProcessPageUseCase:
             raise ValueError(f"Unsupported primary_engine: {primary_engine}")
         self.ocr_quality = OCRQualityEvaluator(min_confidence=config.get("min_confidence", 0.80))
         self.layout_engine = DocumentLayoutEngine()
+        self.structure_extractor = DoclingStructureExtractor(config.get("docling", {}))
         self.content_analyzer = PageContentAnalyzer()
         self.fallback_engine = FallbackEngine(
             upscale_dpi=config.get("fallback_upscale_dpi", 250),
@@ -89,6 +93,85 @@ class ProcessPageUseCase:
         self._page_errors = 0
         self._crop_cache: Dict[str, Any] = {}
         self._rejected_evidence: List[Any] = []
+
+    def close(self) -> None:
+        self.structure_extractor.close()
+
+    def _enrich_structures(self, doc_page, page_num, page_type, blocks, tables, regions, meta):
+        extractor = self.structure_extractor
+        fingerprint = extractor.cache_fingerprint() if extractor.enabled else None
+        meta["docling_structure"] = {"status": "DISABLED", "cache_fingerprint": fingerprint}
+        if not extractor.enabled:
+            return blocks, tables, []
+        options = extractor.options
+        has_formula_candidate = any(
+            b.block_type == "formula"
+            or re.search(r"[∫∑√≠≤≥±×÷∂∆∇∈∉∩∪⊂⊃∀∃∞]|\\(?:frac|sum|int|prod|sqrt)\b|(?:[a-zA-Z]\s*=\s*[-+]?[0-9/.]+|[a-zA-Z]\^[0-9]+|\b(?:sin|cos|tan|log|lim)\b)", b.text)
+            for b in blocks
+        )
+        candidate = (
+            options.get("page_selection", "auto") == "all"
+            or page_type != PageType.NATIVE_TEXT or bool(tables)
+            or has_formula_candidate
+        )
+        if not candidate:
+            meta["docling_structure"]["status"] = "SKIPPED_NO_STRUCTURE_CANDIDATE"
+            return blocks, tables, []
+        try:
+            result = extractor.extract_page(doc_page, page_num)
+        except DoclingStructureError as exc:
+            meta["docling_structure"].update(status="FAILED_FALLBACK", error=str(exc))
+            logger.warning("Page %d: Docling failed; preserving existing extraction: %s", page_num, exc)
+            # Record a review item even if the source classifier missed the
+            # table/formula. Never label the heuristic fallback as TableFormer.
+            regions.append(Region(
+                region_id=f"p{page_num}_docling_failed", bbox=BoundingBox(
+                    x0=0, y0=0, x1=meta["width"], y1=meta["height"]),
+                content_type=ContentType.UNKNOWN, needs_fallback=True,
+                status="NEEDS_REVIEW", failure_reason=f"Docling structure extraction failed: {exc}",
+                orientation_status="UNCERTAIN",
+            ))
+            if options.get("on_error", "fallback") == "raise":
+                raise
+            return blocks, tables, []
+        meta["docling_structure"] = {**result["metadata"], "cache_fingerprint": fingerprint}
+        model_tables = result["tables"] if options.get("tables", True) else []
+        formulas = result["formulas"] if options.get("formulas", True) else []
+        # Populate empty cell text from high-accuracy native or VietOCR blocks
+        for table in model_tables:
+            for cell in table.cells:
+                if not cell.text.strip() and cell.bbox and len(cell.bbox) == 4:
+                    cx0, cy0, cx1, cy1 = cell.bbox
+                    matched = [
+                        b.text.strip() for b in blocks
+                        if cx0 <= (b.bbox[0] + b.bbox[2]) / 2.0 <= cx1
+                        and cy0 <= (b.bbox[1] + b.bbox[3]) / 2.0 <= cy1
+                        and b.text.strip()
+                    ]
+                    if matched:
+                        cell.text = " ".join(matched)
+        # Replace only overlapping heuristic tables. Unmatched tables and text
+        # remain, including when Docling finds no structures.
+        tables = [table for table in tables if not block_is_covered(table.bbox, model_tables, 0.5)] + model_tables
+        blocks = [block for block in blocks if not block_is_covered(block.bbox, model_tables)
+                  and (re.fullmatch(r"\(\d+(?:\.\d+)*\)", block.text.strip())
+                       or not block_is_covered(block.bbox, formulas))]
+        for structure in model_tables + formulas:
+            is_formula = hasattr(structure, "latex")
+            region_id = f"p{page_num}_docling_{'formula' if is_formula else 'table'}_{len(regions)}"
+            regions.append(Region(
+                region_id=region_id, bbox=BoundingBox(
+                    x0=structure.bbox[0], y0=structure.bbox[1], x1=structure.bbox[2], y1=structure.bbox[3]),
+                content_type=ContentType.FORMULA if is_formula else ContentType.TABLE,
+                source="ocr", confidence=0.0, quality_score=0.0, status="NEEDS_REVIEW",
+                needs_fallback=True, orientation_status="CONFIDENT", orientation_confidence=1.0,
+                failure_reason="Model output has no calibrated confidence or independent verification",
+            ))
+            if is_formula:
+                blocks.append(TextBlock(text=structure.latex, source="docling", page=page_num,
+                    bbox=structure.bbox, block_type="formula", engine=structure.engine,
+                    confidence=0.0, quality_score=0.0, region_id=region_id))
+        return blocks, tables, formulas
 
     def _predict_image_counted(
         self, img_bgr: np.ndarray, timeout_seconds: Optional[float] = None
@@ -120,13 +203,16 @@ class ProcessPageUseCase:
         self._current_page_ocr_calls = 0
         self._page_errors = 0
         profile_name = self.config.get("profile", "balanced")
+        cache_profile = profile_name
+        if self.structure_extractor.enabled:
+            cache_profile += "-" + self.structure_extractor.cache_fingerprint()
         render_dpi = self.config.get("render_dpi", 180)
         page_timeout_seconds = float(self.config.get("page_timeout_seconds", 120))
         self._active_page_deadline = page_timeout_seconds
 
         # 1. Check cache if resume is active
         if resume and self.cache:
-            cached = self.cache.get_cached_page(self.doc_hash, page_num, profile_name, render_dpi)
+            cached = self.cache.get_cached_page(self.doc_hash, page_num, cache_profile, render_dpi)
             if cached is not None:
                 print(f"[{page_num}/{total_pages}] page={page_num} [CACHED] restored from .cache")
                 return cached
@@ -511,10 +597,23 @@ class ProcessPageUseCase:
             regions=regions,
         )
 
+        t_docling_start = time.perf_counter()
+        blocks, tables, formulas = self._enrich_structures(
+            doc_page, page_num, page_type, blocks, tables, regions, meta)
+        docling_duration = time.perf_counter() - t_docling_start
+        if meta["docling_structure"]["status"] == "FAILED_FALLBACK":
+            page_errors.append(meta["docling_structure"]["error"])
+        elif meta["docling_structure"].get("errors"):
+            page_errors.extend(str(error) for error in meta["docling_structure"]["errors"])
+
         # Filter out text blocks that fall inside legitimate tables to prevent duplication
         if tables:
-            blocks = [b for b in blocks if not self.layout_engine.is_block_inside_any_table(b.bbox, tables)]
-        table_duration = time.perf_counter() - t_table_start
+            heuristic_tables = [t for t in tables if t.engine != "docling_tableformer"]
+            model_tables = [t for t in tables if t.engine == "docling_tableformer"]
+            blocks = [b for b in blocks if not (
+                (heuristic_tables and self.layout_engine.is_block_inside_any_table(b.bbox, heuristic_tables))
+                or block_is_covered(b.bbox, model_tables))]
+        table_duration = time.perf_counter() - t_table_start - docling_duration
 
         # 6. Sort Reading Order
         t_ro_start = time.perf_counter()
@@ -543,7 +642,7 @@ class ProcessPageUseCase:
                 )) > 0.5
                 for table in tables
             ):
-                region.status = "EXTRACTED"
+                region.status = "NEEDS_REVIEW" if region.needs_fallback else "EXTRACTED"
                 if region.orientation_status == "UNKNOWN":
                     region.rotation = orientation_angle
                     region.orientation_status = "CONFIDENT" if orientation_angle else "UNCERTAIN"
@@ -623,8 +722,9 @@ class ProcessPageUseCase:
                 "primary_ocr": round(ocr_duration, 3),
                 "fallback": round(fallback_duration, 3),
                 "table": round(table_duration, 3),
+                "docling_structure": round(docling_duration, 3),
                 "reading_order": round(reading_order_duration, 3),
-                "postprocess": round(max(0.0, total_time - (inspect_duration + native_extract_duration + image_region_ocr_duration + render_duration + ocr_duration + fallback_duration + table_duration + reading_order_duration)), 3),
+                "postprocess": round(max(0.0, total_time - (inspect_duration + native_extract_duration + image_region_ocr_duration + render_duration + ocr_duration + fallback_duration + table_duration + docling_duration + reading_order_duration)), 3),
             },
             unicode_corruption_detected=bool(
                 meta.get("unicode_corruption_detected", False)
@@ -644,7 +744,7 @@ class ProcessPageUseCase:
         region_by_id = {r.region_id: r for r in regions}
         for idx, b in enumerate(sorted_blocks):
             src = "native" if b.source == "native" else "ocr"
-            ct = ContentType.TEXT if src == "native" else ContentType.IMAGE
+            ct = ContentType.FORMULA if b.block_type == "formula" else (ContentType.TEXT if src == "native" else ContentType.IMAGE)
             block_region = region_by_id.get(b.region_id)
             rot = block_region.rotation if block_region else 0.0
             needs_review = b.quality_score < 0.75
@@ -678,6 +778,7 @@ class ProcessPageUseCase:
             rendered_dpi=actual_dpi,
             blocks=sorted_blocks,
             tables=tables,
+            formulas=formulas,
             diagrams=self._current_page_diagrams,
             regions=regions,
             evidence_blocks=evidence_blocks,
@@ -690,7 +791,9 @@ class ProcessPageUseCase:
 
         # Save to cache
         if self.cache:
-            self.cache.save_cached_page(self.doc_hash, extracted_page, profile_name, render_dpi)
+            if (meta["docling_structure"]["status"] not in ("FAILED_FALLBACK", "partial_success")
+                    and not meta["docling_structure"].get("errors")):
+                self.cache.save_cached_page(self.doc_hash, extracted_page, cache_profile, render_dpi)
 
         print(f"[{page_num}/{total_pages}] quality={calibrated_q:.2f} fallback={fallback_count}/{len(sorted_blocks)}")
         print(f"[{page_num}/{total_pages}] completed time={total_time:.2f}s")

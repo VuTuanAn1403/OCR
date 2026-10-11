@@ -4,6 +4,8 @@
 
 Pipeline trích xuất chữ, bảng và ảnh từ PDF thành Markdown cùng JSON provenance. V4.3 tiếp tục dùng RapidOCR để phát hiện khung chữ và VietOCR local để nhận dạng, ưu tiên OCR vùng ảnh còn chữ, kiểm tra hướng trang, giữ PNG nguồn và đánh dấu `NEEDS_REVIEW` khi các lượt OCR bất đồng về số.
 
+**Bổ sung 11/10/2026:** profile `balanced` và `accuracy` dùng **Docling TableFormer (accurate)** cho bảng và **CodeFormulaV2** cho công thức LaTeX. Cài môi trường riêng bằng `powershell -ExecutionPolicy Bypass -File scripts/setup_docling.ps1`; model tải về máy khi chạy lần đầu. Profile `fast` giữ backend cũ. Xem [hướng dẫn tích hợp, kiểm chứng và thời gian CPU](docs/DOCLING_TABLEFORMER_FORMULA_INTEGRATION.md). Ô gộp được giữ trong JSON/HTML; Markdown dùng bảng pipe và công thức `$$`. Đầu ra model cần rà soát độc lập.
+
 ---
 
 ## 1. Tổng Quan Dự Án

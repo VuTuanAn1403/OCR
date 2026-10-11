@@ -24,6 +24,11 @@ class ReadingOrderSorter:
         footer_cutoff = self.page_height * 0.90
 
         for block in blocks:
+            # A formula near a page edge is still mathematical content.
+            # Geometric header/footer guessing must not change its type.
+            if block.block_type == "formula":
+                body.append(block)
+                continue
             bbox = block.bbox
             if not bbox or len(bbox) < 4:
                 body.append(block)

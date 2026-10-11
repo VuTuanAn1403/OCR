@@ -4,6 +4,8 @@ profiles:
     native_first: true
     render_dpi: 150
     primary_engine: rapidocr
+    docling:
+      enabled: false
     layout: light
     fallback_enabled: false
     batch_size: 16
@@ -23,6 +25,19 @@ profiles:
     render_dpi: 180
     primary_engine: vietocr
     layout: standard
+    docling:
+      enabled: true
+      page_selection: auto
+      tables: true
+      formulas: true
+      table_mode: fast
+      num_threads: 6
+      ocr: false
+      ocr_languages: [vi, en]
+      formula_max_tokens: 256
+      timeout_seconds: 90
+      startup_timeout_seconds: 900
+      on_error: fallback
     fallback_enabled: false
     fallback_only_on_review: true
     max_fallback_region_ratio: 0.15
@@ -47,6 +62,19 @@ profiles:
     render_dpi: 180
     primary_engine: vietocr
     layout: accurate
+    docling:
+      enabled: true
+      page_selection: auto
+      tables: true
+      formulas: true
+      table_mode: fast
+      num_threads: 6
+      ocr: false
+      ocr_languages: [vi, en]
+      formula_max_tokens: 256
+      timeout_seconds: 120
+      startup_timeout_seconds: 900
+      on_error: fallback
     fallback_enabled: true
     adaptive_second_pass: true
     max_fallback_region_ratio: 0.25

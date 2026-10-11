@@ -133,25 +133,24 @@ class ConvertDocumentUseCase:
         pages_mixed = 0
         total_fallback = 0
 
-        for page_num in target_pages:
-            p_result = page_processor.execute(
-                page_num=page_num,
-                total_pages=total_pages,
-                router=router,
-                resume=resume
-            )
-            extracted_pages.append(p_result)
-
-            pt_str = p_result.page_type.value if hasattr(p_result.page_type, "value") else str(p_result.page_type)
-            if pt_str in ("NATIVE_TEXT", "PRODUCT_SHOWCASE_COLLAGE"):
-                pages_native += 1
-            elif pt_str == "MIXED":
-                pages_mixed += 1
-            else:
-                pages_ocr += 1
-
-            total_fallback += p_result.quality.fallback_count
-            gc.collect()
+        try:
+            for page_num in target_pages:
+                p_result = page_processor.execute(
+                    page_num=page_num, total_pages=total_pages,
+                    router=router, resume=resume)
+                extracted_pages.append(p_result)
+                pt_str = p_result.page_type.value if hasattr(p_result.page_type, "value") else str(p_result.page_type)
+                if pt_str in ("NATIVE_TEXT", "PRODUCT_SHOWCASE_COLLAGE"):
+                    pages_native += 1
+                elif pt_str == "MIXED":
+                    pages_mixed += 1
+                else:
+                    pages_ocr += 1
+                total_fallback += p_result.quality.fallback_count
+                gc.collect()
+        finally:
+            page_processor.close()
+            doc.close()
 
         total_duration = time.time() - t0
         mean_native_score = sum(p.quality.native_text_score for p in extracted_pages) / len(extracted_pages) if extracted_pages else 1.0

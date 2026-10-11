@@ -104,7 +104,8 @@ class MarkdownExporter:
         # loses labels and surrounding content.
 
         # Step 2a: Merge vertically stacked lines of the same box (strictly for flowchart / diagram pages)
-        is_diagram_page = (len(page.tables) == 0 and len(body_blocks) < 25)
+        is_diagram_page = (len(page.tables) == 0 and len(body_blocks) < 25
+                           and not any(b.block_type == "formula" for b in body_blocks))
         if is_diagram_page:
             sorted_body = sorted(body_blocks, key=lambda b: (b.bbox[1] if b.bbox else 0, b.bbox[0] if b.bbox else 0))
             vertically_merged: List[TextBlock] = []
@@ -196,7 +197,8 @@ class MarkdownExporter:
                 b1 = body_blocks[i]
                 if i + 1 < len(body_blocks):
                     b2 = body_blocks[i + 1]
-                    if b1.bbox and b2.bbox and len(b1.bbox) >= 4 and len(b2.bbox) >= 4:
+                    if (b1.block_type != "formula" and b2.block_type != "formula"
+                            and b1.bbox and b2.bbox and len(b1.bbox) >= 4 and len(b2.bbox) >= 4):
                         ymid1 = (b1.bbox[1] + b1.bbox[3]) / 2.0
                         ymid2 = (b2.bbox[1] + b2.bbox[3]) / 2.0
                         t1 = b1.text.strip()
@@ -296,6 +298,15 @@ class MarkdownExporter:
             b = obj
             text = b.text.strip()
             if not text:
+                continue
+
+            if b.block_type == "formula":
+                if current_para:
+                    lines.append(" ".join(current_para) + "\n")
+                    current_para = []
+                lines.append("$$\n" + text + "\n$$\n")
+                prev_bbox = b.bbox
+                prev_ended_clause = True
                 continue
 
             # Check if this line is an explicit heading

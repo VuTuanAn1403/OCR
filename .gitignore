@@ -4,6 +4,8 @@
 
 # Virtual Environments
 .venv/
+.venv-docling/
+models/docling/
 venv/
 ENV/
 env/

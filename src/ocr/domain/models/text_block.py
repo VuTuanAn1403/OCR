@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 class TextBlock(BaseModel):
     text: str
-    source: Literal["native", "primary_ocr", "fallback_ocr", "image_ocr", "vector"] = "primary_ocr"
+    source: Literal["native", "primary_ocr", "fallback_ocr", "image_ocr", "vector", "docling"] = "primary_ocr"
     page: int
     bbox: List[float] = Field(default_factory=list)  # [x0, y0, x1, y1]
     confidence: float = 1.0
@@ -22,6 +22,7 @@ class TextBlock(BaseModel):
     def to_dict(self) -> dict:
         return {
             "text": self.text,
+            "block_type": self.block_type,
             "source": self.source,
             "engine": self.engine,
             "page": self.page,

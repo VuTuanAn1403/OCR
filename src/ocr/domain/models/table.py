@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import re
 import textwrap
 import unicodedata
@@ -399,6 +399,9 @@ class TableStructure(BaseModel):
     caption: Optional[str] = None
     confidence: float = 1.0
     has_nested_tables: bool = False
+    engine: str = "heuristic"
+    needs_review: bool = False
+    provenance: Dict[str, Any] = Field(default_factory=dict)
     is_nested: bool = False
 
     @property

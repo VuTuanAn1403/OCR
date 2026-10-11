@@ -59,6 +59,21 @@ class ExportDocumentUseCase:
 
         # 1. Export per-page artifacts (suppress running headers/footers in Markdown by default)
         for p in doc.pages:
+            # Preserve lossless structure separately while keeping the user's
+            # existing pipe-only Markdown contract.
+            for table in p.tables:
+                if table.engine == "docling_tableformer":
+                    structure_dir = doc_dir / "structures" / "tables"
+                    structure_dir.mkdir(parents=True, exist_ok=True)
+                    html_path = structure_dir / f"{table.table_id}.html"
+                    html_path.write_text(table.provenance.get("html") or table.to_html(), encoding="utf-8")
+                    table.provenance["html_artifact"] = html_path.relative_to(doc_dir).as_posix()
+            for formula in p.formulas:
+                structure_dir = doc_dir / "structures" / "formulas"
+                structure_dir.mkdir(parents=True, exist_ok=True)
+                latex_path = structure_dir / f"{formula.formula_id}.tex"
+                latex_path.write_text(formula.latex, encoding="utf-8")
+                formula.provenance["latex_artifact"] = latex_path.relative_to(doc_dir).as_posix()
             p.markdown_content = MarkdownExporter.export_page_markdown(p, include_running_headers_footers=False)
             p_json_path = pages_dir / f"page-{p.page_num:04d}.json"
             p_md_path = pages_dir / f"page-{p.page_num:04d}.md"
@@ -131,6 +146,8 @@ class ExportDocumentUseCase:
         for p in doc.pages:
             p_h = float(getattr(p, "height", 0) or 0)
             for b in p.blocks:
+                if b.block_type == "formula":
+                    continue
                 norm_str = _norm(b.text)
                 if not norm_str or len(norm_str) < 4:
                     continue

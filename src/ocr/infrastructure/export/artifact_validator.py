@@ -22,6 +22,7 @@ def validate_document_artifacts(
     errors: List[str] = []
     warnings: List[str] = []
     counts = {
+        "formulas_json": 0,
         "pages_json": 0,
         "pages_markdown": 0,
         "tables_json": 0,
@@ -56,8 +57,10 @@ def validate_document_artifacts(
 
     markdown_files: List[Path] = []
     result_path = doc_dir / "result.md"
+    result_markdown = ""
     if result_path.is_file():
         markdown_files.append(result_path)
+        result_markdown = result_path.read_text(encoding="utf-8")
     else:
         errors.append("result.md is missing")
 
@@ -89,6 +92,8 @@ def validate_document_artifacts(
         for table_data in page_data.get("tables") or []:
             counts["tables_json"] += 1
             table = TableStructure.model_validate(table_data)
+            if table.needs_review:
+                warnings.append(f"Page {page_num}: table {table.table_id} requires independent review")
             rendered = table.to_markdown(format="pipe")
             if table.cells and not rendered:
                 errors.append(f"Page {page_num}: table {table.table_id} lost all cell content")
@@ -130,6 +135,23 @@ def validate_document_artifacts(
             errors.append(
                 f"Page {page_num}: {separator_count} Pipe Tables, expected {expected_tables}"
             )
+
+        for formula in page_data.get("formulas") or []:
+            counts["formulas_json"] += 1
+            latex = str(formula.get("latex", "")).strip()
+            rendered_formula = "$$\n" + latex + "\n$$"
+            if not latex or rendered_formula not in markdown:
+                errors.append(f"Page {page_num}: formula {formula.get('formula_id')} is missing from Markdown")
+            if latex and rendered_formula not in result_markdown:
+                errors.append(f"Page {page_num}: formula {formula.get('formula_id')} is missing from result.md")
+            if formula.get("status") != "VALIDATED":
+                warnings.append(f"Page {page_num}: formula {formula.get('formula_id')} requires independent review")
+
+        backend = page_data.get("metadata", {}).get("docling_structure", {})
+        if backend.get("status") == "FAILED_FALLBACK":
+            warnings.append(f"Page {page_num}: Docling unavailable or failed; heuristic fallback used")
+        elif backend.get("status") == "partial_success" or backend.get("errors"):
+            warnings.append(f"Page {page_num}: Docling returned a partial result or conversion errors")
 
         regions = page_data.get("regions") or []
         region_ids = {region.get("region_id") for region in regions}

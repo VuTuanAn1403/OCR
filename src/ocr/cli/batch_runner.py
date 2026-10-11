@@ -175,6 +175,19 @@ class BatchOCRRunner:
 
         # Load benchmark and quality
         try:
+            current_docling = self.converter.profiles.get(self.profile, {}).get("docling", {})
+            if current_docling.get("enabled"):
+                from src.ocr.infrastructure.layout.docling_structure import DoclingStructureExtractor
+                expected_fingerprint = DoclingStructureExtractor(current_docling).cache_fingerprint()
+                result_data = json.loads((doc_dir / "result.json").read_text(encoding="utf-8"))
+                if len(result_data.get("pages", [])) != expected_pages:
+                    return None
+                for page_data in result_data.get("pages", []):
+                    backend = page_data.get("metadata", {}).get("docling_structure", {})
+                    if (backend.get("cache_fingerprint") != expected_fingerprint
+                            or backend.get("status") in ("FAILED_FALLBACK", "partial_success")
+                            or backend.get("errors")):
+                        return None
             validation = json.loads((doc_dir / "validation.json").read_text(encoding="utf-8"))
             if validation.get("status") not in ("PASS", "NEEDS_REVIEW"):
                 return None

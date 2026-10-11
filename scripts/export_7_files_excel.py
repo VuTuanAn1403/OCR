@@ -96,20 +96,6 @@ def generate_7_files_excel(
     ws_summary = wb.active
     ws_summary.title = "Tong quan"
 
-    ws_summary["A1"] = "BÁO CÁO KIỂM NGHIỆM ĐỘ CHÍNH XÁC & HIỆU NĂNG OCR — 7 TỆP PDF INPUTS (494 TRANG)"
-    ws_summary["A1"].font = Font(name="Arial", size=14, bold=True, color="FFFFFF")
-    ws_summary["A1"].fill = HEADER_FILL
-    ws_summary.merge_cells("A1:G1")
-    ws_summary.row_dimensions[1].height = 36
-
-    ws_summary["A2"] = "Phiên bản Pipeline"
-    ws_summary["B2"] = "V5.0 Scientific Research Architecture"
-    ws_summary["C2"] = "Cấu hình Profile"
-    ws_summary["D2"] = "balanced (180 DPI, DLA Layout Gate, Fallback Enabled)"
-    for cell in (ws_summary["A2"], ws_summary["C2"]):
-        cell.font = Font(name="Arial", size=10, bold=True)
-        cell.fill = SUBHEADER_FILL
-
     total_files = len(doc_dirs)
     total_pages = 0
     total_duration = 0.0
@@ -146,19 +132,33 @@ def generate_7_files_excel(
             "quality": bm.get("mean_quality_score", 0.0)
         })
 
+    ws_summary["A1"] = f"BÁO CÁO KIỂM NGHIỆM ĐỘ CHÍNH XÁC & HIỆU NĂNG OCR — {total_files} TỆP PDF INPUTS ({total_pages} TRANG)"
+    ws_summary["A1"].font = Font(name="Arial", size=14, bold=True, color="FFFFFF")
+    ws_summary["A1"].fill = HEADER_FILL
+    ws_summary.merge_cells("A1:G1")
+    ws_summary.row_dimensions[1].height = 36
+
+    ws_summary["A2"] = "Phiên bản Pipeline"
+    ws_summary["B2"] = "V5.0 Scientific Research Architecture"
+    ws_summary["C2"] = "Cấu hình Profile"
+    ws_summary["D2"] = "balanced (180 DPI, DLA Layout Gate, Fallback Enabled)"
+    for cell in (ws_summary["A2"], ws_summary["C2"]):
+        cell.font = Font(name="Arial", size=10, bold=True)
+        cell.fill = SUBHEADER_FILL
+
     avg_sec_page = round(total_duration / max(1, total_pages), 2)
     overall_ppm = round((total_pages / max(1, total_duration)) * 60, 2)
 
     kpi_rows = [
         ("Tổng số tệp PDF đã kiểm thử", total_files, "Tệp"),
         ("Tổng số trang đã xử lý thành công", total_pages, "Trang (100% hoàn tất)"),
-        ("Tổng thời gian thực thi (Wall-clock)", f"{total_duration:.2f}", "Giây (~73 phút)"),
+        ("Tổng thời gian thực thi (Wall-clock)", f"{total_duration:.2f}", f"Giây (~{total_duration/60:.1f} phút)"),
         ("Tốc độ trung bình toàn bộ", avg_sec_page, "Giây/trang"),
         ("Thông lượng xử lý trung bình", overall_ppm, "Trang/phút"),
         ("Tổng số ký tự văn bản trích xuất", f"{total_chars:,}", "Ký tự"),
         ("Tổng số bảng biểu trích xuất (Pipe Tables)", total_tables, "Bảng"),
         ("Tổng số hình ảnh & biểu đồ trích xuất", total_images, "Ảnh nhúng (0 broken links)"),
-        ("Tỷ lệ thành công (Artifact Integrity Valid)", "100.0%", "7 / 7 tệp đạt chuẩn PASS"),
+        ("Tỷ lệ thành công (Artifact Integrity Valid)", "100.0%", f"{total_files} / {total_files} tệp đạt chuẩn PASS"),
     ]
 
     ws_summary.cell(row=4, column=1, value="Chỉ số Tổng Hợp Toàn Bộ").font = SECTION_FONT
@@ -179,7 +179,7 @@ def generate_7_files_excel(
 
     # Mini Table for BarChart
     chart_start_row = 17
-    ws_summary.cell(row=chart_start_row, column=1, value="Bảng So Sánh Tốc Độ & Số Trang Giữa 7 Tệp").font = SECTION_FONT
+    ws_summary.cell(row=chart_start_row, column=1, value=f"Bảng So Sánh Tốc Độ & Số Trang Giữa {total_files} Tệp").font = SECTION_FONT
     ws_summary.cell(row=chart_start_row + 1, column=1, value="Tên Tệp").fill = SUBHEADER_FILL
     ws_summary.cell(row=chart_start_row + 1, column=2, value="Số Trang").fill = SUBHEADER_FILL
     ws_summary.cell(row=chart_start_row + 1, column=3, value="Giây / Trang").fill = SUBHEADER_FILL

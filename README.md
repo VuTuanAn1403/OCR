@@ -1,10 +1,13 @@
-# Pipeline PDF sang Markdown tiếng Việt (V4.3 Accuracy First)
+# Pipeline PDF sang Markdown tiếng Việt (V5.0 Scientific Research Architecture)
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tests: 217 passed](https://img.shields.io/badge/Tests-217%20passed-brightgreen.svg)](tests/)
 
-Pipeline trích xuất chữ, bảng và ảnh từ PDF thành Markdown cùng JSON provenance. V4.3 tiếp tục dùng RapidOCR để phát hiện khung chữ và VietOCR local để nhận dạng, ưu tiên OCR vùng ảnh còn chữ, kiểm tra hướng trang, giữ PNG nguồn và đánh dấu `NEEDS_REVIEW` khi các lượt OCR bất đồng về số.
+Pipeline trích xuất chữ, bảng biểu và công thức toán từ PDF sang Markdown chuẩn hóa cùng JSON provenance bảo toàn dữ liệu. V5.0 áp dụng kiến trúc Clean Architecture, định tuyến lai Native-first / OCR-fallback, tích hợp mô hình Docling TableFormer FAST và CodeFormula trên CPU, kiểm soát lỗi số liệu tài chính qua hàng đợi `review_queue.json`.
 
-**Bổ sung 11/10/2026:** profile `balanced` và `accuracy` dùng **Docling TableFormer (accurate)** cho bảng và **CodeFormulaV2** cho công thức LaTeX. Cài môi trường riêng bằng `powershell -ExecutionPolicy Bypass -File scripts/setup_docling.ps1`; model tải về máy khi chạy lần đầu. Profile `fast` giữ backend cũ. Xem [hướng dẫn tích hợp, kiểm chứng và thời gian CPU](docs/DOCLING_TABLEFORMER_FORMULA_INTEGRATION.md). Ô gộp được giữ trong JSON/HTML; Markdown dùng bảng pipe và công thức `$$`. Đầu ra model cần rà soát độc lập.
+> 📊 **Báo cáo đối chuẩn toàn cầu:** Xem đánh giá so sánh toàn diện với IBM Docling, MinerU, Marker, PyMuPDF4LLM, Microsoft MarkItDown tại [docs/SO_SANH_TOAN_DIEN_CONG_CU_OCR_PDF.md](docs/SO_SANH_TOAN_DIEN_CONG_CU_OCR_PDF.md).
+> 📋 **Hồ sơ nghiên cứu khoa học:** Toàn bộ đặc tả SRS IEEE 830, thiết kế SAD và ma trận truy vết RTM tại [docs/PROJECT_SPECIFICATION_RESEARCH_V5.md](docs/PROJECT_SPECIFICATION_RESEARCH_V5.md).
 
 ---
 
@@ -95,8 +98,8 @@ Chi tiết kiến trúc kỹ thuật xem tại [docs/ARCHITECTURE.md](docs/ARCHI
 
 ```powershell
 # 1. Clone repository về máy
-git clone https://github.com/VuTuanAn1403/OCR_pdf.git
-cd OCR_pdf
+git clone https://github.com/VuTuanAn1403/OCR.git
+cd OCR
 
 # 2. Tạo và kích hoạt môi trường ảo Python 3.11
 py -3.11 -m venv .venv

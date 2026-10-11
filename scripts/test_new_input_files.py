@@ -5,11 +5,17 @@ Verifies end-to-end extraction, modality routing, CPU latency, and artifact inte
 """
 
 import sys
+import io
 import time
 import json
 import argparse
 from pathlib import Path
 from typing import List, Dict, Any
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -36,7 +42,8 @@ def run_test_on_file(
     file_path: Path,
     output_base: Path,
     pages_to_test: List[int],
-    profile: str = "balanced"
+    profile: str = "balanced",
+    force: bool = False
 ) -> Dict[str, Any]:
     print(f"\n=======================================================")
     print(f" TESTING: {file_path.name}")
@@ -44,11 +51,13 @@ def run_test_on_file(
     print(f"=======================================================")
 
     doc_dir = output_base / file_path.stem
-    if doc_dir.exists() and (doc_dir / "result.md").exists() and (doc_dir / "benchmark.json").exists():
+    if not force and doc_dir.exists() and (doc_dir / "result.md").exists() and (doc_dir / "benchmark.json").exists():
         try:
             bm_data = json.loads((doc_dir / "benchmark.json").read_text(encoding="utf-8"))
             tested_count = len(bm_data.get("pages_benchmarked", []))
-            if pages_to_test is None or tested_count >= len(pages_to_test):
+            with pymupdf.open(str(file_path)) as d:
+                total_doc_pages = len(d)
+            if (pages_to_test is None and tested_count >= total_doc_pages) or (pages_to_test is not None and tested_count >= len(pages_to_test)):
                 print(f" [CACHED] {file_path.name} already processed ({tested_count} pages). Reusing existing benchmark.")
                 md_text = (doc_dir / "result.md").read_text(encoding="utf-8")
                 validation = validate_document_artifacts(doc_dir)
@@ -146,6 +155,7 @@ def main():
     parser.add_argument("--all-pages", action="store_true", help="Test all pages in each PDF file")
     parser.add_argument("--profile", default="balanced", help="Profile to use (default: balanced)")
     parser.add_argument("--all-files", action="store_true", help="Include all files (not just new ones)")
+    parser.add_argument("--force", action="store_true", help="Force re-run even if cached")
     args = parser.parse_args()
 
     input_dir = Path(args.inputs).resolve()
@@ -178,7 +188,8 @@ def main():
             file_path=f,
             output_base=output_dir,
             pages_to_test=pages_to_test,
-            profile=args.profile
+            profile=args.profile,
+            force=args.force
         )
         results.append(res)
 
@@ -189,13 +200,14 @@ def main():
 
     # Generate Markdown report
     md_report_path = output_dir / "TEST_7_FILES_REPORT.md"
+    md_report_path_inputs = output_dir / "TEST_INPUT_FILES_REPORT.md"
     total_time = sum(r.get("wall_clock_seconds", 0) for r in results)
     total_tested_pages = sum(r.get("tested_pages", 0) for r in results)
     avg_speed = round(total_time / max(1, total_tested_pages), 2)
     passed_count = sum(1 for r in results if r.get("status") == "PASS")
 
     md_content = [
-        "# Báo Cáo Kết Quả Kiểm Thử 7 File PDF Inputs",
+        f"# Báo Cáo Kết Quả Kiểm Thử {len(results)} File PDF Inputs",
         "",
         f"- **Thời điểm kiểm thử:** {time.strftime('%Y-%m-%d %H:%M:%S')}",
         f"- **Tổng số tệp đã kiểm thử:** {len(results)}",
@@ -226,6 +238,7 @@ def main():
     ])
 
     md_report_path.write_text("\n".join(md_content), encoding="utf-8")
+    md_report_path_inputs.write_text("\n".join(md_content), encoding="utf-8")
 
     # Print summary table
     print("\n" + "=" * 80)
@@ -239,6 +252,15 @@ def main():
     print("=" * 80)
     print(f"Summary JSON saved to: {summary_path}")
     print(f"Markdown report saved to: {md_report_path}")
+
+    # Generate Excel Report
+    try:
+        from scripts.export_7_files_excel import generate_7_files_excel
+        excel_out = output_dir / f"OCR_BENCHMARK_{len(results)}_FILES.xlsx"
+        generate_7_files_excel(test_dir=output_dir, output_excel=excel_out)
+        print(f"Excel report saved to: {excel_out}")
+    except Exception as exc:
+        print(f"[WARN] Could not generate Excel report: {exc}")
 
 if __name__ == "__main__":
     main()

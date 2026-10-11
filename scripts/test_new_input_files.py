@@ -128,7 +128,7 @@ def run_test_on_file(
             "document_id": file_path.stem,
             "status": "FAIL",
             "total_file_pages": -1,
-            "tested_pages": len(pages_to_test),
+            "tested_pages": len(pages_to_test) if pages_to_test is not None else 0,
             "wall_clock_seconds": duration,
             "seconds_per_page": duration,
             "char_count": 0,

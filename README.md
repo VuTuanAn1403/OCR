@@ -353,7 +353,3 @@ Kết quả:
 5. **Kiểm thử đo lường khoa học:** Phân biệt tường minh `MEASURED`, `NOT_EVALUATED`, và phạt tối đa đối với `MISSING_OUTPUT` (`test_v6_evaluation_protocol.py`).
 
 ---
-
-## 9. Giấy Phép (License)
-
-Dự án được phân phối dưới giấy phép mã nguồn mở **MIT License**. Chi tiết xem tại file [LICENSE](LICENSE).

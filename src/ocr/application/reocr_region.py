@@ -47,6 +47,9 @@ class ReocrRegionUseCase:
                 block.reviewed = False
 
             if res.get("improved", False):
+                if block.text_raw is None:
+                    block.text_raw = block.text
+                block.correction_source = "regional_reocr"
                 block.text = res["text"]
                 block.confidence = res["confidence"]
                 block.quality_score = res.get("quality_score", block.quality_score)

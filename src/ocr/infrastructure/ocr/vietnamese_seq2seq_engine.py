@@ -11,6 +11,9 @@ from rapidocr_onnxruntime import RapidOCR
 from vietocr.tool.config import Cfg
 from vietocr.tool.predictor import Predictor
 from src.ocr.infrastructure.ocr.primary_engine import BaseOCREngine
+from src.ocr.runtime.paths import models_dir
+from src.ocr.runtime.models import model_file_sha256
+from src.ocr.infrastructure.postprocessing.numeric_guard import preserves_numeric_evidence
 
 class VietnameseSeq2SeqEngine(BaseOCREngine):
     """
@@ -23,26 +26,31 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
     _instance: Optional["VietnameseSeq2SeqEngine"] = None
     _detector: Optional[RapidOCR] = None
     _recognizer: Optional[Predictor] = None
+    _device: Optional[str] = None
+    _model_signature: Optional[Tuple[Any, ...]] = None
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super(VietnameseSeq2SeqEngine, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, batch_size: int = 16):
+    def __init__(self, batch_size: int = 16, device: Optional[str] = None):
         self.batch_size = batch_size
 
         if self._detector is None:
             self._detector = RapidOCR()
 
-        if self._recognizer is None:
-            model_dir = Path(os.environ.get(
-                "VIETOCR_MODEL_DIR",
-                Path(__file__).resolve().parents[4] / "models" / "vietocr",
-            ))
-            base_config = model_dir / "base.yml"
-            seq2seq_config = model_dir / "vgg-seq2seq.yml"
-            weights = model_dir / "vgg_seq2seq.pth"
+        model_dir = Path(os.environ.get("VIETOCR_MODEL_DIR") or models_dir() / "vietocr").expanduser().resolve()
+        base_config = model_dir / "base.yml"
+        seq2seq_config = model_dir / "vgg-seq2seq.yml"
+        weights = model_dir / "vgg_seq2seq.pth"
+        signature = (str(model_dir), *(model_file_sha256(path) for path in (base_config, seq2seq_config, weights)))
+        # Device=None preserves the loaded device. Replacing persistent model
+        # files or changing the model directory must reload the singleton too,
+        # otherwise cache provenance would identify weights we never used.
+        requested_device = device or self._device or "cpu"
+        if (self._recognizer is None or requested_device != self._device
+                or signature != self._model_signature):
             if base_config.is_file() and seq2seq_config.is_file() and weights.is_file():
                 with base_config.open(encoding="utf-8") as stream:
                     local_config = yaml.safe_load(stream)
@@ -52,8 +60,10 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
                 cfg = Cfg(local_config)
             else:
                 cfg = Cfg.load_config_from_name("vgg_seq2seq")
-            cfg["device"] = "cpu"
-            self._recognizer = Predictor(cfg)
+            cfg["device"] = requested_device
+            type(self)._recognizer = Predictor(cfg)
+            type(self)._device = requested_device
+            type(self)._model_signature = signature
 
     @staticmethod
     def _guard_repetition(text: str) -> Tuple[str, bool]:
@@ -173,15 +183,35 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
         results = []
         for idx, item in enumerate(boxes_and_crops):
             raw_text = recognized_texts[idx] if idx < len(recognized_texts) else ""
-            norm_text = unicodedata.normalize("NFC", raw_text).strip()
+            nfc_text = unicodedata.normalize("NFC", raw_text)
+            norm_text = nfc_text.strip()
             if not norm_text:
                 continue
+            corrections = []
+            if nfc_text != raw_text:
+                corrections.append("unicode_nfc")
+            if norm_text != nfc_text:
+                corrections.append("trim_whitespace")
 
             # In VietOCR, replace common question marks representing soft hyphens or broken dashes
             clean_text = norm_text.replace(" ? ", " - ")
+            cleanup_corrections = []
+            if clean_text != norm_text:
+                cleanup_corrections.append("vietocr_dash_repair")
 
             # Apply repetition guard
-            clean_text, is_graphic_noise = self._guard_repetition(clean_text)
+            before_guard = clean_text
+            clean_text, is_graphic_noise = self._guard_repetition(before_guard)
+            if clean_text != before_guard:
+                cleanup_corrections.append("vietocr_repetition_guard")
+            # Repeated numeric columns can be valid financial evidence. A
+            # cleanup candidate that changes protected numbers is rejected,
+            # retained verbatim after NFC, and surfaced for manual review.
+            numeric_cleanup_rejected = not preserves_numeric_evidence(norm_text, clean_text)
+            if numeric_cleanup_rejected:
+                clean_text, is_graphic_noise = norm_text, False
+            else:
+                corrections.extend(cleanup_corrections)
             if is_graphic_noise or not clean_text:
                 continue
 
@@ -192,6 +222,11 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             results.append({
                 "bbox": [round(c, 2) for c in item["bbox"]],
                 "text": clean_text,
+                "text_raw": raw_text,
+                "correction_source": "+".join(corrections) if corrections else None,
+                "numeric_cleanup_rejected": numeric_cleanup_rejected,
+                "needs_review": numeric_cleanup_rejected,
+                "review_reason": "numeric_cleanup_rejected" if numeric_cleanup_rejected else None,
                 "confidence": round(max(0.0, min(1.0, probability)), 4)
             })
 

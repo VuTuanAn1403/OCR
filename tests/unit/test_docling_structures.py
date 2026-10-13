@@ -20,7 +20,11 @@ from src.ocr.domain.models.page import ExtractedPage
 from src.ocr.domain.models.quality import DocumentQualityReport, PageQualityReport
 from src.ocr.domain.models.text_block import TextBlock
 from src.ocr.domain.routing.page_type import PageType
+from src.ocr.domain.models.schema import PAGE_SCHEMA_VERSION
 from src.ocr.infrastructure.export.artifact_validator import validate_document_artifacts
+from src.ocr.infrastructure.export.completion import mark_completed
+from src.ocr.runtime.fingerprint import source_fingerprint
+from src.ocr.runtime.models import model_fingerprint
 from src.ocr.infrastructure.export.json_exporter import JSONExporter
 from src.ocr.infrastructure.export.markdown_exporter import MarkdownExporter
 from src.ocr.infrastructure.layout.docling_structure import (
@@ -58,7 +62,9 @@ def test_mapping_preserves_spans_and_does_not_invent_confidence():
     assert table.page == 4 and table.cells[0].col_span == 2
     assert table.bbox == [10, 40, 110, 100]
     assert table.engine == "docling_tableformer" and table.needs_review
-    assert table.confidence == 0 and not table.provenance["confidence_available"]
+    assert table.confidence is None and table.confidence_source == "unavailable"
+    assert not table.provenance["confidence_available"]
+    assert all(cell.confidence is None for cell in table.cells)
     assert formula.page == 4 and formula.confidence is None and formula.status == "NEEDS_REVIEW"
     assert "colspan" not in table.to_pipe_table()
     assert "colspan" in table.provenance["html"]
@@ -251,17 +257,29 @@ def test_cache_invalidates_old_artifacts_and_backend_options(tmp_path):
     assert expected != DoclingStructureExtractor({**options, "formulas": False}).cache_fingerprint()
     runner = BatchOCRRunner.__new__(BatchOCRRunner)
     runner.force, runner.output_dir, runner.profile = False, tmp_path, "accuracy"
-    runner.converter = SimpleNamespace(profiles={"accuracy": {"docling": options}})
+    runner.assets_mode = "png"
+    runner.profile_config = {"profile": "accuracy", "docling": options}
     doc_dir = tmp_path / "fixture"
     (doc_dir / "pages").mkdir(parents=True)
     (doc_dir / "pages/page-0001.md").write_text("x")
-    for name in ("result", "manifest", "quality", "benchmark"):
+    for name in ("quality", "benchmark"):
         (doc_dir / f"{name}.json").write_text("{}")
+    (doc_dir / "manifest.json").write_text(json.dumps({
+        "profile": "accuracy", "page_schema_version": PAGE_SCHEMA_VERSION,
+        "source_fingerprint": source_fingerprint(), "assets_mode": "png",
+        "models_fingerprint": model_fingerprint(runner.profile_config),
+        "configuration": runner.profile_config}))
     (doc_dir / "result.md").write_text("x")
     (doc_dir / "validation.json").write_text('{"status":"PASS"}')
     (doc_dir / "result.json").write_text('{"pages":[{"metadata":{}}]}')
+    mark_completed(doc_dir, "PASS")
     assert runner.is_cached("fixture", 1) is None
     for status, hit in (("success", True), ("FAILED_FALLBACK", False)):
         data = {"pages": [{"metadata": {"docling_structure": {"status": status, "cache_fingerprint": expected}}}]}
         (doc_dir / "result.json").write_text(json.dumps(data))
+        assert runner.is_cached("fixture", 1) is None, "artifact changed after COMPLETED.json"
+        mark_completed(doc_dir, "PASS")
         assert (runner.is_cached("fixture", 1) is not None) == hit
+    # Output of other code or settings is never reused, even when complete.
+    runner.assets_mode = "none"
+    assert runner.is_cached("fixture", 1) is None

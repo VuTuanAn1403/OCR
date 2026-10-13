@@ -171,9 +171,13 @@ def build_workbook(output_dir: Path, excel_path: Path) -> None:
             ])
             reasons = []
             if page.get("page_type") != "PRODUCT_SHOWCASE_COLLAGE":
-                if page.get("quality_score", 1.0) < 0.90:
+                quality = page.get("quality_score", 1.0)
+                if quality is None:
+                    reasons.append("Quality unavailable (model output only)")
+                elif quality < 0.90:
                     reasons.append("Quality < 0.90")
-                if page.get("ocr_confidence", 1.0) < 0.90:
+                confidence = page.get("ocr_confidence")
+                if confidence is not None and confidence < 0.90:
                     reasons.append("Confidence < 0.90")
             if page.get("unicode_corruption_detected"):
                 reasons.append("Unicode lỗi")

@@ -1,17 +1,19 @@
-import os
 import json
 import hashlib
-from typing import Optional, Dict, Any
+from typing import Optional
 from pathlib import Path
 from src.ocr.domain.models.page import ExtractedPage
+from src.ocr.runtime.atomic_io import atomic_write_json
+from src.ocr.runtime.paths import cache_dir as default_cache_dir
 
 class ArtifactCache:
     """
     Manages caching and resumption of per-page OCR artifacts.
-    Keys on document_hash, page_num, render_dpi, and profile.
+    Keys on document_hash, page_num, render_dpi, and a profile key that
+    also encodes config, schema and code versions (see ProcessPageUseCase).
     """
-    def __init__(self, cache_dir: str = ".cache"):
-        self.cache_dir = Path(cache_dir)
+    def __init__(self, cache_dir: Optional[str] = None):
+        self.cache_dir = Path(cache_dir) if cache_dir else default_cache_dir()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
@@ -69,7 +71,7 @@ class ArtifactCache:
         """
         cache_file = self._get_page_cache_path(doc_hash, page.page_num, profile, dpi)
         try:
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(page.model_dump(mode="json"), f, ensure_ascii=False, indent=2)
-        except Exception:
+            atomic_write_json(cache_file, page.model_dump(mode="json"))
+        except OSError:
+            # A missing cache entry only costs a recomputation on resume.
             pass

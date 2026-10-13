@@ -24,6 +24,12 @@ import re
 import numpy as np
 import cv2
 import pymupdf
+import logging
+
+from src.ocr.infrastructure.layout.model_adapters import build_adapter, image_box_to_pdf
+from src.ocr.runtime.device import resolve_device
+
+logger = logging.getLogger(__name__)
 
 from src.ocr.domain.models.region import Region, BoundingBox, ContentType
 from src.ocr.domain.models.text_block import TextBlock
@@ -72,13 +78,29 @@ class HeuristicLayoutClassifier:
         conf_threshold: float = 0.35,
         iou_threshold: float = 0.45,
         use_onnx: bool = True,
+        model_config: Optional[Dict[str, Any]] = None,
+        device: str = "auto",
+        num_threads: int = 4,
     ):
         self.model_path = Path(model_path) if model_path else None
         self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
         self.use_onnx = use_onnx
         self._session = None
+        options = dict(model_config or {})
+        self.adapter_kind = options.get("adapter", "yolo")
+        self.class_names = options.get("class_names", DLA_CLASSES if self.adapter_kind == "yolo" else None)
+        if not self.class_names or not isinstance(self.class_names, list) or not all(isinstance(v, str) for v in self.class_names):
+            raise ValueError("Layout adapter requires an explicit class_names list matching the exported model")
+        self.label_map = options.get("label_map", {})
+        self.adapter = build_adapter(self.adapter_kind, len(self.class_names),
+                                     {"threshold": conf_threshold, "iou_threshold": iou_threshold, **options})
+        self.device = resolve_device(device)
+        self.num_threads = max(1, int(num_threads))
+        self.last_error = None
 
+        if self.use_onnx and self.model_path and not self.model_path.is_file():
+            raise FileNotFoundError(f"Layout model not found: {self.model_path}")
         if self.use_onnx and self.model_path and self.model_path.exists():
             self._init_onnx_session()
 
@@ -87,14 +109,19 @@ class HeuristicLayoutClassifier:
         try:
             import onnxruntime as ort
             providers = ["CPUExecutionProvider"]
-            if "CUDAExecutionProvider" in ort.get_available_providers():
+            if self.device == "cuda" and "CUDAExecutionProvider" in ort.get_available_providers():
                 providers.insert(0, "CUDAExecutionProvider")
+            elif self.device == "cuda":
+                raise RuntimeError("CUDAExecutionProvider is unavailable for the requested layout device")
             opts = ort.SessionOptions()
-            opts.intra_op_num_threads = 4
+            opts.intra_op_num_threads = self.num_threads
             self._session = ort.InferenceSession(str(self.model_path), opts, providers=providers)
-            print(f"[DLAEngine] Loaded ONNX model from {self.model_path} using {self._session.get_providers()[0]}")
+            if self.device == "cuda" and self._session.get_providers()[0] != "CUDAExecutionProvider":
+                raise RuntimeError("Layout session fell back to CPU despite the requested CUDA device")
+            logger.info("Loaded layout model %s using %s", self.model_path, self._session.get_providers()[0])
         except Exception as e:
-            print(f"[DLAEngine] Warning: Could not initialize ONNX session: {e}. Falling back to geometric DLA.")
+            self.last_error = str(e)
+            logger.warning("Layout model initialization failed; using geometric fallback: %s", e)
             self._session = None
 
     def analyze_page(
@@ -110,9 +137,11 @@ class HeuristicLayoutClassifier:
         """
         if self._session is not None and page_image is not None:
             try:
+                self.last_error = None
                 return self._run_onnx_dla(page_image, page, page_num)
             except Exception as e:
-                print(f"[DLAEngine] ONNX inference error: {e}. Using geometric fallback.")
+                self.last_error = str(e)
+                logger.warning("Layout inference failed; using geometric fallback: %s", e)
 
         return self._run_geometric_dla(page, page_num, total_pages)
 
@@ -122,47 +151,27 @@ class HeuristicLayoutClassifier:
         page: pymupdf.Page,
         page_num: int,
     ) -> List[Region]:
-        """Runs deep visual object detection on the page image."""
-        h_orig, w_orig = image.shape[:2]
-        target_size = 800  # Standard input resolution for fast DLA
-
-        # Preprocessing: Letterbox resize
-        scale = min(target_size / h_orig, target_size / w_orig)
-        nw, nh = int(w_orig * scale), int(h_orig * scale)
-        resized = cv2.resize(image, (nw, nh), interpolation=cv2.INTER_LINEAR)
-
-        canvas = np.full((target_size, target_size, 3), 114, dtype=np.uint8)
-        top = (target_size - nh) // 2
-        left = (target_size - nw) // 2
-        canvas[top : top + nh, left : left + nw] = resized
-
-        blob = canvas.astype(np.float32) / 255.0
-        blob = np.transpose(blob, (2, 0, 1))
-        blob = np.expand_dims(blob, axis=0)
-
-        input_name = self._session.get_inputs()[0].name
-        outputs = self._session.run(None, {input_name: blob})
-        preds = outputs[0]  # Shape: [1, num_boxes, 4 + num_classes] or [1, 4 + num_classes, num_boxes]
-
-        # Postprocessing NMS
-        boxes, scores, class_ids = self._parse_detections(preds, scale, left, top, w_orig, h_orig)
-
-        regions: List[Region] = []
-        for idx, (b, score, cid) in enumerate(zip(boxes, scores, class_ids)):
-            cls_name = DLA_CLASSES[cid] if 0 <= cid < len(DLA_CLASSES) else "text"
-            c_type = CLASS_TO_CONTENT_TYPE.get(cls_name, ContentType.TEXT)
-            bb = BoundingBox(x0=round(b[0], 2), y0=round(b[1], 2), x1=round(b[2], 2), y1=round(b[3], 2))
-
+        """Run the configured export contract and convert pixels to PDF points."""
+        tensor, geometry = self.adapter.prepare(image)
+        inputs = self._session.get_inputs()
+        if len(inputs) != 1:
+            raise ValueError("Layout export requires an adapter for its extra input tensors")
+        values = self._session.run(None, {inputs[0].name: tensor})
+        outputs = {output.name: value for output, value in zip(self._session.get_outputs(), values)}
+        detections = self.adapter.decode(outputs, geometry)
+        regions = []
+        for index, detection in enumerate(detections, 1):
+            raw_label = self.class_names[detection.class_id]
+            label = self.label_map.get(raw_label, raw_label).lower().replace("-", "_")
+            c_type = CLASS_TO_CONTENT_TYPE.get(label, ContentType.UNKNOWN)
+            bb = image_box_to_pdf(detection.bbox, image.shape, page)
             regions.append(Region(
-                region_id=f"p{page_num}_dla_{idx+1}",
-                bbox=bb,
-                content_type=c_type,
-                label=cls_name,
-                category_id=cid,
-                dla_score=round(float(score), 4),
-                confidence=round(float(score), 4),
-                source="ocr",
-                reading_order=idx + 1,
+                region_id=f"p{page_num}_dla_{index}", bbox=BoundingBox(
+                    x0=bb[0], y0=bb[1], x1=bb[2], y1=bb[3]),
+                region_type=label, content_type=c_type, label=label,
+                category_id=detection.class_id, dla_score=detection.score,
+                confidence=detection.score, quality_score=None, source="ocr",
+                reading_order=index,
             ))
         return regions
 
@@ -273,7 +282,7 @@ class HeuristicLayoutClassifier:
         for img_info in page.get_images():
             try:
                 for img_rect in page.get_image_rects(img_info[0]):
-                    bb = BoundingBox(x0=round(img_rect.x0, 2), y0=round(img_rect.y0, 2), x1=round(img_rect.x1, 2), y1=round(img_rect.y2, 2))
+                    bb = BoundingBox(x0=round(img_rect.x0, 2), y0=round(img_rect.y0, 2), x1=round(img_rect.x1, 2), y1=round(img_rect.y1, 2))
                     # Avoid noise icons (min 50x50pt) and avoid full-page background scans
                     if bb.area >= 2500 and (bb.area / (page_w * page_h)) < 0.85:
                         # Avoid duplicates overlapping with tables

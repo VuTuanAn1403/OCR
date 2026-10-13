@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 import unicodedata
 from bs4 import BeautifulSoup
-from .ocr_metric import compute_cer, compute_wer, compute_der, compute_cer_detailed
+from .ocr_metric import compute_cer, compute_wer, compute_der, compute_cer_detailed, normalize_text_policy
 from .teds_metric import compute_teds, compute_teds_struct, evaluate_table_collection
 
 
@@ -22,7 +22,7 @@ _HTML_TABLE_PATTERN = re.compile(r"<table\b[^>]*>(?:(?!</table>).)*</table>", re
 _PAGE_MARKER_PATTERN = re.compile(r"(?:<!--\s*(?:page|trang)\s*:?\s*(\d+)\s*-->|(?:\n|^)#+\s*(?:Trang|Page)\s+(\d+))", re.IGNORECASE)
 
 
-def parse_markdown_artifacts(markdown_path: Path) -> Dict[str, Any]:
+def parse_markdown_artifacts(markdown_path: Path, policy: str = "reading_normalized_v1") -> Dict[str, Any]:
     """
     Parses a Markdown file and extracts its structural components.
     Strictly parses only the given markdown_path without fallback to sibling directories.
@@ -65,7 +65,7 @@ def parse_markdown_artifacts(markdown_path: Path) -> Dict[str, Any]:
     all_tables_html = html_tables + converted_pipe_tables
 
     # 4. Extract stripped plain text (stripping markdown markup, links, table syntax)
-    clean_text = _strip_markdown_for_text_evaluation(raw_text)
+    clean_text = _strip_markdown_for_text_evaluation(raw_text, policy=policy)
 
     # 5. Extract per-page contents if page markers are present
     pages_text: Dict[int, str] = {}
@@ -75,8 +75,8 @@ def parse_markdown_artifacts(markdown_path: Path) -> Dict[str, Any]:
             page_num = int(m.group(1) or m.group(2))
             start_pos = m.end()
             end_pos = markers[i + 1].start() if i + 1 < len(markers) else len(raw_text)
-            page_slice = raw_text[start_pos:end_pos]
-            pages_text[page_num] = _strip_markdown_for_text_evaluation(page_slice)
+            page_slice = raw_text[start_pos:end_pos].strip("\r\n")
+            pages_text[page_num] = _strip_markdown_for_text_evaluation(page_slice, policy=policy)
 
     return {
         "raw_text": raw_text,
@@ -116,11 +116,15 @@ def _pipe_table_to_html(pipe_markdown: str) -> Optional[str]:
     return "".join(html_parts)
 
 
-def _strip_markdown_for_text_evaluation(md_content: str) -> str:
+def _strip_markdown_for_text_evaluation(md_content: str, policy: str = "reading_normalized_v1") -> str:
     """
     Extracts text content from Markdown, removing markdown markup, links, images, and HTML tags.
     """
     text = md_content
+    # Exporter-generated page markers and table separators are not PDF text.
+    text = re.sub(r"^#+\s*(?:Trang|Page)\s+\d+[^\r\n]*(?:\r?\n|$)", "", text,
+                  flags=re.MULTILINE | re.IGNORECASE)
+    text = re.sub(r"^\|\s*[-:\s|]+\|\s*(?:\r?\n|$)", "", text, flags=re.MULTILINE)
     # Remove image links
     text = _IMAGE_LINK_PATTERN.sub(" ", text)
     # Remove standard links [text](url) -> text
@@ -135,8 +139,9 @@ def _strip_markdown_for_text_evaluation(md_content: str) -> str:
     text = re.sub(r"^>\s*", "", text, flags=re.MULTILINE)
     # Remove table pipe bars
     text = re.sub(r"\|", " ", text)
-    # Normalize whitespace
-    return " ".join(text.split())
+    # V6 primary scores preserve visible whitespace; the legacy call uses the
+    # explicitly labelled secondary policy.
+    return normalize_text_policy(text, policy=policy)
 
 
 def evaluate_final_markdown(

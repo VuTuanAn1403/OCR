@@ -20,7 +20,8 @@ class EvidenceBlock(BaseModel):
     text: str = ""
     content_type: ContentType = ContentType.TEXT
     source: Literal["native", "ocr", "vector", "image"] = "native"
-    confidence: float = 1.0
+    confidence: Optional[float] = 1.0
+    confidence_source: Optional[str] = None
     orientation: Optional[float] = None
     rotation: float = 0.0
     column_id: Optional[int] = None
@@ -31,7 +32,7 @@ class EvidenceBlock(BaseModel):
     transform_matrix: List[float] = Field(default_factory=list)
     status: str = "VALIDATED"
     failure_reason: Optional[str] = None
-    quality_score: float = 1.0
+    quality_score: Optional[float] = 1.0
     block_type: str = "paragraph"
     is_bold: Optional[bool] = None
     font_size: Optional[float] = None

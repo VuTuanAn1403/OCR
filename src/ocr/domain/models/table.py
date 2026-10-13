@@ -12,7 +12,8 @@ class TableCell(BaseModel):
     col_span: int = 1
     text: str = ""
     bbox: List[float] = Field(default_factory=list)
-    confidence: float = 1.0
+    confidence: Optional[float] = 1.0
+    confidence_source: Optional[str] = None
 
 
 class TableRenderer:
@@ -397,7 +398,9 @@ class TableStructure(BaseModel):
     num_cols: int = 0
     cells: List[TableCell] = Field(default_factory=list)
     caption: Optional[str] = None
-    confidence: float = 1.0
+    # None = model output without calibrated confidence (see confidence_source).
+    confidence: Optional[float] = 1.0
+    confidence_source: Optional[str] = None
     has_nested_tables: bool = False
     engine: str = "heuristic"
     needs_review: bool = False

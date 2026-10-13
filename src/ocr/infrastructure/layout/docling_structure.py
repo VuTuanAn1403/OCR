@@ -22,6 +22,7 @@ import pymupdf
 import psutil
 from src.ocr.domain.models.formula import Formula
 from src.ocr.domain.models.table import TableCell, TableStructure
+from src.ocr.runtime.paths import cache_dir, models_dir
 
 ROOT = Path(__file__).resolve().parents[4]
 SCHEMA_VERSION = "docling-structure-v1"
@@ -105,13 +106,14 @@ class DoclingStructureExtractor:
         self._log = None
         self._job_dir = None
         self._requests = 0
+        self._warm = False
 
     def cache_fingerprint(self) -> str:
         digest = hashlib.sha256(json.dumps(self.options, sort_keys=True).encode())
         digest.update(SCHEMA_VERSION.encode())
         digest.update(str(self.python.resolve()).encode())
         for path in (Path(__file__), ROOT / "scripts/docling_structure_worker.py",
-                     ROOT / "requirements-docling.lock.txt", ROOT / "models/docling/model_manifest.json"):
+                     ROOT / "requirements-docling.lock.txt", models_dir() / "docling/model_manifest.json"):
             if path.is_file():
                 digest.update(path.read_bytes())
         return digest.hexdigest()[:16]
@@ -119,12 +121,14 @@ class DoclingStructureExtractor:
     def _start(self) -> None:
         if not self.python.is_file():
             raise DoclingStructureError("Docling environment missing; run scripts/setup_docling.ps1 or set OCR_DOCLING_PYTHON")
-        self._job_dir = ROOT / ".cache/docling-structure" / uuid.uuid4().hex
+        # Absolute: the worker runs with cwd=ROOT and receives these paths.
+        self._job_dir = cache_dir().resolve() / "docling-structure" / uuid.uuid4().hex
         self._job_dir.mkdir(parents=True)
         self._log = (self._job_dir / "worker.log").open("w", encoding="utf-8")
         env = os.environ.copy()
-        env.update(HF_HOME=str(ROOT / "models/docling/huggingface"),
-                   EASYOCR_MODULE_PATH=str(ROOT / "models/docling/easyocr"),
+        docling_models = models_dir().resolve() / "docling"
+        env.update(HF_HOME=str(docling_models / "huggingface"),
+                   EASYOCR_MODULE_PATH=str(docling_models / "easyocr"),
                    OMP_NUM_THREADS=str(self.options.get("num_threads", 4)),
                    TOKENIZERS_PARALLELISM="false", PYTHONIOENCODING="utf-8")
         self._responses = queue.Queue()
@@ -146,15 +150,49 @@ class DoclingStructureExtractor:
 
         threading.Thread(target=read_responses, daemon=True).start()
 
+    def _ensure_started(self) -> bool:
+        """Start the worker if needed; True when this call started it."""
+        if self._process is not None:
+            return False
+        try:
+            self._start()
+        except OSError as exc:
+            self.close()
+            raise DoclingStructureError(f"Cannot start Docling worker: {exc}") from exc
+        return True
+
+    def warmup(self) -> float:
+        """Start the worker and load every model before the first page, so
+        start-up time is measured separately from page latency (PERF-05).
+        Returns the elapsed seconds; 0.0 when the worker was already warm."""
+        if self._warm:
+            return 0.0
+        started = time.perf_counter()
+        self._ensure_started()
+        request_id = uuid.uuid4().hex
+        timeout = float(self.options.get("startup_timeout_seconds", 900))
+        try:
+            self._process.stdin.write(json.dumps({"id": request_id, "op": "warmup", "options": self.options}) + "\n")
+            self._process.stdin.flush()
+            response = self._responses.get(timeout=timeout)
+        except queue.Empty:
+            self.close()
+            raise DoclingStructureError(f"Docling warm-up exceeded {timeout:g}s and was terminated")
+        except (OSError, ValueError, RuntimeError) as exc:
+            self.close()
+            raise DoclingStructureError(f"Docling worker transport failed: {exc}") from exc
+        if response.get("id") != request_id or response.get("status") != "success":
+            self.close()
+            raise DoclingStructureError(response.get("error", "Docling warm-up failed"))
+        self._warm = True
+        return time.perf_counter() - started
+
     def extract_page(self, page: pymupdf.Page, page_num: int) -> dict[str, Any]:
         started = time.perf_counter()
-        cold = self._process is None
-        if cold:
-            try:
-                self._start()
-            except OSError as exc:
-                self.close()
-                raise DoclingStructureError(f"Cannot start Docling worker: {exc}") from exc
+        # A running worker has already loaded its models (warm-up or an
+        # earlier page); only a worker started by this call needs the
+        # start-up timeout.
+        cold = self._ensure_started()
         request_id = uuid.uuid4().hex
         path = self._job_dir / f"page-{page_num:04d}-{request_id}.pdf"
         request = {"id": request_id, "pdf": str(path), "options": self.options,
@@ -179,6 +217,7 @@ class DoclingStructureExtractor:
             self.close()
             raise DoclingStructureError(error)
         self._requests += 1
+        self._warm = True
         response.update(elapsed_seconds=time.perf_counter() - started, cold_start=cold,
                         log_path=str(self._job_dir / "worker.log"), schema_version=SCHEMA_VERSION)
         try:
@@ -198,7 +237,8 @@ class DoclingStructureExtractor:
         for index, raw in enumerate(response.get("tables", []), 1):
             cells = [TableCell(row_idx=c["row"], col_idx=c["col"],
                                row_span=c["row_span"], col_span=c["col_span"],
-                               text=c["text"], bbox=c.get("bbox") or [], confidence=0.0)
+                               text=c["text"], bbox=c.get("bbox") or [],
+                               confidence=None, confidence_source="unavailable")
                      for c in raw["cells"]]
             # An empty model output is never a replacement for existing content.
             if not cells or not any(c.text.strip() or (c.bbox and len(c.bbox) == 4) for c in cells):
@@ -213,8 +253,8 @@ class DoclingStructureExtractor:
             tables.append(TableStructure(
                 table_id=f"p{page_num}_docling_table_{index}", page=page_num,
                 bbox=raw["bbox"], num_rows=raw["num_rows"], num_cols=raw["num_cols"],
-                cells=cells, caption=raw.get("caption"), confidence=0.0,
-                engine="docling_tableformer", needs_review=True,
+                cells=cells, caption=raw.get("caption"), confidence=None,
+                confidence_source="unavailable", engine="docling_tableformer", needs_review=True,
                 provenance={**response.get("provenance", {}), "item_ref": raw.get("item_ref"),
                             "confidence_available": False, "html": raw.get("html", "")},
             ))
@@ -243,6 +283,7 @@ class DoclingStructureExtractor:
 
     def close(self) -> None:
         process, self._process = self._process, None
+        self._warm = False
         if process is not None:
             if process.poll() is None:
                 # A Windows venv executable is a launcher with a Python child.

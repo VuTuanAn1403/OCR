@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 
 from src.ocr.domain.models.table import TableStructure
 from src.ocr.domain.models.region import Region
-from src.ocr.infrastructure.export.markdown_exporter import MarkdownExporter
+from src.ocr.infrastructure.export.markdown_exporter import ASSET_MODES, MarkdownExporter
 
 
 _IMAGE_LINK = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
@@ -41,12 +41,17 @@ def validate_document_artifacts(
         if re.fullmatch(r"page-\d{4}\.json", path.name)
     )
     manifest_path = doc_dir / "manifest.json"
+    assets_mode = "png"
     if not manifest_path.is_file():
         errors.append("manifest.json is missing")
         expected_pages = []
     else:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         expected_pages = manifest.get("selected_pages") or []
+        # Outputs written before --assets existed always exported PNG files.
+        assets_mode = manifest.get("assets_mode", "png")
+        if assets_mode not in ASSET_MODES:
+            errors.append(f"manifest.json has unknown assets_mode {assets_mode!r}")
         if len(page_files) != len(expected_pages):
             errors.append(
                 f"Page JSON count {len(page_files)} differs from selected pages {len(expected_pages)}"
@@ -63,6 +68,9 @@ def validate_document_artifacts(
         result_markdown = result_path.read_text(encoding="utf-8")
     else:
         errors.append("result.md is missing")
+    # V6 document-level Markdown gets the same table/image checks (C3.7).
+    if (doc_dir / "document.md").is_file():
+        markdown_files.append(doc_dir / "document.md")
 
     for json_path in page_files:
         counts["pages_json"] += 1
@@ -195,13 +203,20 @@ def validate_document_artifacts(
                 and (region.get("status") == "PRESERVED"
                      or (page_area > 0 and image_area / page_area >= 0.20))
             ):
+                region_id = region.get("region_id")
+                if assets_mode == "none":
+                    if region.get("asset") is not None:
+                        errors.append(f"Page {page_num}: region {region_id} has an asset although assets_mode is none")
+                    if MarkdownExporter.image_omitted_marker(region_id) not in markdown:
+                        errors.append(f"Page {page_num}: preserved region {region_id} has no omitted-image note")
+                    continue
                 asset_name = MarkdownExporter.image_asset_name(
-                    page_num, Region.model_validate(region)
+                    page_num, Region.model_validate(region), assets_mode
                 )
                 if f"../images/{asset_name}" not in markdown:
-                    errors.append(f"Page {page_num}: preserved region {region.get('region_id')} has no Markdown image")
+                    errors.append(f"Page {page_num}: preserved region {region_id} has no Markdown image")
                 if not (doc_dir / "images" / asset_name).is_file():
-                    errors.append(f"Page {page_num}: preserved region {region.get('region_id')} has no PNG asset")
+                    errors.append(f"Page {page_num}: preserved region {region_id} has no {assets_mode.upper()} asset")
         for evidence in evidence_blocks:
             counts["evidence_blocks"] += 1
             block_id = evidence.get("block_id")
@@ -229,6 +244,8 @@ def validate_document_artifacts(
             if not target.is_relative_to(root) or not target.is_file():
                 counts["broken_image_links"] += 1
                 errors.append(f"{markdown_path.relative_to(doc_dir)} has broken image {image_path}")
+
+    _validate_document_contracts(doc_dir, errors, warnings, counts)
 
     if counts["review_required_lines"]:
         warnings.append(f"{counts['review_required_lines']} OCR lines require review")
@@ -264,3 +281,76 @@ def validate_document_artifacts(
                 )
     status = "FAIL" if errors else "NEEDS_REVIEW" if warnings else "PASS"
     return {"status": status, "counts": counts, "errors": errors, "warnings": warnings}
+
+
+# `{doc_sha16}:p{page:04d}:{kind}{n:04d}`; the document part is not checked
+# for hex so synthetic fixtures with short hashes stay valid.
+_ELEMENT_ID = re.compile(r"^[^:\s]+:p\d{4}:[btfi]\d{4}$")
+
+
+def _validate_document_contracts(doc_dir: Path, errors: List[str], warnings: List[str],
+                                 counts: Dict[str, Any]) -> None:
+    """C3.7: every id that document.json uses must exist in extraction.json.
+    Outputs written before V6 have no document.json and are skipped."""
+    document_path = doc_dir / "document.json"
+    extraction_path = doc_dir / "extraction.json"
+    if not document_path.is_file():
+        if extraction_path.is_file():
+            from src.ocr.infrastructure.export.contract_schema import ExtractionContract
+            try:
+                extraction = json.loads(extraction_path.read_text(encoding="utf-8"))
+                ExtractionContract.model_validate(extraction)
+            except (OSError, ValueError, TypeError) as exc:
+                errors.append(f"extraction.json is invalid: {exc}")
+                return
+            warnings.append("V6 structure is incomplete: extraction.json exists but document.json is missing")
+        return
+    if not extraction_path.is_file():
+        errors.append("document.json exists but extraction.json is missing")
+        return
+    try:
+        extraction = json.loads(extraction_path.read_text(encoding="utf-8"))
+        document = json.loads(document_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        errors.append(f"V6 contracts cannot be read: {exc}")
+        return
+    from src.ocr.infrastructure.export.contract_schema import validate_contract_pair
+    contract_errors = validate_contract_pair(extraction, document)
+    if contract_errors:
+        errors.extend(contract_errors)
+        return
+    ids = [item["id"] for page in extraction.get("pages", []) for item in page.get("items", [])]
+    known = set(ids)
+    if len(known) != len(ids):
+        errors.append("extraction.json has duplicate element ids")
+    malformed = [i for i in ids if not _ELEMENT_ID.match(i)]
+    if malformed:
+        errors.append(f"extraction.json has malformed ids, e.g. {malformed[0]}")
+
+    def check(ref: str, where: str) -> None:
+        if ref not in known:
+            errors.append(f"document.json {where} references unknown id {ref}")
+
+    sections = {s["section_id"] for s in document.get("sections", [])}
+    chunk_ids = [c["chunk_id"] for c in document.get("chunks", [])]
+    if len(set(chunk_ids)) != len(chunk_ids):
+        errors.append("document.json has duplicate chunk ids")
+    for section in document.get("sections", []):
+        for ref in section.get("heading_item_ids", []):
+            check(ref, f"section {section['section_id']}")
+    for chunk in document.get("chunks", []):
+        if chunk.get("section_id") not in sections:
+            errors.append(f"chunk {chunk['chunk_id']} is outside the section tree")
+        if not chunk.get("spans"):
+            errors.append(f"chunk {chunk['chunk_id']} has no spans")
+        for span in chunk.get("spans", []):
+            for ref in span.get("block_ids", []):
+                check(ref, f"chunk {chunk['chunk_id']}")
+    for key, field in (("tables", "table_id"), ("formulas", "formula_id"), ("images", "image_id")):
+        for entry in document.get(key, []):
+            check(entry[field], key)
+    counts["structure_sections"] = len(sections)
+    counts["structure_chunks"] = len(chunk_ids)
+    review = sum(1 for chunk in document.get("chunks", []) if chunk.get("needs_review"))
+    if review:
+        warnings.append(f"{review} document chunks need review")

@@ -1,10 +1,10 @@
+import copy
+import json
 import time
-import os
 import gc
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import pymupdf
-import yaml
 
 from src.ocr.domain.models.document import ExtractedDocument
 from src.ocr.domain.models.quality import DocumentQualityReport, QualityMetrics
@@ -13,7 +13,11 @@ from src.ocr.application.route_page import RoutePageUseCase
 from src.ocr.application.process_page import ProcessPageUseCase
 from src.ocr.application.export_document import ExportDocumentUseCase
 from src.ocr.infrastructure.cache.artifact_cache import ArtifactCache
+from src.ocr.infrastructure.export.completion import mark_completed
 from src.ocr.infrastructure.export.manifest_exporter import ManifestExporter
+from src.ocr.runtime.atomic_io import atomic_write_json
+from src.ocr.runtime.config import get_profile, load_profiles
+from src.ocr.runtime.device import resolve_device
 
 
 
@@ -67,23 +71,29 @@ class ConvertDocumentUseCase:
     Main orchestration use case to convert a PDF document using the Hybrid OCR v3.1 Pipeline.
     """
     def __init__(self, config_path: Optional[str] = None):
-        if config_path is None:
-            env_config = os.getenv("OCR_CONFIG_PATH")
-            root_config = Path("config/profiles.yaml").resolve()
-            bundled_config = Path(__file__).parent.parent / "config" / "profiles.yaml"
+        # Single config source; a missing file is an error (ENV-13).
+        self.config_path, self.profiles = load_profiles(config_path)
 
-            if env_config and os.path.exists(env_config):
-                config_path = env_config
-            elif root_config.exists():
-                config_path = str(root_config)
+    def resolve_profile(self, profile_name: str, device: Optional[str] = None) -> Dict[str, Any]:
+        """Profile with the device resolved to `cpu` or `cuda` and passed to
+        Docling too, so the resolved device is part of every cache key."""
+        config = copy.deepcopy(get_profile(self.profiles, profile_name))
+        requested_device = device or config.get("device")
+        config["device"] = resolve_device(requested_device)
+        if config.get("primary_engine", "vietocr") == "rapidocr" and config["device"] == "cuda":
+            if requested_device == "auto":
+                config["device"] = "cpu"
             else:
-                config_path = str(bundled_config)
-
-        self.profiles = {}
-        if os.path.exists(config_path):
-            with open(config_path, "r", encoding="utf-8") as f:
-                loaded = yaml.safe_load(f)
-                self.profiles = loaded.get("profiles", {})
+                raise ValueError("The RapidOCR primary backend currently runs on CPU; use --device cpu for this profile")
+        config["backend_devices"] = {
+            "ocr_detection": "cpu",  # RapidOCR detector GPU path awaits T4.
+            "ocr_recognition": config["device"],
+            "layout": config["device"],
+            "docling": config["device"] if config.get("docling", {}).get("enabled") else None,
+        }
+        if isinstance(config.get("docling"), dict):
+            config["docling"]["device"] = config["device"]
+        return config
 
     def execute(
         self,
@@ -94,38 +104,62 @@ class ConvertDocumentUseCase:
         resume: bool = False,
         benchmark: bool = False,
         accuracy_report: bool = False,
-        ground_truth_dir: str = "benchmark/ground_truth"
+        ground_truth_dir: str = "benchmark/ground_truth",
+        device: Optional[str] = None,
+        assets_mode: str = "png",
+        warmup: bool = False,
+        cache_dir: Optional[str] = None,
     ) -> ExtractedDocument:
-        t0 = time.time()
+        t0 = time.perf_counter()
         pdf_path = resolve_input_path(file_path)
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {file_path}")
 
         doc_id = pdf_path.stem
         file_hash = ArtifactCache.compute_file_hash(str(pdf_path))
+        config = self.resolve_profile(profile_name, device)
 
-        config = self.profiles.get(profile_name, {
-            "profile": profile_name,
-            "render_dpi": 180,
-            "fallback_enabled": True,
-            "min_confidence": 0.80
-        })
+        if pages and any(isinstance(p, bool) or not isinstance(p, int) or p < 1 for p in pages):
+            raise ValueError("pages must contain positive 1-based integer page numbers")
 
         doc = pymupdf.open(str(pdf_path))
         total_pages = len(doc)
+        if total_pages <= 0:
+            doc.close()
+            raise ValueError("PDF has no pages to process")
 
         if pages is None or len(pages) == 0:
             target_pages = list(range(1, total_pages + 1))
         else:
-            target_pages = [p for p in pages if 1 <= p <= total_pages]
+            invalid = [p for p in pages if p > total_pages]
+            if invalid:
+                doc.close()
+                raise ValueError(f"Pages outside the document's 1-{total_pages} range: {invalid}")
+            target_pages = sorted(set(pages))
 
-        cache = ArtifactCache()
-        routing_policy = RoutingPolicy(
-            reliable_threshold=config.get("native_quality", {}).get("reliable_threshold", 0.90),
-            review_threshold=config.get("native_quality", {}).get("review_threshold", 0.70)
-        )
-        router = RoutePageUseCase(routing_policy)
-        page_processor = ProcessPageUseCase(doc, config, file_hash, cache)
+        page_processor = None
+        try:
+            cache = ArtifactCache(cache_dir)
+            routing_policy = RoutingPolicy(
+                reliable_threshold=config.get("native_quality", {}).get("reliable_threshold", 0.90),
+                review_threshold=config.get("native_quality", {}).get("review_threshold", 0.70)
+            )
+            router = RoutePageUseCase(routing_policy)
+            # Model loading happens here (and in the optional Docling warm-up), so
+            # start-up is reported separately from page latency (PERF-05).
+            t_startup = time.perf_counter()
+            page_processor = ProcessPageUseCase(doc, config, file_hash, cache)
+            timing: Dict[str, Any] = {"model_init_seconds": round(time.perf_counter() - t_startup, 3)}
+            if warmup and page_processor.structure_extractor.enabled:
+                timing.update(self._warm_up_docling(page_processor, config))
+            startup_seconds = round(time.perf_counter() - t_startup, 3)
+            timing["startup_seconds"] = startup_seconds
+        except Exception:
+            if page_processor is not None:
+                page_processor.close()
+            doc.close()
+            raise
+        t_pages = time.perf_counter()
 
         extracted_pages = []
         pages_native = 0
@@ -152,11 +186,19 @@ class ConvertDocumentUseCase:
             page_processor.close()
             doc.close()
 
-        total_duration = time.time() - t0
+        timing["pages_seconds"] = round(time.perf_counter() - t_pages, 3)
+        total_duration = time.perf_counter() - t0
         mean_native_score = sum(p.quality.native_text_score for p in extracted_pages) / len(extracted_pages) if extracted_pages else 1.0
-        ocr_pages = [p for p in extracted_pages if p.quality.recognized_lines > 0]
-        mean_ocr_conf = sum(p.quality.ocr_confidence for p in ocr_pages) / len(ocr_pages) if ocr_pages else 0.0
-        mean_qual_score = sum(p.quality.quality_score for p in extracted_pages) / len(extracted_pages) if extracted_pages else 1.0
+        ocr_confidences = [p.quality.ocr_confidence for p in extracted_pages
+                           if p.quality.recognized_lines > 0 and p.quality.ocr_confidence is not None]
+        mean_ocr_conf = round(sum(ocr_confidences) / len(ocr_confidences), 4) if ocr_confidences else None
+        # Pages without a measurable score (only model output) are left out (C2.3d).
+        scored = [p.quality.quality_score for p in extracted_pages if p.quality.quality_score is not None]
+        if scored:
+            mean_qual_score = sum(scored) / len(scored)
+        else:
+            mean_qual_score = None if extracted_pages else 1.0
+        pages_from_cache = sum(1 for p in extracted_pages if p.quality.from_cache)
 
         total_primary_lines = sum(p.quality.total_blocks for p in extracted_pages)
         total_recognized_lines = sum(p.quality.recognized_lines for p in extracted_pages)
@@ -166,16 +208,18 @@ class ConvertDocumentUseCase:
             document_id=doc_id,
             total_pages=total_pages,
             mean_native_score=round(mean_native_score, 4),
-            mean_ocr_confidence=round(mean_ocr_conf, 4),
-            mean_quality_score=round(mean_qual_score, 4),
+            mean_ocr_confidence=mean_ocr_conf,
+            mean_quality_score=round(mean_qual_score, 4) if mean_qual_score is not None else None,
             pages_processed_native=pages_native,
             pages_processed_ocr=pages_ocr,
             pages_processed_mixed=pages_mixed,
             total_fallback_regions=total_fallback,
             total_time_seconds=round(total_duration, 2),
+            pages_from_cache=pages_from_cache,
+            startup_seconds=startup_seconds,
             page_reports=[p.quality for p in extracted_pages],
             metrics=QualityMetrics(
-                mean_confidence=round(mean_ocr_conf, 4),
+                mean_confidence=mean_ocr_conf,
                 primary_lines=total_primary_lines,
                 fallback_lines=total_fallback,
                 fallback_ratio=round(fb_ratio, 4)
@@ -194,7 +238,9 @@ class ConvertDocumentUseCase:
         )
 
         # Generate manifest
-        extracted_doc.manifest = ManifestExporter.generate_manifest(extracted_doc, config)
+        extracted_doc.manifest = ManifestExporter.generate_manifest(
+            extracted_doc, config, config_path=self.config_path,
+            cache_key=page_processor.cache_key, resume=resume)
 
         # Benchmark data if requested
         benchmark_data = None
@@ -210,33 +256,66 @@ class ConvertDocumentUseCase:
                 "recognized_lines": total_recognized_lines,
                 "fallback_lines": total_fallback,
                 "fallback_ratio": round(fb_ratio, 4),
-                "mean_confidence": round(mean_ocr_conf, 4),
-                "mean_quality_score": round(mean_qual_score, 4)
+                "mean_confidence": mean_ocr_conf,
+                "mean_quality_score": round(mean_qual_score, 4) if mean_qual_score is not None else None,
+                "pages_from_cache": pages_from_cache,
+                "startup_seconds": startup_seconds,
             }
 
         # Export all artifacts to disk
         out_path = Path(output_dir)
-        doc_dir = ExportDocumentUseCase.execute(extracted_doc, out_path, benchmark_data)
+        t_export = time.perf_counter()
+        doc_dir = ExportDocumentUseCase.execute(extracted_doc, out_path, benchmark_data, assets_mode=assets_mode)
+        timing["export_seconds"] = round(time.perf_counter() - t_export, 3)
+        # Open to validation.json written, export included (6.1 document latency).
+        timing["document_latency_seconds"] = round(time.perf_counter() - t0, 3)
+        extracted_doc.timing = timing
+        # Persist the same current-run duration used by performance reporting.
+        # Cached page timers remain historical and are identified in manifest.cache.
+        extracted_doc.quality.total_time_seconds = timing["document_latency_seconds"]
+        extracted_doc.manifest["timing"] = timing
+        extracted_doc.manifest["summary"]["total_time_seconds"] = timing["document_latency_seconds"]
+        extracted_doc.manifest["summary"]["seconds_per_page"] = round(
+            timing["document_latency_seconds"] / max(1, len(target_pages)), 4)
+        atomic_write_json(doc_dir / "quality.json", extracted_doc.quality.model_dump(mode="json"))
+        atomic_write_json(doc_dir / "manifest.json", extracted_doc.manifest)
+        if benchmark_data is not None:
+            benchmark_data.update(timing=timing, wall_clock_seconds=timing["document_latency_seconds"],
+                                  seconds_per_page=round(timing["document_latency_seconds"] / max(1, len(target_pages)), 4),
+                                  pages_per_minute=round(len(target_pages) * 60 / max(timing["document_latency_seconds"], .001), 4))
+            atomic_write_json(doc_dir / "benchmark.json", benchmark_data)
 
         # Accuracy evaluation against ground truth if requested
         if accuracy_report:
             gt_path = Path(ground_truth_dir)
             if gt_path.exists():
                 try:
-                    import json
                     from benchmark.evaluate import evaluate_document
                     acc_report = evaluate_document(doc_dir, gt_path)
                     extracted_doc.accuracy = acc_report
-                    acc_dict = acc_report.model_dump(mode="json")
-                    with open(doc_dir / "accuracy.json", "w", encoding="utf-8") as f:
-                        json.dump(acc_dict, f, ensure_ascii=False, indent=2)
+                    atomic_write_json(doc_dir / "accuracy.json", acc_report.model_dump(mode="json"))
 
                     # Update quality metrics with real CER and WER
                     extracted_doc.quality.metrics.cer = acc_report.mean_cer
                     extracted_doc.quality.metrics.wer = acc_report.mean_wer
-                    with open(doc_dir / "quality.json", "w", encoding="utf-8") as f:
-                        json.dump(extracted_doc.quality.model_dump(mode="json"), f, ensure_ascii=False, indent=2)
+                    atomic_write_json(doc_dir / "quality.json", extracted_doc.quality.model_dump(mode="json"))
                 except Exception as e:
                     print(f"[WARN] Accuracy evaluation failed: {e}")
 
+        from src.ocr.infrastructure.export.json_exporter import JSONExporter
+        atomic_write_json(doc_dir / "result.json", JSONExporter.export_document_json(extracted_doc))
+        # Written last: a resumed batch trusts only outputs carrying this marker.
+        validation = json.loads((doc_dir / "validation.json").read_text(encoding="utf-8"))
+        mark_completed(doc_dir, validation["status"])
         return extracted_doc
+
+    @staticmethod
+    def _warm_up_docling(page_processor: ProcessPageUseCase, config: Dict[str, Any]) -> Dict[str, Any]:
+        from src.ocr.infrastructure.layout.docling_structure import DoclingStructureError
+        try:
+            return {"docling_warmup_seconds": round(page_processor.structure_extractor.warmup(), 3)}
+        except DoclingStructureError as exc:
+            if config.get("docling", {}).get("on_error", "fallback") == "raise":
+                raise
+            # Pages then report the Docling failure individually.
+            return {"docling_warmup_error": str(exc)}

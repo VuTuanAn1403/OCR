@@ -1,13 +1,21 @@
-import json
+import gc
+import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 import pymupdf
 
 from src.ocr.domain.models.document import ExtractedDocument
-from src.ocr.infrastructure.export.markdown_exporter import MarkdownExporter
+from src.ocr.infrastructure.export.markdown_exporter import ASSET_MODES, MarkdownExporter
 from src.ocr.infrastructure.export.json_exporter import JSONExporter
-from src.ocr.infrastructure.export.manifest_exporter import ManifestExporter
 from src.ocr.infrastructure.export.artifact_validator import validate_document_artifacts
+from src.ocr.infrastructure.export.completion import clear_completed
+from src.ocr.infrastructure.export.document_contracts import write_document_contracts
+from src.ocr.runtime.atomic_io import atomic_write_bytes, atomic_write_text
+
+logger = logging.getLogger(__name__)
+
+_JPEG_QUALITY = 85
+
 
 class ExportDocumentUseCase:
     """
@@ -19,40 +27,20 @@ class ExportDocumentUseCase:
         doc: ExtractedDocument,
         output_dir: Path,
         benchmark_data: Optional[Dict[str, Any]] = None,
-        accuracy_data: Optional[Dict[str, Any]] = None
+        accuracy_data: Optional[Dict[str, Any]] = None,
+        assets_mode: str = "png",
     ) -> Path:
+        if assets_mode not in ASSET_MODES:
+            raise ValueError(f"Unknown assets_mode '{assets_mode}'. Use one of: {', '.join(ASSET_MODES)}")
         doc_dir = output_dir / doc.document_id
         pages_dir = doc_dir / "pages"
         pages_dir.mkdir(parents=True, exist_ok=True)
+        # The directory is about to be rewritten; an old marker would claim
+        # completion of a partially rewritten output.
+        clear_completed(doc_dir)
+        doc.manifest["assets_mode"] = assets_mode
 
-        image_pages = {
-            p.page_num: MarkdownExporter.image_regions_to_preserve(p)
-            for p in doc.pages
-        }
-        if any(image_pages.values()):
-            images_dir = doc_dir / "images"
-            images_dir.mkdir(parents=True, exist_ok=True)
-            with pymupdf.open(doc.file_path) as source_pdf:
-                for p in doc.pages:
-                    source_page = source_pdf[p.page_num - 1]
-                    for region in image_pages[p.page_num]:
-                        clip = source_page.rect & pymupdf.Rect(*region.bbox.to_list())
-                        if clip.is_empty:
-                            continue
-                        name = MarkdownExporter.image_asset_name(p.page_num, region)
-                        try:
-                            pix = source_page.get_pixmap(dpi=180, clip=clip, alpha=False)
-                            pix.save(images_dir / name)
-                            del pix
-                        except Exception:
-                            import gc
-                            gc.collect()
-                            try:
-                                pix = source_page.get_pixmap(dpi=96, clip=clip, alpha=False)
-                                pix.save(images_dir / name)
-                                del pix
-                            except Exception:
-                                pass
+        cls._export_image_assets(doc, doc_dir, assets_mode)
 
         # Detect repeated running headers and footers across pages (Proposal A2)
         cls._detect_running_headers_and_footers(doc)
@@ -63,24 +51,24 @@ class ExportDocumentUseCase:
             # existing pipe-only Markdown contract.
             for table in p.tables:
                 if table.engine == "docling_tableformer":
-                    structure_dir = doc_dir / "structures" / "tables"
-                    structure_dir.mkdir(parents=True, exist_ok=True)
-                    html_path = structure_dir / f"{table.table_id}.html"
-                    html_path.write_text(table.provenance.get("html") or table.to_html(), encoding="utf-8")
+                    html_path = doc_dir / "structures" / "tables" / f"{table.table_id}.html"
+                    # Rendered from the cells, which may have been refilled from
+                    # native/OCR text after TableFormer ran (C3.5e). Docling's
+                    # own HTML stays in provenance["html"] for reference.
+                    atomic_write_text(html_path, table.to_html())
                     table.provenance["html_artifact"] = html_path.relative_to(doc_dir).as_posix()
+                    table.provenance["html_artifact_source"] = "cells"
             for formula in p.formulas:
-                structure_dir = doc_dir / "structures" / "formulas"
-                structure_dir.mkdir(parents=True, exist_ok=True)
-                latex_path = structure_dir / f"{formula.formula_id}.tex"
-                latex_path.write_text(formula.latex, encoding="utf-8")
+                latex_path = doc_dir / "structures" / "formulas" / f"{formula.formula_id}.tex"
+                atomic_write_text(latex_path, formula.latex)
                 formula.provenance["latex_artifact"] = latex_path.relative_to(doc_dir).as_posix()
-            p.markdown_content = MarkdownExporter.export_page_markdown(p, include_running_headers_footers=False)
+            p.markdown_content = MarkdownExporter.export_page_markdown(
+                p, include_running_headers_footers=False, assets_mode=assets_mode)
             p_json_path = pages_dir / f"page-{p.page_num:04d}.json"
             p_md_path = pages_dir / f"page-{p.page_num:04d}.md"
 
             JSONExporter.save_json(JSONExporter.export_page_json(p), p_json_path)
-            with open(p_md_path, "w", encoding="utf-8") as f:
-                f.write(p.markdown_content)
+            atomic_write_text(p_md_path, p.markdown_content)
 
             validation = p.metadata.get("validation_cascade")
             if validation is not None:
@@ -88,10 +76,10 @@ class ExportDocumentUseCase:
                 JSONExporter.save_json(validation, p_val_path)
 
         # 2. Export full result.md (suppress running headers/footers in Markdown by default)
-        full_md = MarkdownExporter.export_document_markdown(doc, include_running_headers_footers=False)
+        full_md = MarkdownExporter.export_document_markdown(
+            doc, include_running_headers_footers=False, assets_mode=assets_mode)
         doc.full_markdown = full_md
-        with open(doc_dir / "result.md", "w", encoding="utf-8") as f:
-            f.write(full_md)
+        atomic_write_text(doc_dir / "result.md", full_md)
 
         # 3. Export result.json
         JSONExporter.save_json(JSONExporter.export_document_json(doc), doc_dir / "result.json")
@@ -110,12 +98,42 @@ class ExportDocumentUseCase:
         if accuracy_data:
             JSONExporter.save_json(accuracy_data, doc_dir / "accuracy.json")
 
+        # 8. V6 document-level contracts (C2.4, C3.7). Additive: the files above
+        # keep their format (D3); this step only reads `doc`.
+        write_document_contracts(doc, doc_dir, assets_mode)
+
         validation = validate_document_artifacts(doc_dir)
         JSONExporter.save_json(validation, doc_dir / "validation.json")
         if validation["status"] == "FAIL":
             raise ValueError(f"Artifact validation failed: {validation['errors'][:3]}")
 
         return doc_dir
+
+    @staticmethod
+    def _export_image_assets(doc: ExtractedDocument, doc_dir: Path, assets_mode: str) -> None:
+        """Write crops of preserved image regions and record each region's
+        `asset` path. With assets_mode "none" nothing is written (ENV-10)."""
+        image_pages = {p.page_num: MarkdownExporter.image_regions_to_preserve(p) for p in doc.pages}
+        for regions in image_pages.values():
+            for region in regions:
+                region.asset = None
+        if assets_mode == "none" or not any(image_pages.values()):
+            return
+        images_dir = doc_dir / "images"
+        output = "jpeg" if assets_mode == "jpeg" else "png"
+        with pymupdf.open(doc.file_path) as source_pdf:
+            for p in doc.pages:
+                source_page = source_pdf[p.page_num - 1]
+                for region in image_pages[p.page_num]:
+                    clip = source_page.rect & pymupdf.Rect(*region.bbox.to_list())
+                    if clip.is_empty:
+                        continue
+                    name = MarkdownExporter.image_asset_name(p.page_num, region, assets_mode)
+                    if _save_crop(source_page, clip, images_dir / name, output):
+                        region.asset = f"images/{name}"
+                    else:
+                        # The validator reports the missing file as an error.
+                        logger.warning("Page %d: could not export image region %s", p.page_num, region.region_id)
 
     @classmethod
     def _detect_running_headers_and_footers(cls, doc: ExtractedDocument) -> None:
@@ -137,7 +155,9 @@ class ExportDocumentUseCase:
             t = unicodedata.normalize("NFC", text.strip().lower())
             t = re.sub(r"\d+", "", t)
             t = re.sub(r"[^\w\s]", "", t)
-            return " ".join(t.split())
+            # Whitespace-free key: letter-spaced variants such as
+            # "BÁO CÁ O THƯỜNG NIÊN" must match the same running header (H6).
+            return "".join(t.split())
 
         # Count DISTINCT pages where header or footer appears
         header_pages: Dict[str, set] = defaultdict(set)
@@ -178,4 +198,19 @@ class ExportDocumentUseCase:
                 elif b.block_type == "footer" and norm_str in running_footers:
                     if p_h <= 0 or b_ymid is None or b_ymid >= 0.85 * p_h:
                         b.block_type = "running_footer"
+
+
+def _save_crop(page: pymupdf.Page, clip: pymupdf.Rect, path: Path, output: str) -> bool:
+    """Render a page crop atomically; retry at lower DPI on memory pressure."""
+    for dpi in (180, 96):
+        try:
+            pix = page.get_pixmap(dpi=dpi, clip=clip, alpha=False)
+            data = pix.tobytes(output=output, jpg_quality=_JPEG_QUALITY)
+            del pix
+            atomic_write_bytes(path, data)
+            return True
+        except Exception as exc:  # MuPDF raises several unrelated error types
+            logger.warning("Rendering %s at %d DPI failed: %s", path.name, dpi, exc)
+            gc.collect()
+    return False
 

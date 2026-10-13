@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=65.5.1", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ocr-pdf"
+dynamic = ["version"]
+description = "Vietnamese PDF to Markdown/JSON extraction: native-first routing, VietOCR fallback, Docling tables and formulas"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+# Keep in sync with requirements.txt (the lock used by setup scripts).
+dependencies = [
+    "pymupdf>=1.24.0,<=1.28.2",
+    "opencv-python-headless>=4.8.0,<=5.0.0.93",
+    "pillow>=10.0.0,<=11.2.0",
+    "numpy>=1.26.0,<=2.4.6",
+    "rapidocr-onnxruntime>=1.3.0,<=1.4.4",
+    "onnxruntime>=1.18.0,<=1.29.0",
+    "torch>=2.1.0,<=2.14.0",
+    "torchvision>=0.16.0,<=0.29.0",
+    "vietocr==0.3.13",
+    "PyYAML>=6.0,<=6.0.3",
+    "tabulate>=0.9.0,<=0.10.0",
+    "openpyxl>=3.1.0,<4.0.0",
+    "psutil>=5.9.0,<=7.2.2",
+    "tqdm>=4.65.0,<=4.70.0",
+    "requests>=2.28.0,<=2.34.2",
+    "pydantic>=2.0.0,<=2.14.0",
+    # VietOCR imports pkg_resources at runtime; match requirements.txt.
+    "setuptools>=65.5.1,<70.0.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0.0,<=9.1.1", "apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0"]
+research = ["apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0"]
+
+# Install editable (`pip install -e .`): the code resolves config/, models/
+# and the Docling worker relative to the repository checkout.
+[project.scripts]
+ocrpdf = "src.ocr.cli.run_ocr:main"
+ocrpdf-batch = "src.ocr.cli.batch_runner:main"
+ocrpdf-perf = "benchmark.perf.run_perf:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "src.ocr.infrastructure.export.manifest_exporter.PIPELINE_VERSION" }
+
+[tool.setuptools.packages.find]
+include = ["src*", "benchmark*"]
+namespaces = true

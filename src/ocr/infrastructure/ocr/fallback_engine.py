@@ -7,6 +7,7 @@ from src.ocr.infrastructure.ocr.vietnamese_seq2seq_engine import VietnameseSeq2S
 from src.ocr.infrastructure.ocr.primary_engine import BaseOCREngine
 from src.ocr.infrastructure.quality.ocr_quality import OCRQualityEvaluator
 from src.ocr.infrastructure.ocr.candidate_scorer import CandidateScorer
+from src.ocr.infrastructure.postprocessing.numeric_guard import preserves_numeric_evidence
 
 class FallbackEngine:
     """
@@ -46,8 +47,7 @@ class FallbackEngine:
             return False
         if len(candidate) < len(original) * 0.70 or len(candidate) > len(original) * 1.50:
             return False
-        numbers = r"\d+(?:[.,]\d+)*"
-        if re.findall(numbers, original) != re.findall(numbers, candidate):
+        if not preserves_numeric_evidence(original, candidate):
             return False
         def has_repeated_phrase(text: str) -> bool:
             words = re.findall(r"[^\W\d_]+", text.casefold())
@@ -82,7 +82,6 @@ class FallbackEngine:
             }
 
         orig_cand_score = self.scorer.score_candidate(original_text, original_conf)
-        original_numbers = re.findall(r"\d+(?:[.,/]\d+)*", original_text)
         numeric_disagreement = False
         best_cand = {
             "text": original_text,
@@ -95,7 +94,7 @@ class FallbackEngine:
         cands_c = self.ocr_engine.predict_image(crop_bgr)
         if cands_c:
             text_c = " ".join(c["text"] for c in cands_c).strip()
-            numeric_disagreement |= original_numbers != re.findall(r"\d+(?:[.,/]\d+)*", text_c)
+            numeric_disagreement |= not preserves_numeric_evidence(original_text, text_c)
             conf_c = sum(c["confidence"] for c in cands_c) / len(cands_c)
             score_c = self.scorer.score_candidate(text_c, conf_c)
             if score_c > best_cand["score"] + 0.015 and self._safe_replacement(original_text, text_c):
@@ -127,7 +126,7 @@ class FallbackEngine:
             cands_b = self.ocr_engine.predict_image(enh_crop)
             if cands_b:
                 text_b = " ".join(c["text"] for c in cands_b).strip()
-                numeric_disagreement |= original_numbers != re.findall(r"\d+(?:[.,/]\d+)*", text_b)
+                numeric_disagreement |= not preserves_numeric_evidence(original_text, text_b)
                 conf_b = sum(c["confidence"] for c in cands_b) / len(cands_b)
                 score_b = self.scorer.score_candidate(text_b, conf_b)
                 if score_b > best_cand["score"] + 0.015 and self._safe_replacement(original_text, text_b):

@@ -7,7 +7,10 @@ from urllib.request import urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MODEL_DIR = ROOT / "models" / "vietocr"
+# Same lookup as VietnameseSeq2SeqEngine: VIETOCR_MODEL_DIR, else
+# $OCR_MODELS_DIR/vietocr (e.g. a mounted Drive on Colab), else models/vietocr.
+MODEL_DIR = Path(os.environ.get("VIETOCR_MODEL_DIR")
+                 or Path(os.environ.get("OCR_MODELS_DIR") or ROOT / "models") / "vietocr")
 FILES = {
     "base.yml": "https://raw.githubusercontent.com/pbcquoc/vietocr/master/config/base.yml",
     "vgg-seq2seq.yml": "https://raw.githubusercontent.com/pbcquoc/vietocr/master/config/vgg-seq2seq.yml",

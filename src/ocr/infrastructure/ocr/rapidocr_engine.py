@@ -68,6 +68,8 @@ class RapidOCREngine(BaseOCREngine):
             formatted.append({
                 "bbox": [round(x0, 2), round(y0, 2), round(x1, 2), round(y1, 2)],
                 "text": norm_text,
+                "text_raw": raw_text,
+                "correction_source": "unicode_nfc_and_strip" if raw_text != norm_text else None,
                 "confidence": round(conf, 4)
             })
 

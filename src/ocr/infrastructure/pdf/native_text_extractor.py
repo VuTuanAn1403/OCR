@@ -38,10 +38,12 @@ class NativeTextExtractor:
                         line_text_parts.append(span_text)
                         font_sizes.append(span.get("size", 10.0))
                         flags = span.get("flags", 0)
-                        if flags & 2 or "bold" in span.get("font", "").lower():
+                        # Bit 4 is bold; bit 1 (value 2) is italic.
+                        if flags & pymupdf.TEXT_FONT_BOLD or "bold" in span.get("font", "").lower():
                             is_bold = True
 
-                full_line_text = "".join(line_text_parts).strip()
+                full_line_raw = "".join(line_text_parts)
+                full_line_text = full_line_raw.strip()
                 if not full_line_text:
                     continue
 
@@ -50,7 +52,10 @@ class NativeTextExtractor:
 
                 block = TextBlock(
                     text=norm_text,
+                    text_raw=full_line_raw,
+                    correction_source="unicode_normalizer" if norm_text != full_line_raw else None,
                     source="native",
+                    engine="pymupdf_native",
                     page=page_num,
                     bbox=[round(coord, 2) for coord in line_bbox],
                     confidence=1.0,

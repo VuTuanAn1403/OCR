@@ -15,3 +15,5 @@ class ExtractedDocument(BaseModel):
     manifest: Dict[str, Any] = Field(default_factory=dict)
     full_markdown: str = ""
     accuracy: Optional[Any] = None
+    # startup / pages / export / document latency (proposal 6.1); filled after export.
+    timing: Dict[str, Any] = Field(default_factory=dict)

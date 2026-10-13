@@ -16,11 +16,18 @@ Metrics:
 from typing import List, Dict, Any, Tuple, Optional
 import re
 import unicodedata
+from .spatial_matching import bbox_iou, same_scope
 
 
-# Regex to extract numbers including negative numbers in parentheses e.g. (100), (1.234), percentages, decimals
+# C2.3(c): preserve signs, accounting negatives, separators, document IDs,
+# dates, percent signs and adjacent units. Spaces inside tokens remain visible.
+_NUMBER = r"\d+(?:(?:[.,]\d+)|(?:[ \u00a0]\d{3}(?!\d)))*"
+_IDENTIFIER = r"\d+(?:/[A-Za-zÀ-ỹ\dĐđ]+(?:-[A-Za-zÀ-ỹ\dĐđ]+)*)+"
+_UNIT = r"(?:nghìn|ngàn|triệu|tỷ|tỉ|đồng|VND|VNĐ|USD|lần)\b"
 NUMERIC_TOKEN_PATTERN = re.compile(
-    r"(?:\(\s*[\d,.\s]+(?:\.\d+)?\s*\)|-?[\d]+(?:[.,]\d+)*(?:%|\b))"
+    rf"(?:{_IDENTIFIER}|\([ \u00a0]*[-−+]?{_NUMBER}[ \u00a0]*\)|[-−+]?{_NUMBER})"
+    rf"(?:[ \u00a0]*%)?(?:[ \u00a0]*{_UNIT})*",
+    flags=re.IGNORECASE,
 )
 
 
@@ -37,8 +44,7 @@ def extract_numeric_tokens(text: str) -> List[Dict[str, Any]]:
     
     for match in NUMERIC_TOKEN_PATTERN.finditer(text_nfc):
         raw = match.group().strip()
-        # Clean internal space if any
-        val_clean = re.sub(r"\s+", "", raw)
+        val_clean = raw
         # Check if it contains digits
         if not re.search(r"\d", val_clean):
             continue
@@ -114,7 +120,7 @@ def evaluate_numeric_exact_matching(
 
     for gt_idx, gt in enumerate(reference_items):
         gt_val = unicodedata.normalize("NFC", str(gt.get("value", "")).strip())
-        gt_loc = gt.get("location_id", gt_idx)
+        gt_loc = gt.get("location_id", gt.get("cell_id"))
 
         # Look for matching prediction with same value and same location_id
         match_found = False
@@ -122,9 +128,19 @@ def evaluate_numeric_exact_matching(
             if p_idx in matched_pred_indices:
                 continue
             p_val = unicodedata.normalize("NFC", str(p.get("value", "")).strip())
-            p_loc = p.get("location_id", p_idx)
+            p_loc = p.get("location_id", p.get("cell_id"))
 
-            if gt_val == p_val and (gt_loc == p_loc or gt_loc is None or p_loc is None):
+            same_location = (gt_loc is not None and p_loc is not None and gt_loc == p_loc)
+            # Text regions may use different block IDs after segmentation.
+            # Tables require the same cell, never just the same table bbox.
+            is_cell = any(item.get("cell_id") is not None or item.get("table_id") is not None
+                          for item in (gt, p))
+            if not is_cell and "bbox" in gt and "bbox" in p:
+                same_location = bbox_iou(gt, p) >= 0.5
+            if is_cell:
+                same_location = same_location and gt.get("cell_id") == p.get("cell_id") and \
+                                gt.get("table_id") == p.get("table_id")
+            if gt_val == p_val and same_location and same_scope(gt, p):
                 matched_pred_indices.add(p_idx)
                 tp += 1
                 match_found = True
@@ -146,6 +162,10 @@ def evaluate_numeric_exact_matching(
         "false_negatives": fn,
         "total_gt": n_gt,
         "total_pred": n_pred,
+        "numeric_errors": fn,
+        "numeric_error_rate": round(fn / n_gt, 4) if n_gt else None,
+        "reference_items_without_location": sum(
+            item.get("location_id") is None and "bbox" not in item for item in reference_items),
         "status": "MEASURED"
     }
 
@@ -193,6 +213,8 @@ def compute_numeric_metrics(
         "location_tp": loc_res["true_positives"],
         "location_fp": loc_res["false_positives"],
         "location_fn": loc_res["false_negatives"],
+        "numeric_errors": loc_res["false_negatives"],
+        "numeric_error_rate": round(loc_res["false_negatives"] / n_gt, 4) if n_gt else None,
         "status": loc_res["status"],
     }
 

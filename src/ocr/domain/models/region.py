@@ -77,8 +77,8 @@ class Region(BaseModel):
     bbox: BoundingBox
     # --- Backward compatibility fields ---
     region_type: str = "text"  # text, table, figure, header, footer, caption, title
-    confidence: float = 1.0
-    quality_score: float = 1.0
+    confidence: Optional[float] = 1.0
+    quality_score: Optional[float] = 1.0
     needs_fallback: bool = False
     failure_reason: Optional[str] = None
     # --- V5.0 Layout Analysis fields ---
@@ -94,3 +94,6 @@ class Region(BaseModel):
     orientation_confidence: float = 0.0
     transform_matrix: List[float] = Field(default_factory=list)
     status: str = "UNRESOLVED"
+    # Relative path of the exported crop for a preserved image region; None
+    # when no file was written (e.g. --assets none).
+    asset: Optional[str] = None

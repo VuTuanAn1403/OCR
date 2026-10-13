@@ -43,7 +43,8 @@ def main() -> None:
             reports = read_json(quality_path).get("page_reports", [])
             row["review_lines"] = sum(r.get("review_required_count", 0) for r in reports)
             row["low_confidence_pages"] = [r["page"] for r in reports
-                                           if r.get("recognized_lines", 0) and r.get("ocr_confidence", 0) < 0.90]
+                                           if r.get("recognized_lines", 0) and r.get("ocr_confidence") is not None
+                                           and r["ocr_confidence"] < 0.90]
             row["non_extracted_pages"] = [r["page"] for r in reports
                                           if r.get("content_status") != "EXTRACTED"]
             row["mean_ocr_confidence"] = read_json(quality_path).get("mean_ocr_confidence")

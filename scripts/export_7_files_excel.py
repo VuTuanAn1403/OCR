@@ -253,7 +253,7 @@ def generate_7_files_excel(
             bm.get("primary_lines", 0),
             bm.get("fallback_lines", 0),
             bm.get("fallback_ratio", 0.0),
-            bm.get("mean_confidence", 0.0),
+            bm.get("mean_confidence"),
             bm.get("mean_quality_score", 0.0),
             counts.get("review_required_lines", 0),
             val.get("status", "VALID"),
@@ -295,7 +295,7 @@ def generate_7_files_excel(
             p_type = p_rep.get("page_type")
             t_taken = p_rep.get("time_taken_seconds", 0.0)
             native_sc = p_rep.get("native_text_score", 0.0)
-            ocr_conf = p_rep.get("ocr_confidence", 0.0)
+            ocr_conf = p_rep.get("ocr_confidence")
             q_score = p_rep.get("quality_score", 0.0)
             tot_blocks = p_rep.get("total_blocks", 0)
             fb_count = p_rep.get("fallback_count", 0)
@@ -329,9 +329,11 @@ def generate_7_files_excel(
 
             # Check if this page should be flagged for Review Queue
             reasons = []
-            if q_score < 0.88:
+            if q_score is None:
+                reasons.append("Quality không có (chỉ có đầu ra mô hình)")
+            elif q_score < 0.88:
                 reasons.append(f"Quality thấp ({q_score:.2f})")
-            if ocr_conf < 0.85:
+            if ocr_conf is not None and ocr_conf < 0.85:
                 reasons.append(f"Confidence OCR thấp ({ocr_conf:.2f})")
             if uni_err:
                 reasons.append("Phát hiện lỗi Unicode")

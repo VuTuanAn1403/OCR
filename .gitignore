@@ -113,3 +113,13 @@ output/*
 !output/.gitkeep
 !examples/**
 !sample.pdf
+
+# Excluded documentation, notes, and local reports
+docs/
+reports/
+research_notes/
+CLAUDE.md
+CLEANUP_REPORT.md
+CLEANUP_RESPORT.md
+.claude/
+Noi dung nghien cuu.pdf

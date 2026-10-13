@@ -63,7 +63,9 @@ def main() -> None:
                 row["review_lines"] = sum(p.get("review_required_count", 0) for p in reports)
                 row["content_statuses"] = dict(Counter(p.get("content_status", "UNKNOWN") for p in reports))
                 row["orientation_fallback_pages"] = [p["page"] for p in reports if p.get("orientation_fallback")]
-                row["low_quality_pages"] = [p["page"] for p in reports if p.get("quality_score", 0) < 0.75]
+                row["low_quality_pages"] = [p["page"] for p in reports
+                                            if p.get("quality_score") is not None and p["quality_score"] < 0.75]
+                row["unscored_pages"] = [p["page"] for p in reports if p.get("quality_score", 0) is None]
                 row["slow_pages"] = [p["page"] for p in reports if p.get("time_taken_seconds", 0) > 15]
                 row["recognized_lines"] = sum(p.get("recognized_lines", 0) for p in reports)
                 row["stage_seconds"] = {
@@ -88,7 +90,7 @@ def main() -> None:
                     if large_preserved:
                         number = page["page_num"]
                         large_preserved_pages.append(number)
-                        if report_by_page.get(number, {}).get("quality_score", 0) >= 0.95:
+                        if (report_by_page.get(number, {}).get("quality_score") or 0) >= 0.95:
                             high_score_large_preserved_pages.append(number)
                 row["large_preserved_image_pages"] = large_preserved_pages
                 row["high_score_large_preserved_pages"] = high_score_large_preserved_pages

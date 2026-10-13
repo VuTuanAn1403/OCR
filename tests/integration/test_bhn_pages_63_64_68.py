@@ -29,7 +29,7 @@ def test_bhn_pages_63_64_65_68_extraction():
     if not pdf_path.exists():
         pytest.skip(f"Input file {pdf_path} not found")
 
-    with open("src/ocr/config/profiles.yaml", "r", encoding="utf-8") as f:
+    with open("config/profiles.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)["profiles"]["balanced"]
     doc = pymupdf.open(str(pdf_path))
     from src.ocr.domain.routing.routing_policy import RoutingPolicy

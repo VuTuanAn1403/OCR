@@ -25,16 +25,60 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import json
 import argparse
 import re
+import math
 from typing import Dict, Any, List, Optional
 from tabulate import tabulate
 
 from benchmark.scientific_evaluation.teds_metric import compute_teds, compute_teds_struct, evaluate_table_collection
-from benchmark.scientific_evaluation.dla_metric import compute_dla_map
+from benchmark.scientific_evaluation.dla_metric import compute_dla_map, box_xywh_to_xyxy
 from benchmark.scientific_evaluation.ocr_metric import compute_cer, compute_wer, compute_der, compute_reading_order
+from benchmark.evaluate import ground_truth_pages, _selected_pages
+from benchmark.scientific_evaluation.evaluation_protocol import text_metrics, aggregate_text_metrics
+from benchmark.scientific_evaluation.markdown_evaluator import _strip_markdown_for_text_evaluation
+from benchmark.scientific_evaluation.markdown_evaluator import parse_markdown_artifacts
 from benchmark.scientific_evaluation.markdown_evaluator import evaluate_final_markdown
 from benchmark.scientific_evaluation.environment_profiler import capture_environment_metadata, verify_cpu_latency_compliance
 from benchmark.scientific_evaluation.ablation_runner import run_synthetic_ablation_comparison, compute_bootstrap_ci
 from benchmark.scientific_evaluation.latex_generator import generate_latex_comparison_table, generate_latex_ablation_table
+
+
+def _measured_seconds(value: Any) -> Optional[float]:
+    try:
+        seconds = float(value)
+    except (TypeError, ValueError):
+        return None
+    return seconds if math.isfinite(seconds) and seconds > 0 else None
+
+
+def _cache_count(value: Any) -> int:
+    return len(value) if isinstance(value, list) else int(value or 0)
+
+
+def _final_markdown_protocol(result_md: Path, gt_pages: Dict[int, Path], total_pages: Optional[int]) -> Dict[str, Any]:
+    """V6 primary final-output scores never borrow text from per-page files."""
+    if not gt_pages:
+        return {"status": "NOT_EVALUATED", "reason": "NO_APPLICABLE_GROUND_TRUTH"}
+    parsed = parse_markdown_artifacts(result_md, policy="visible_strict_v1") if result_md.is_file() else None
+    records, missing = [], []
+    if parsed and not parsed["pages_text"] and parsed["raw_text"].strip():
+        if total_pages is not None and total_pages == len(gt_pages):
+            # Legacy full-document output can be scored directly without page
+            # alignment. Partial GT requires explicit page markers.
+            reference = "\n\n".join(path.read_text(encoding="utf-8") for _, path in sorted(gt_pages.items()))
+            records.append(text_metrics(reference, parsed["clean_text"]))
+        else:
+            return {"status": "NOT_EVALUATED", "reason": "PAGE_ALIGNMENT_UNAVAILABLE",
+                    "evaluated_pages": [], "fallback_used": False}
+    else:
+        for page, path in sorted(gt_pages.items()):
+            prediction = parsed["pages_text"].get(page) if parsed else None
+            if prediction is None:
+                missing.append(page)
+            records.append(text_metrics(path.read_text(encoding="utf-8"), prediction or "",
+                                        missing=prediction is None))
+    return {**aggregate_text_metrics(records), "policy": "visible_strict_v1",
+            "evaluated_pages": sorted(gt_pages), "missing_pages": missing,
+            "fallback_used": False, "source": "result.md"}
 
 
 def evaluate_document_scientific(
@@ -64,13 +108,20 @@ def evaluate_document_scientific(
     total_pages = None
     category = "MIXED"
     pages_list_specified = False
+    manifest_path = prediction_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else {}
+    selected_pages = _selected_pages(prediction_dir)
+    cache_pages = _cache_count(manifest.get("cache", {}).get("pages_from_cache", []))
+    timing_source = None
 
     if benchmark_json_path.exists():
         try:
             with open(benchmark_json_path, "r", encoding="utf-8") as f:
                 bm_data = json.load(f)
             if "wall_clock_seconds" in bm_data:
-                total_time = max(0.01, float(bm_data["wall_clock_seconds"]))
+                total_time = _measured_seconds(bm_data["wall_clock_seconds"])
+                timing_source = "benchmark.json"
+            cache_pages = max(cache_pages, _cache_count(bm_data.get("pages_from_cache")))
             pages_list = bm_data.get("pages_benchmarked", [])
             if pages_list:
                 total_pages = len(pages_list)
@@ -96,7 +147,9 @@ def evaluate_document_scientific(
                     total_pages = max(1, int(q_data["total_pages"]))
 
             if total_time is None and "total_time_seconds" in q_data:
-                total_time = max(0.01, float(q_data["total_time_seconds"]))
+                total_time = _measured_seconds(q_data["total_time_seconds"])
+                timing_source = "quality.json (legacy: export not included)"
+            cache_pages = max(cache_pages, _cache_count(q_data.get("pages_from_cache")))
 
             native_p = q_data.get("pages_processed_native", 0)
             ocr_p = q_data.get("pages_processed_ocr", 0)
@@ -112,12 +165,36 @@ def evaluate_document_scientific(
         except Exception:
             pass
 
-    if total_time is not None and total_pages is not None:
+    recorded_timing = manifest.get("timing", {})
+    recorded_latency = _measured_seconds(recorded_timing.get("document_latency_seconds"))
+    if recorded_latency is not None:
+        total_time = recorded_latency
+        timing_source = "manifest.json/timing.document_latency_seconds (export included)"
+    if selected_pages is not None:
+        total_pages = len(selected_pages)
+
+    if total_time is not None and total_pages is not None and total_pages > 0:
         raw_sec_per_page = total_time / max(1, total_pages)
         sec_per_page = round(raw_sec_per_page, 3)
         throughput_pps = round(total_pages / total_time, 2)
         # Enforce CPU latency compliance on unrounded latency (Proposal A1 / Review V5 Item 7)
-        latency_compliance = verify_cpu_latency_compliance(category, raw_sec_per_page)
+        device = str(manifest.get("device", "unknown")).lower()
+        if cache_pages or manifest.get("cache", {}).get("resume"):
+            latency_compliance = {"is_compliant": False, "status": "NOT_EVALUATED_CACHE_REUSE"}
+        elif device in ("cuda", "mps"):
+            latency_compliance = {"is_compliant": False, "status": "NOT_EVALUATED_NON_CPU_DEVICE"}
+        else:
+            latency_compliance = verify_cpu_latency_compliance(category, raw_sec_per_page)
+            # Older output did not record its device. Retain the historical
+            # comparison, but label its provenance for acceptance decisions.
+            latency_compliance["device_verified"] = device == "cpu"
+            if device != "cpu":
+                latency_compliance.update(is_compliant=False, status="NOT_EVALUATED_DEVICE_UNSPECIFIED")
+            else:
+                # Document average includes startup/export and is a throughput
+                # diagnostic. PERF-01 measures warm page latency separately.
+                latency_compliance["legacy_average_within_limit"] = latency_compliance["is_compliant"]
+                latency_compliance.update(is_compliant=False, status="NOT_EVALUATED_WARM_PAGE_LATENCY_REQUIRED")
     else:
         raw_sec_per_page = None
         sec_per_page = None
@@ -132,13 +209,15 @@ def evaluate_document_scientific(
     page_evals: List[Dict[str, Any]] = []
     all_matched_gt_texts: List[str] = []
     gt_pages: Dict[int, Path] = {}
+    not_evaluated_pages: List[int] = []
+    strict_metrics: List[Dict[str, Any]] = []
+    secondary_metrics: List[Dict[str, Any]] = []
 
     if gt_dir and gt_dir.exists():
-        # Look for explicit ground truth files with format: <doc_id>_page_<page_num>.txt
-        for gt_file in gt_dir.glob("*.txt"):
-            m = re.match(rf"^{re.escape(doc_id)}_page_(\d+)\.txt$", gt_file.name)
-            if m:
-                gt_pages[int(m.group(1))] = gt_file
+        applicable = ground_truth_pages(gt_dir, doc_id)
+        not_evaluated_pages = sorted(page for page in applicable
+                                     if selected_pages is not None and page not in selected_pages)
+        gt_pages = {page: path for page, path in applicable.items() if page not in not_evaluated_pages}
 
         for page_num in sorted(gt_pages.keys()):
             matched_gt = gt_pages[page_num]
@@ -152,32 +231,41 @@ def evaluate_document_scientific(
             pred_file = next((p for p in pred_candidates if p.is_file()), None)
 
             if pred_file:
-                pred_text = pred_file.read_text(encoding="utf-8")
-                c_val = compute_cer(ref_text, pred_text)
-                w_val = compute_wer(ref_text, pred_text)
-                d_val = compute_der(ref_text, pred_text)
+                pred_text = _strip_markdown_for_text_evaluation(pred_file.read_text(encoding="utf-8"),
+                                                               policy="visible_strict_v1")
 
                 ref_paras = [line.strip() for line in ref_text.splitlines() if len(line.strip()) >= 8]
                 order_res = compute_reading_order(ref_paras, pred_text)
             else:
-                c_val = 1.0
-                w_val = 1.0
-                d_val = 1.0
+                pred_text = ""
                 order_res = {"penalized_score": 0.0, "matched_fraction": 0.0, "status": "missing_prediction"}
 
-            cers.append(c_val)
-            wers.append(w_val)
-            ders.append(d_val)
+            metrics = text_metrics(ref_text, pred_text, missing=pred_file is None)
+            secondary = text_metrics(ref_text, pred_text, missing=pred_file is None, policy="reading_normalized_v1")
+            strict_metrics.append(metrics)
+            secondary_metrics.append(secondary)
+            c_val, w_val, d_val = metrics["cer"], metrics["wer"], metrics["der"]
+            if c_val is not None:
+                cers.append(c_val)
+            if w_val is not None:
+                wers.append(w_val)
+            if d_val is not None:
+                ders.append(d_val)
             reading_orders.append(order_res["penalized_score"])
 
             page_evals.append({
                 "page_num": page_num,
                 "gt_file": matched_gt.name,
+                "status": metrics["status"],
                 "cer": c_val,
                 "wer": w_val,
                 "der": d_val,
                 "reading_order": order_res,
+                "counts": metrics["details"],
             })
+
+    primary_aggregate = aggregate_text_metrics(strict_metrics)
+    secondary_aggregate = aggregate_text_metrics(secondary_metrics)
 
     mean_cer = round(float(sum(cers) / len(cers)), 4) if cers else None
     mean_wer = round(float(sum(wers) / len(wers)), 4) if wers else None
@@ -201,7 +289,6 @@ def evaluate_document_scientific(
 
         if gt_count > 0 and gt_count < total_p_effective:
             # Partial GT: Directly evaluate the corresponding page sections from the final result.md
-            from benchmark.scientific_evaluation.markdown_evaluator import _strip_markdown_for_text_evaluation
             result_md_content = result_md.read_text(encoding="utf-8") if result_md.is_file() else ""
 
             matched_pred_texts: List[str] = []
@@ -254,12 +341,40 @@ def evaluate_document_scientific(
             with open(coco_gt_path, "r", encoding="utf-8") as f:
                 coco_data = json.load(f)
 
+            categories = {item["id"]: item["name"] for item in coco_data.get("categories", [])}
+            image_pages = {}
+            for item in coco_data.get("images", []):
+                identity = item.get("document_id")
+                filename = str(item.get("file_name", "")).replace("\\", "/")
+                if identity is not None and identity != doc_id:
+                    continue
+                if identity is None and not (filename.startswith(doc_id + "_") or
+                                             filename.startswith(doc_id + "/")):
+                    continue
+                page = item.get("page_num", item.get("page_id"))
+                if page is None:
+                    match = re.search(r"(?:_p|_page_|page-)(\d+)(?:\D|$)", filename)
+                    page = int(match.group(1)) if match else None
+                if page is not None and (selected_pages is None or int(page) in selected_pages):
+                    image_pages[item["id"]] = int(page)
             gt_boxes = []
             for ann in coco_data.get("annotations", []):
+                image_id = ann.get("image_id")
+                page = image_pages.get(image_id)
+                if page is None and not coco_data.get("images"):
+                    match = re.fullmatch(rf"{re.escape(doc_id)}_p(\d+)", str(image_id))
+                    page = int(match.group(1)) if match else None
+                if page is None or (selected_pages is not None and page not in selected_pages):
+                    continue
+                bbox = ann.get("bbox")
+                if not isinstance(bbox, list) or len(bbox) != 4:
+                    raise ValueError("Layout GT requires an explicit four-coordinate bbox")
+                bbox_format = ann.get("bbox_format", coco_data.get("bbox_format",
+                                      "xywh" if "category_id" in ann else "xyxy"))
                 gt_boxes.append({
-                    "bbox": ann.get("bbox", [0, 0, 10, 10]),
-                    "category": ann.get("category", "text"),
-                    "image_id": ann.get("image_id", "default_page")
+                    "bbox": box_xywh_to_xyxy(bbox) if bbox_format == "xywh" else bbox,
+                    "category": ann.get("category", categories.get(ann.get("category_id"), "text")),
+                    "image_id": f"{doc_id}_p{page}"
                 })
 
             # Collect prediction boxes from pages JSON
@@ -267,19 +382,32 @@ def evaluate_document_scientific(
             for p_json in pages_dir.glob("page-*.json"):
                 with open(p_json, "r", encoding="utf-8") as f:
                     p_data = json.load(f)
-                img_id = f"{doc_id}_p{p_data.get('page_num', 1)}"
+                page_num = p_data.get("page_num")
+                if page_num is None or (selected_pages is not None and page_num not in selected_pages):
+                    continue
+                img_id = f"{doc_id}_p{page_num}"
                 for b in p_data.get("blocks", []):
+                    if not isinstance(b.get("bbox"), list) or len(b["bbox"]) != 4:
+                        continue
                     pred_boxes.append({
-                        "bbox": b.get("bbox", [0, 0, 10, 10]),
+                        "bbox": b["bbox"],
                         "category": b.get("block_type", "text"),
-                        "score": b.get("confidence", 0.95),
+                        # Model output without confidence ranks last.
+                        "score": b.get("confidence") or 0.0,
                         "image_id": img_id
                     })
 
-            dla_res = compute_dla_map(gt_boxes, pred_boxes)
+            classes = sorted({str(item["category"]).lower() for item in gt_boxes + pred_boxes})
+            dla_res = compute_dla_map(gt_boxes, pred_boxes, classes=classes)
+            dla_res.update(backend="PROJECT_COCO_IMPLEMENTATION",
+                           eligible_for_v6_acceptance=False,
+                           pending_requirement="pycocotools backend and two layout scoreboards (9.2)")
         except Exception as e:
             dla_res = {"error": str(e), "mAP@50": None, "mAP@50:95": None}
 
+    if markdown_eval is not None:
+        markdown_eval["protocol"] = "V5_LEGACY_DIAGNOSTIC"
+        markdown_eval["eligible_for_v6_acceptance"] = False
     report = {
         "document_id": doc_id,
         "environment": env_meta,
@@ -290,14 +418,30 @@ def evaluate_document_scientific(
             "throughput_pps": throughput_pps,
             "category": category,
             "cpu_latency_compliance": latency_compliance,
+            "timing_source": timing_source,
+            "pages_from_cache": cache_pages,
+            "latency_statistic": "document_wall_time_per_page (legacy; not warm page latency)",
+            "document_timing": recorded_timing,
         },
         "markdown_integrity": markdown_eval,
+        "final_markdown_protocol": _final_markdown_protocol(
+            result_md, gt_pages, total_p_effective if result_md.exists() else total_pages),
         "academic_metrics": {
+            "evaluation_status": primary_aggregate["status"],
+            "primary_normalization": "visible_strict_v1",
+            "primary_aggregation": "micro",
+            "micro_cer": primary_aggregate["micro_cer"],
+            "micro_wer": primary_aggregate["micro_wer"],
+            "micro_der": primary_aggregate["micro_der"],
+            "counts": primary_aggregate["counts"],
+            "reading_normalized_v1": secondary_aggregate,
             "mean_cer": mean_cer,
             "mean_wer": mean_wer,
             "mean_der": mean_der,
             "mean_reading_order_penalized": mean_order,
             "evaluated_pages": len(page_evals),
+            "pages_missing_output": sum(page["status"] == "MISSING_OUTPUT" for page in page_evals),
+            "pages_not_evaluated": not_evaluated_pages,
             "dla_coco": dla_res,
         },
         "page_evaluations": page_evals,
@@ -338,13 +482,14 @@ def main():
     table_data = [
         ["DLA Layout mAP@50", metrics["dla_coco"].get("mAP@50") if metrics.get("dla_coco") else "not_evaluated"],
         ["DLA Layout mAP@50:95", metrics["dla_coco"].get("mAP@50:95") if metrics.get("dla_coco") else "not_evaluated"],
-        ["Character Error Rate (CER)", metrics["mean_cer"] if metrics["mean_cer"] is not None else "not_evaluated"],
-        ["Word Error Rate (WER)", metrics["mean_wer"] if metrics["mean_wer"] is not None else "not_evaluated"],
-        ["Diacritic Error Rate (DER)", metrics["mean_der"] if metrics["mean_der"] is not None else "not_evaluated"],
+        ["Character Error Rate (micro CER)", metrics["micro_cer"] if metrics["micro_cer"] is not None else "not_evaluated"],
+        ["Word Error Rate (micro WER)", metrics["micro_wer"] if metrics["micro_wer"] is not None else "not_evaluated"],
+        ["Diacritic Error Rate (micro DER)", metrics["micro_der"] if metrics["micro_der"] is not None else "not_evaluated"],
         ["Reading Order Score", metrics["mean_reading_order_penalized"] if metrics["mean_reading_order_penalized"] is not None else "not_evaluated"],
         ["Throughput (Pages / sec)", f"{timing['throughput_pps']} PPS"],
         ["Avg Latency per page", f"{timing['seconds_per_page']} s"],
-        ["CPU Latency Compliance", f"{'PASS' if compliance['is_compliant'] else 'FAIL'} (limit <= {compliance['upper_limit_seconds']}s)"],
+        ["CPU Latency Compliance", compliance.get("status") or
+         f"{'PASS' if compliance['is_compliant'] else 'FAIL'} (limit <= {compliance.get('upper_limit_seconds')}s)"],
     ]
 
     print(tabulate(table_data, headers=["Scientific Metric", "Score / Status"], tablefmt="fancy_grid"))
@@ -362,8 +507,8 @@ def main():
             ablation_rows = run_synthetic_ablation_comparison({
                 "mAP@50": metrics["dla_coco"].get("mAP@50") if metrics.get("dla_coco") else None,
                 "teds": None,
-                "cer": metrics["mean_cer"],
-                "der": metrics["mean_der"],
+                "cer": metrics["micro_cer"],
+                "der": metrics["micro_der"],
                 "sec_per_page": timing["seconds_per_page"],
             })
             latex_tex = generate_latex_ablation_table(ablation_rows)

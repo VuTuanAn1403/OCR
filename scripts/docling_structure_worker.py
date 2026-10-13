@@ -41,8 +41,9 @@ def build_converter(options):
     except Exception:
         pass
     pipeline = PdfPipelineOptions()
-    pipeline.accelerator_options = AcceleratorOptions(
-        device=AcceleratorDevice.CPU, num_threads=num_threads)
+    # The parent resolves "auto" to a concrete device; default stays CPU.
+    device = AcceleratorDevice(options.get("device", "cpu"))
+    pipeline.accelerator_options = AcceleratorOptions(device=device, num_threads=num_threads)
     pipeline.do_table_structure = bool(options.get("tables", True))
     pipeline.table_structure_options = TableStructureOptions(
         mode=TableFormerMode(options.get("table_mode", "fast")), do_cell_matching=True)
@@ -52,18 +53,21 @@ def build_converter(options):
     pipeline.enable_remote_services = False
     pipeline.do_ocr = bool(options.get("ocr", False))
     if pipeline.do_ocr:
-        pipeline.ocr_options = EasyOcrOptions(lang=options.get("ocr_languages", ["vi", "en"]), use_gpu=False)
+        pipeline.ocr_options = EasyOcrOptions(lang=options.get("ocr_languages", ["vi", "en"]),
+                                              use_gpu=device != AcceleratorDevice.CPU)
     # Bound generation on CPU without silently truncating a result into a
     # claimed correct formula. All model output remains NEEDS_REVIEW.
     pipeline.code_formula_options.model_spec = pipeline.code_formula_options.model_spec.model_copy(
         update={"max_new_tokens": int(options.get("formula_max_tokens", 256))})
     pipeline.code_formula_options.expansion_factor = float(options.get("formula_crop_margin", 0.05))
     converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline)})
+    # Load layout/table/formula models now, so a warm-up request measures
+    # start-up separately from the first page (PERF-05).
+    converter.initialize_pipeline(InputFormat.PDF)
     if pipeline.do_formula_enrichment:
         # The 2.137.0 stage hardcodes 2048 per VlmEngineInput, overriding
         # model_spec.max_new_tokens. Bound actual engine requests as well.
         from docling.models.stages.code_formula.code_formula_vlm_model import CodeFormulaVlmModel
-        converter.initialize_pipeline(InputFormat.PDF)
         converter.formula_request_limits = []
         for runtime in converter.initialized_pipelines.values():
             for model in runtime.enrichment_pipe:
@@ -86,7 +90,7 @@ def convert_structures(converter, pipeline, pdf, formula_hints=()):
         converter.formula_request_limits.clear()
     result = converter.convert(Path(pdf), raises_on_error=True)
     doc = result.document
-    tables, formulas = [], []
+    tables, formulas, layout_items = [], [], []
     formula_hints = list(formula_hints)
     picture_candidates = []
     labels = Counter()
@@ -104,6 +108,10 @@ def convert_structures(converter, pipeline, pdf, formula_hints=()):
         prov = item.prov[0]
         height = doc.pages[prov.page_no].size.height
         bbox = bbox_in_points(prov.bbox, height)
+        layout_items.append({"item_ref": item.self_ref, "label": item.label.value,
+                             "bbox": bbox, "page": prov.page_no,
+                             "text": getattr(item, "text", ""),
+                             "confidence": None, "confidence_source": "unavailable"})
         if isinstance(item, PictureItem) and pipeline.do_formula_enrichment:
             # Layout models sometimes label an equation as a picture. Require
             # math evidence from OCR/native cells and a compact region before
@@ -173,7 +181,7 @@ def convert_structures(converter, pipeline, pdf, formula_hints=()):
     provenance = {
         "docling_version": version("docling-slim"), "docling_core_version": version("docling-core"),
         "docling_ibm_models_version": version("docling-ibm-models"),
-        "device": "cpu", "torch_device": "cpu", "table_model": pipeline.table_structure_options.kind,
+        "device": pipeline.accelerator_options.device.value, "table_model": pipeline.table_structure_options.kind,
         "table_mode": pipeline.table_structure_options.mode.value,
         "formula_model": pipeline.code_formula_options.model_spec.default_repo_id,
         "formula_max_tokens": pipeline.code_formula_options.model_spec.max_new_tokens,
@@ -183,6 +191,7 @@ def convert_structures(converter, pipeline, pdf, formula_hints=()):
         "conversion_status": result.status.value,
     }
     return {"status": result.status.value, "tables": tables, "formulas": formulas,
+            "layout_items": layout_items,
             "provenance": provenance, "inference_seconds": time.perf_counter() - started,
             "detected_item_labels": dict(labels),
             "picture_formula_candidates": picture_candidates,
@@ -202,7 +211,15 @@ def main():
             # exclusively reserved for the machine-readable worker protocol.
             with contextlib.redirect_stdout(sys.stderr):
                 if converter is None:
+                    started = time.perf_counter()
                     converter, pipeline = build_converter(request["options"])
+                    startup_seconds = time.perf_counter() - started
+                else:
+                    startup_seconds = 0.0
+                if request.get("op") == "warmup":
+                    print(json.dumps({"id": request["id"], "status": "success",
+                                      "startup_seconds": startup_seconds}), file=sys.__stdout__, flush=True)
+                    continue
                 captured = RuntimeErrors()
                 logging.getLogger().addHandler(captured)
                 try:

@@ -172,7 +172,8 @@ def evaluate(manifest_path: Path, prediction_root: Path) -> dict[str, Any]:
     orientation_cases = [case for case in cases if case["orientation_correct"] is not None]
     order_pairs = sum(case["reading_order_pairs"] for case in cases)
     correct_pairs = sum(case["reading_order_correct_pairs"] for case in cases)
-    confidence_cases = [case for case in cases if case["recognized_lines"] > 0]
+    confidence_cases = [case for case in cases
+                        if case["recognized_lines"] > 0 and case["ocr_confidence"] is not None]
     summary = {
         "cases": len(cases),
         "cases_with_predictions": sum(case["prediction_exists"] for case in cases),

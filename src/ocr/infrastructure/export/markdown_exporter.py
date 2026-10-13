@@ -4,14 +4,24 @@ from src.ocr.domain.models.page import ExtractedPage
 from src.ocr.domain.models.document import ExtractedDocument
 from src.ocr.domain.models.region import ContentType, BoundingBox, Region
 
+# Image export modes (ENV-10). "none" writes no files and leaves an HTML
+# comment per omitted region so the omission stays visible in Markdown.
+ASSET_MODES = ("png", "jpeg", "none")
+_ASSET_EXTENSIONS = {"png": "png", "jpeg": "jpg"}
+
+
 class MarkdownExporter:
     """
     Exports ExtractedDocument and ExtractedPage to cleanly formatted Markdown.
     """
     @staticmethod
-    def image_asset_name(page_num: int, region: Region) -> str:
+    def image_asset_name(page_num: int, region: Region, assets_mode: str = "png") -> str:
         clean_id = re.sub(r"[^A-Za-z0-9_-]+", "_", region.region_id).strip("_") or "img"
-        return f"page_{page_num:02d}_{clean_id}.png"
+        return f"page_{page_num:02d}_{clean_id}.{_ASSET_EXTENSIONS.get(assets_mode, 'png')}"
+
+    @staticmethod
+    def image_omitted_marker(region_id: str) -> str:
+        return f"<!-- image omitted: {region_id} -->"
 
     @staticmethod
     def image_regions_to_preserve(page: ExtractedPage) -> List[Region]:
@@ -68,6 +78,7 @@ class MarkdownExporter:
         page: ExtractedPage,
         image_prefix: str = "../images",
         include_running_headers_footers: bool = False,
+        assets_mode: str = "png",
     ) -> str:
         lines: List[str] = [f"# Trang {page.page_num}\n"]
 
@@ -391,9 +402,12 @@ class MarkdownExporter:
                     f"region {region.region_id}, bbox={bb}]\n"
                 )
         for region in cls.image_regions_to_preserve(page):
+            if assets_mode == "none":
+                lines.append(cls.image_omitted_marker(region.region_id) + "\n")
+                continue
             tag = "Embedded table image" if region.content_type == ContentType.IMAGE_TABLE else "Embedded image"
             lines.append(
-                f"![{tag}]({image_prefix}/{cls.image_asset_name(page.page_num, region)})\n"
+                f"![{tag}]({image_prefix}/{cls.image_asset_name(page.page_num, region, assets_mode)})\n"
             )
 
         return "\n".join(lines).strip()
@@ -404,6 +418,7 @@ class MarkdownExporter:
         doc: ExtractedDocument,
         image_prefix: str = "images",
         include_running_headers_footers: bool = False,
+        assets_mode: str = "png",
     ) -> str:
         doc_lines: List[str] = [
             f"# Báo cáo trích xuất tài liệu: {doc.document_id}",
@@ -415,7 +430,8 @@ class MarkdownExporter:
             page_md = cls.export_page_markdown(
                 page,
                 image_prefix=image_prefix,
-                include_running_headers_footers=include_running_headers_footers
+                include_running_headers_footers=include_running_headers_footers,
+                assets_mode=assets_mode,
             )
             doc_lines.append(page_md)
             doc_lines.append("\n---\n")

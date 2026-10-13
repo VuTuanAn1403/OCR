@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from apted import APTED, Config
 from apted.helpers import Tree
 from benchmark.evaluate import levenshtein_distance
+from .spatial_matching import match_tables
 
 
 class TableTree(Tree):
@@ -189,12 +190,14 @@ def compute_teds_struct(reference_html: str, prediction_html: str) -> float:
 
 def evaluate_table_collection(
     gt_tables: List[Dict[str, Any]],
-    pred_tables: List[Dict[str, Any]]
+    pred_tables: List[Dict[str, Any]],
+    iou_threshold: float = 0.5,
 ) -> Dict[str, Any]:
     """
     Evaluates a collection of tables for a page or document adhering to Section 4 & Acceptance A10, A15:
     - Separates Table Detection (Precision, Recall, F1) from Table Recognition (TEDS).
-    - Matches tables by table_id or bounding box overlap.
+    - Matches one-to-one by IoU >= 0.5 in the same document/page.
+      Explicit shared table IDs support legacy annotations without boxes.
     - If no GT tables exist: mean_teds is None, status='NO_TABLES' (or 'SPURIOUS_TABLES_ONLY').
     - Reports matched_mean_teds, spurious_table_count, missing_table_count.
     """
@@ -255,33 +258,8 @@ def evaluate_table_collection(
             "status": "ALL_TABLES_MISSING",
         }
 
-    # Match by table_id or bbox
-    matched_gt = set()
-    matched_pred = set()
-    pairs: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
-
-    # 1. Match by explicit table_id
-    for p_idx, p_tab in enumerate(pred_tables):
-        p_id = p_tab.get("table_id")
-        if p_id:
-            for g_idx, g_tab in enumerate(gt_tables):
-                if g_idx not in matched_gt and g_tab.get("table_id") == p_id:
-                    pairs.append((g_tab, p_tab))
-                    matched_gt.add(g_idx)
-                    matched_pred.add(p_idx)
-                    break
-
-    # 2. Match remaining by index if order preserved
-    for g_idx, g_tab in enumerate(gt_tables):
-        if g_idx in matched_gt:
-            continue
-        for p_idx, p_tab in enumerate(pred_tables):
-            if p_idx in matched_pred:
-                continue
-            pairs.append((g_tab, p_tab))
-            matched_gt.add(g_idx)
-            matched_pred.add(p_idx)
-            break
+    pairs = [(gt_tables[row], pred_tables[col])
+             for row, col in match_tables(gt_tables, pred_tables, iou_threshold)]
 
     matched_teds: List[float] = []
     matched_teds_struct: List[float] = []

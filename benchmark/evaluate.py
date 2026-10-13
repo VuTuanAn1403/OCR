@@ -188,38 +188,93 @@ def evaluate_page(ref_text: str, pred_text: str, page_num: int) -> PageAccuracyR
         pred_word_count=len(pred_clean.split())
     )
 
-def evaluate_document(prediction_dir: Path, gt_dir: Path) -> AccuracyReport:
-    """Evaluates all matching pages in document output against ground truth directory."""
-    doc_id = prediction_dir.name
-    pages_dir = prediction_dir / "pages"
+_GT_NAME = re.compile(r"^(?:(?P<prefix>.+?)_)?page_(?P<num>\d+)$", re.IGNORECASE)
 
-    gt_files = sorted(list(gt_dir.glob("*.txt")))
-    page_reports: Dict[int, PageAccuracyReport] = {}
 
-    for gt_file in gt_files:
-        # Extract page number from filename, e.g. clw_page_0001.txt or page_0001.txt
-        match = re.search(r"(\d+)", gt_file.stem)
+def ground_truth_pages(gt_dir: Path, doc_id: str) -> Dict[int, Path]:
+    """Ground-truth files that belong to this document.
+
+    `<prefix>_page_NNNN.txt` applies only to documents whose id starts with
+    the prefix (clw_page_0001.txt -> CLW_Baocaothuongnien_2020); an
+    unprefixed `page_NNNN.txt` applies to any document.
+    """
+    pages: Dict[int, Path] = {}
+    specificity: Dict[int, int] = {}
+    for gt_file in sorted(gt_dir.glob("*.txt")):
+        match = _GT_NAME.match(gt_file.stem)
         if not match:
             continue
-        page_num = int(match.group(1))
-
-        # Look for corresponding prediction file
-        pred_md_file = pages_dir / f"page-{page_num:04d}.md"
-        if not pred_md_file.exists():
+        prefix = match.group("prefix")
+        if prefix and not (doc_id.casefold() == prefix.casefold() or
+                           doc_id.casefold().startswith(prefix.casefold() + "_")):
             continue
+        page_num = int(match.group("num"))
+        rank = len(prefix) if prefix else 0
+        if page_num in pages and rank == specificity[page_num]:
+            raise ValueError(f"Ambiguous ground truth for {doc_id} page {page_num}: "
+                             f"{pages[page_num].name}, {gt_file.name}")
+        if page_num not in pages or rank > specificity[page_num]:
+            pages[page_num] = gt_file
+            specificity[page_num] = rank
+    return pages
 
-        with open(gt_file, "r", encoding="utf-8") as f_ref:
-            ref_text = f_ref.read()
 
-        with open(pred_md_file, "r", encoding="utf-8") as f_pred:
-            pred_text = f_pred.read()
+def _selected_pages(prediction_dir: Path) -> Optional[set]:
+    """Pages the run was asked to process, from manifest.json if present."""
+    try:
+        manifest = json.loads((prediction_dir / "manifest.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    selected = manifest.get("selected_pages")
+    if selected is None:
+        return None
+    if not isinstance(selected, list) or any(type(page) is not int or page < 1 for page in selected):
+        raise ValueError("manifest.selected_pages must be a list of positive page numbers")
+    return set(selected)
 
-        report = evaluate_page(ref_text, pred_text, page_num)
-        page_reports[page_num] = report
+
+def evaluate_document(prediction_dir: Path, gt_dir: Path) -> AccuracyReport:
+    """Evaluates a document output against its ground-truth pages (proposal 9.1).
+
+    A ground-truth page inside the selected pages whose output is missing is
+    MISSING_OUTPUT and scored as maximum error, never skipped. Ground-truth
+    pages outside the selected pages are NOT_EVALUATED and listed separately.
+    """
+    doc_id = prediction_dir.name
+    pages_dir = prediction_dir / "pages"
+    selected = _selected_pages(prediction_dir)
+    page_reports: Dict[int, PageAccuracyReport] = {}
+    not_evaluated: List[int] = []
+    char_errors = word_errors = 0
+
+    for page_num, gt_file in ground_truth_pages(gt_dir, doc_id).items():
+        if selected is not None and page_num not in selected:
+            not_evaluated.append(page_num)
+            continue
+        ref_text = gt_file.read_text(encoding="utf-8")
+        candidates = (pages_dir / f"page-{page_num:04d}.md", pages_dir / f"page-{page_num}.md")
+        pred_md_file = next((path for path in candidates if path.is_file()), None)
+        pred_text = pred_md_file.read_text(encoding="utf-8") if pred_md_file else ""
+        ref_clean, pred_clean = normalize_evaluation_text(ref_text), normalize_evaluation_text(pred_text)
+        char_errors += levenshtein_distance(list(ref_clean), list(pred_clean))
+        word_errors += levenshtein_distance(ref_clean.split(), pred_clean.split())
+        if pred_md_file is not None:
+            page_reports[page_num] = evaluate_page(ref_text, pred_text, page_num)
+        else:
+            # Every reference character counts as deleted.
+            report = evaluate_page(ref_text, "", page_num)
+            report.status = "MISSING_OUTPUT"
+            report.reading_order_accuracy = 0.0
+            page_reports[page_num] = report
 
     if not page_reports:
-        return AccuracyReport(document_id=doc_id)
+        return AccuracyReport(document_id=doc_id, pages_not_evaluated=not_evaluated)
 
+    ref_chars = sum(r.ref_char_count for r in page_reports.values())
+    ref_words = sum(r.ref_word_count for r in page_reports.values())
+    # Aggregate integer edit counts, rather than multiplying rounded page rates.
+    micro_cer = char_errors / ref_chars if ref_chars else None
+    micro_wer = word_errors / ref_words if ref_words else None
     mean_cer = sum(r.cer for r in page_reports.values()) / len(page_reports)
     mean_wer = sum(r.wer for r in page_reports.values()) / len(page_reports)
     mean_diac = sum(r.diacritic_accuracy for r in page_reports.values()) / len(page_reports)
@@ -236,6 +291,11 @@ def evaluate_document(prediction_dir: Path, gt_dir: Path) -> AccuracyReport:
         mean_table_accuracy=round(mean_table, 4) if mean_table is not None else None,
         mean_reading_order_accuracy=round(mean_order, 4),
         pages_evaluated=len(page_reports),
+        evaluation_status="MEASURED",
+        pages_missing_output=sum(1 for r in page_reports.values() if r.status == "MISSING_OUTPUT"),
+        pages_not_evaluated=not_evaluated,
+        micro_cer=round(micro_cer, 4) if micro_cer is not None else None,
+        micro_wer=round(micro_wer, 4) if micro_wer is not None else None,
         page_reports=page_reports
     )
 

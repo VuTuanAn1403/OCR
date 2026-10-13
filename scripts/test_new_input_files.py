@@ -9,6 +9,7 @@ import io
 import time
 import json
 import argparse
+import subprocess
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -23,6 +24,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import pymupdf
 from src.ocr.application.convert_document import ConvertDocumentUseCase
 from src.ocr.infrastructure.export.artifact_validator import validate_document_artifacts
+from src.ocr.infrastructure.export.completion import verify_completed
 
 # The 5 previously processed baseline files
 PREVIOUS_5_FILES = {
@@ -51,7 +53,7 @@ def run_test_on_file(
     print(f"=======================================================")
 
     doc_dir = output_base / file_path.stem
-    if not force and doc_dir.exists() and (doc_dir / "result.md").exists() and (doc_dir / "benchmark.json").exists():
+    if not force and verify_completed(doc_dir) and (doc_dir / "benchmark.json").exists():
         try:
             bm_data = json.loads((doc_dir / "benchmark.json").read_text(encoding="utf-8"))
             tested_count = len(bm_data.get("pages_benchmarked", []))
@@ -90,7 +92,7 @@ def run_test_on_file(
             profile_name=profile,
             pages=pages_to_test,
             output_dir=output_base,
-            resume=False,
+            resume=not force,
             benchmark=True
         )
         duration = round(time.time() - t_start, 2)
@@ -156,22 +158,39 @@ def main():
     parser.add_argument("--profile", default="balanced", help="Profile to use (default: balanced)")
     parser.add_argument("--all-files", action="store_true", help="Include all files (not just new ones)")
     parser.add_argument("--force", action="store_true", help="Force re-run even if cached")
+    parser.add_argument("--single-file", default=None, help="Worker flag: process a single file")
+    parser.add_argument("--no-isolated", action="store_true", help="Disable subprocess isolation")
     args = parser.parse_args()
 
     input_dir = Path(args.inputs).resolve()
     output_dir = Path(args.output).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if args.all_files:
-        target_files = sorted(list(input_dir.glob("*.pdf")))
-    else:
-        target_files = discover_new_files(input_dir)
-
     # Determine pages to test
     if args.all_pages or args.pages is None:
         pages_to_test = None
     else:
         pages_to_test = args.pages
+
+    # Handle single file worker mode
+    if args.single_file:
+        target_f = input_dir / args.single_file
+        if not target_f.exists():
+            print(f"[ERROR] Target file not found: {target_f}")
+            sys.exit(1)
+        res = run_test_on_file(
+            file_path=target_f,
+            output_base=output_dir,
+            pages_to_test=pages_to_test,
+            profile=args.profile,
+            force=args.force
+        )
+        sys.exit(0 if res.get("status") in ("PASS", "WARNING") else 1)
+
+    if args.all_files:
+        target_files = sorted(list(input_dir.glob("*.pdf")))
+    else:
+        target_files = discover_new_files(input_dir)
 
     print(f"Found {len(target_files)} target file(s) in {input_dir}:")
     total_pages_all = 0
@@ -184,14 +203,59 @@ def main():
 
     results = []
     for f in target_files:
-        res = run_test_on_file(
-            file_path=f,
-            output_base=output_dir,
-            pages_to_test=pages_to_test,
-            profile=args.profile,
-            force=args.force
-        )
-        results.append(res)
+        doc_dir = output_dir / f.stem
+        is_cached = False
+        if not args.force and verify_completed(doc_dir) and (doc_dir / "benchmark.json").exists():
+            try:
+                bm_data = json.loads((doc_dir / "benchmark.json").read_text(encoding="utf-8"))
+                tested_count = len(bm_data.get("pages_benchmarked", []))
+                with pymupdf.open(str(f)) as d:
+                    total_doc_pages = len(d)
+                if (pages_to_test is None and tested_count >= total_doc_pages) or (pages_to_test is not None and tested_count >= len(pages_to_test)):
+                    is_cached = True
+            except Exception:
+                is_cached = False
+
+        if is_cached or args.no_isolated:
+            res = run_test_on_file(
+                file_path=f,
+                output_base=output_dir,
+                pages_to_test=pages_to_test,
+                profile=args.profile,
+                force=args.force
+            )
+            results.append(res)
+        else:
+            print(f"\n>>> [ISOLATED WORKER] Spawning clean process for {f.name} to guarantee memory reclamation...")
+            worker_cmd = [
+                sys.executable,
+                str(Path(__file__).resolve()),
+                "--inputs", str(input_dir),
+                "--output", str(output_dir),
+                "--single-file", f.name,
+                "--profile", args.profile,
+            ]
+            if args.all_pages or pages_to_test is None:
+                worker_cmd.append("--all-pages")
+            elif pages_to_test:
+                worker_cmd.extend(["--pages"] + [str(p) for p in pages_to_test])
+            if args.force:
+                worker_cmd.append("--force")
+
+            try:
+                subprocess.run(worker_cmd)
+            except Exception as e:
+                print(f"[ERROR] Failed to run worker for {f.name}: {e}")
+
+            # Collect results from output_dir
+            res = run_test_on_file(
+                file_path=f,
+                output_base=output_dir,
+                pages_to_test=pages_to_test,
+                profile=args.profile,
+                force=False
+            )
+            results.append(res)
 
     # Save summary report JSON
     summary_path = output_dir / "new_files_test_summary.json"
@@ -199,7 +263,7 @@ def main():
         json.dump(results, f, ensure_ascii=False, indent=2)
 
     # Generate Markdown report
-    md_report_path = output_dir / "TEST_7_FILES_REPORT.md"
+    md_report_path = output_dir / f"TEST_{len(results)}_FILES_REPORT.md"
     md_report_path_inputs = output_dir / "TEST_INPUT_FILES_REPORT.md"
     total_time = sum(r.get("wall_clock_seconds", 0) for r in results)
     total_tested_pages = sum(r.get("tested_pages", 0) for r in results)

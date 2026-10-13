@@ -1,8 +1,8 @@
-import json
 from pathlib import Path
 from typing import Dict, Any
 from src.ocr.domain.models.document import ExtractedDocument
 from src.ocr.domain.models.page import ExtractedPage
+from src.ocr.runtime.atomic_io import atomic_write_json
 
 class JSONExporter:
     """
@@ -42,6 +42,4 @@ class JSONExporter:
 
     @classmethod
     def save_json(cls, data: Any, output_file: Path) -> None:
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        atomic_write_json(Path(output_file), data)

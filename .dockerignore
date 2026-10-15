@@ -1,0 +1,17 @@
+# Keep the build context to source and configuration (proposal V6 ENV-07).
+.git
+.venv
+.venv-docling
+.cache
+build
+*.egg-info
+__pycache__
+inputs
+output
+models
+scratch
+reports
+research_notes
+docs
+*.pdf
+!examples/*.pdf

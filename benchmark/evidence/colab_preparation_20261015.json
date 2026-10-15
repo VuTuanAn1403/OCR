@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-15",
+  "repository": "https://github.com/VuTuanAn1403/OCR",
+  "notebook": "notebooks/colab_v6.ipynb",
+  "colab_execution": "NOT_EXECUTED_REQUIRES_USER_COLAB_SESSION",
+  "notebook_schema": "PASSED_NBFORMAT",
+  "python_cells": "PASSED_AST_AND_CLI_TESTS",
+  "setup_shell_syntax": "PASSED_BASH_N",
+  "dependency_resolution": {
+    "platform": "x86_64-manylinux_2_28",
+    "python": "3.11",
+    "backend": "cu126",
+    "packages": {
+      "main": 90,
+      "docling": 108
+    }
+  },
+  "tests": {
+    "passed": 627,
+    "skipped": 3,
+    "warnings": 1,
+    "seconds": 51.27,
+    "log": "scratch/github-colab-final-tests.log"
+  },
+  "model_setup_check": "PASSED_LOCAL_WINDOWS",
+  "installation_check": "PASSED_LOCAL_WINDOWS",
+  "sha256": {
+    "notebooks/colab_v6.ipynb": "56ce65c71f619b30d09e09e3cc76fb774a30a436a93756b14a4b04fbb08b2104",
+    "scripts/setup.sh": "2dcf37a2fb30f8143b876c44aa15bf15d97f885841e7cb2244ba3f69ec2fa603",
+    "requirements-docling-portable.constraints.txt": "8892a77c73b4825f59bba7c773a66b1ee02178c659b7e95eca7b50730e257183"
+  },
+  "limitations": [
+    "No live Colab execution or Drive mount performed",
+    "Docling CUDA dependency resolution verified, GPU inference on Colab not measured",
+    "Local RTX 2050 VietOCR evidence is a separate CPU/CUDA smoke, not Colab acceptance"
+  ]
+}

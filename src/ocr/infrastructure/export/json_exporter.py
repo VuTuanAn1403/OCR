@@ -3,6 +3,7 @@ from typing import Dict, Any
 from src.ocr.domain.models.document import ExtractedDocument
 from src.ocr.domain.models.page import ExtractedPage
 from src.ocr.runtime.atomic_io import atomic_write_json
+from src.ocr.infrastructure.export.output_contract import OUTPUT_MODES, RESULT_INDEX_SCHEMA
 
 class JSONExporter:
     """
@@ -28,7 +29,10 @@ class JSONExporter:
 
     @classmethod
     def export_document_json(cls, doc: ExtractedDocument) -> Dict[str, Any]:
-        return {
+        mode = doc.manifest.get("output_mode", "legacy")
+        if mode not in OUTPUT_MODES:
+            raise ValueError(f"Unknown output_mode {mode!r}")
+        data = {
             "document_id": doc.document_id,
             "file_path": doc.file_path,
             "file_hash": doc.file_hash,
@@ -37,8 +41,13 @@ class JSONExporter:
             "profile": doc.profile,
             "quality": doc.quality.model_dump(mode="json"),
             "manifest": doc.manifest,
-            "pages": [cls.export_page_json(p) for p in doc.pages]
         }
+        if mode == "compact":
+            data.update(schema_version=RESULT_INDEX_SCHEMA, page_refs=[
+                {"page_num": p.page_num, "path": f"pages/page-{p.page_num:04d}.json"} for p in doc.pages])
+        else:
+            data["pages"] = [cls.export_page_json(p) for p in doc.pages]
+        return data
 
     @classmethod
     def save_json(cls, data: Any, output_file: Path) -> None:

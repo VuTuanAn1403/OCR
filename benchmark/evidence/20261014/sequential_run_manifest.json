@@ -1,0 +1,191 @@
+{
+  "schema": "run-manifest-v1",
+  "run_id": "20261014T035807Z-ae84fe1d",
+  "kind": "batch",
+  "argv": [
+    "C:\\kk_2\\OCR_pdf\\src\\ocr\\cli\\batch_runner.py",
+    "--input",
+    "C:\\kk_2\\OCR_pdf\\scratch\\kp13-native-pool\\input",
+    "--output",
+    "C:\\kk_2\\OCR_pdf\\scratch\\kp13-native-pool\\sequential",
+    "--cache-dir",
+    "C:\\kk_2\\OCR_pdf\\scratch\\kp13-native-pool\\sequential-cache",
+    "--profile",
+    "fast",
+    "--device",
+    "cpu",
+    "--assets",
+    "none",
+    "--workers",
+    "1",
+    "--threads-per-worker",
+    "2",
+    "--force"
+  ],
+  "started_at_utc": "2026-10-14T03:58:07.051014+00:00",
+  "finished_at_utc": "2026-10-14T03:58:09.553046+00:00",
+  "status": "COMPLETED",
+  "pipeline_version": "6.1.0",
+  "page_schema_version": "page-v2",
+  "source_fingerprint": "5059de9edd5c7b44",
+  "git": {
+    "commit": "ee35d969a978c1a3a1f906f636deaf66a39e7b65",
+    "dirty": true,
+    "uncommitted_diff_sha256": "a7f7f363fcac39e3172fb3e29a1153a4b8ddd9c9eaffb27a08303f1a404483c5",
+    "untracked_files_sha256": {
+      "MANIFEST.in": "c026eddac419fafd45f5fb5a7c55a98d36968d902531744474c43379268c5100",
+      "benchmark/scientific_evaluation/cluster_statistics.py": "88375420948c4b09f57119b727561771a9d730cf112b05361e6b3bf3a47af2b2",
+      "benchmark/scientific_evaluation/coco_layout.py": "166982cfffef40de4536193fd243356faf863d95a3f707ffcb2c673a69ead226",
+      "setup.py": "f58556ac64b004f8a1c5da8fc639f6ec1e34e6085095e6295b3018967493a64f",
+      "src/ocr/cli/collect.py": "eee96257f4f018013ecb68182dc94cbc8a85ea6549f92b6d6d1df26e0bcfb194",
+      "src/ocr/collect/__init__.py": "8b08b092742883c982a20ef9ee9393a901dfa3c5468359a0d6d5295b24d52f4a",
+      "src/ocr/collect/catalog.py": "1b56e4d099c953a468dba345d4a54789fd5f552580583ed902c25fed57564ed5",
+      "src/ocr/domain/models/confidence.py": "4251503a14c3d60bcbe2715277a6097afcf9cfd1d14cad1933007a8b0753dcf4",
+      "src/ocr/infrastructure/export/output_contract.py": "804cf097a652553a30cd6424f6231b9485d85de3cc60c5102523bf1e4153e872",
+      "src/ocr/infrastructure/pdf/coordinate_transform.py": "9c0934469ae5aa525ea97af0a9dcb181a29ed9ceedd4638827d88a98bc9b79d8",
+      "src/ocr/resources/__init__.py": "4b82a6998e9d5112b120bf233d40510ee80225c0196caecef831d107b68fb5a0",
+      "src/ocr/runtime/document_pool.py": "d3d9d29183cf66358a406dafe465c34e8c3da8ea5baf4f689a16d1f72e1ed4eb",
+      "tests/scientific/test_v6_cluster_and_coco.py": "dfb133ffd9e8db4f3d7f014678ebd870130193cc64a1b93b66a7dd418a68cc1c",
+      "tests/unit/test_v6_collect.py": "1377e5ea62b8fde067ee7fcd1ea87f72ec548e15cb6b42b24bea9e004b9ae2ea",
+      "tests/unit/test_v6_language_evidence.py": "a09bc82184a4c5d1ff12ca8004aadcb8c96a7e0b6f037d11a97d7ce2efc00d27",
+      "tests/unit/test_v6_remediation.py": "5de06925f71584668c13fda21d2bdc930b32c17068df2f8497abc1e51f34c936",
+      "tests/unit/test_v6_visibility_and_coordinates.py": "9d142bc6a05219c4cd86393627f86c8dce0d0b0f1e3b88f70878fca0ce831fe4",
+      "tests/unit/test_v6_worker_lifetime.py": "dbb5ae415706c0f426b14b2e8d8dca8f496b0602ba28865775870be81d5e3f74"
+    }
+  },
+  "config": {
+    "path": "C:\\kk_2\\OCR_pdf\\config\\profiles.yaml",
+    "sha256": "126db0d4d547725ba3fae27933e7d6908767c7d203e4530f56919e0e37a96aae",
+    "profile": "fast",
+    "resolved": {
+      "profile": "fast",
+      "native_first": true,
+      "render_dpi": 150,
+      "primary_engine": "rapidocr",
+      "docling": {
+        "enabled": false,
+        "device": "cpu"
+      },
+      "layout": "light",
+      "fallback_enabled": false,
+      "batch_size": 16,
+      "orientation_fallback_enabled": true,
+      "vector_table_min_native_score": 0.9,
+      "skip_vector_tables_on_restricted_pdf": true,
+      "two_up_detection_enabled": true,
+      "multi_region_detection_enabled": true,
+      "page_timeout_seconds": 120,
+      "native_quality": {
+        "reliable_threshold": 0.9,
+        "review_threshold": 0.7
+      },
+      "num_threads": 2,
+      "device": "cpu",
+      "backend_devices": {
+        "ocr_detection": "cpu",
+        "ocr_recognition": "cpu",
+        "layout": "cpu",
+        "docling": null
+      }
+    }
+  },
+  "device": "cpu",
+  "assets_mode": "none",
+  "models": {
+    "rapidocr/ch_PP-OCRv4_det_infer.onnx": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+    "rapidocr/ch_PP-OCRv4_rec_infer.onnx": "48fc40f24f6d2a207a2b1091d3437eb3cc3eb6b676dc3ef9c37384005483683b",
+    "rapidocr/ch_ppocr_mobile_v2.0_cls_infer.onnx": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c"
+  },
+  "packages": {
+    "pymupdf": "1.28.2",
+    "torch": "2.12.1",
+    "torchvision": "0.27.1",
+    "vietocr": "0.3.13",
+    "rapidocr-onnxruntime": "1.4.4",
+    "onnxruntime": "1.29.0",
+    "onnxruntime-gpu": null,
+    "numpy": "2.4.6",
+    "opencv-python-headless": "5.0.0.93",
+    "pydantic": "2.13.5",
+    "PyYAML": "6.0.3"
+  },
+  "hardware": {
+    "platform": "Windows-10-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 141 Stepping 1, GenuineIntel",
+    "cpu_count_physical": 6,
+    "cpu_count_logical": 12,
+    "total_ram_gb": 15.73,
+    "python_version": "3.11.16",
+    "python_executable": "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+    "cuda_available": false,
+    "torch_cuda_version": null
+  },
+  "cache": {
+    "dir": "C:\\kk_2\\OCR_pdf\\scratch\\kp13-native-pool\\sequential-cache",
+    "empty_at_start": true,
+    "resume": false,
+    "pages_from_cache": 0
+  },
+  "documents": [
+    {
+      "document_id": "fixture-0",
+      "file_sha256_16": "b41ade7e89755bb4",
+      "pages": [
+        1,
+        2
+      ],
+      "pages_from_cache": [],
+      "timing": {
+        "model_init_seconds": 0.313,
+        "startup_seconds": 0.313,
+        "pages_seconds": 0.192,
+        "export_seconds": 0.106,
+        "document_latency_seconds": 0.623
+      }
+    },
+    {
+      "document_id": "fixture-1",
+      "file_sha256_16": "bba0a874f912e765",
+      "pages": [
+        1,
+        2
+      ],
+      "pages_from_cache": [],
+      "timing": {
+        "model_init_seconds": 0.011,
+        "startup_seconds": 0.011,
+        "pages_seconds": 0.213,
+        "export_seconds": 0.115,
+        "document_latency_seconds": 0.352
+      }
+    },
+    {
+      "document_id": "fixture-2",
+      "file_sha256_16": "281f6718c7031d84",
+      "pages": [
+        1,
+        2
+      ],
+      "pages_from_cache": [],
+      "timing": {
+        "model_init_seconds": 0.011,
+        "startup_seconds": 0.011,
+        "pages_seconds": 0.191,
+        "export_seconds": 0.086,
+        "document_latency_seconds": 0.302
+      }
+    }
+  ],
+  "shard": null,
+  "scheduler": {
+    "workers": 1,
+    "threads_per_worker": 2,
+    "unit": "document",
+    "docling_lifetime": "worker"
+  },
+  "models_at_finish": {
+    "rapidocr/ch_PP-OCRv4_det_infer.onnx": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+    "rapidocr/ch_PP-OCRv4_rec_infer.onnx": "48fc40f24f6d2a207a2b1091d3437eb3cc3eb6b676dc3ef9c37384005483683b",
+    "rapidocr/ch_ppocr_mobile_v2.0_cls_infer.onnx": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c"
+  }
+}

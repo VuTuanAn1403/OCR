@@ -45,6 +45,12 @@ def mark_completed(doc_dir: Path, validation_status: str) -> Dict[str, Any]:
     doc_dir = Path(doc_dir)
     if validation_status not in ("PASS", "NEEDS_REVIEW"):
         raise ValueError("Cannot mark an output completed before successful validation")
+    if (doc_dir / "manifest.json").exists():
+        from src.ocr.infrastructure.export.artifact_validator import validate_document_artifacts
+        validation = validate_document_artifacts(doc_dir)
+        if validation["status"] == "FAIL":
+            raise ValueError(f"Cannot mark invalid artifacts completed: {validation['errors'][:3]}")
+        validation_status = validation["status"]
     marker = {
         "schema": COMPLETION_SCHEMA,
         "completed_at_utc": datetime.now(timezone.utc).isoformat(),

@@ -139,6 +139,7 @@ class PageContentAnalyzer:
                 content_type=content_type,
                 source="image",
                 confidence=0.85,
+                            confidence_source="heuristic",
                 reading_order=region_counter,
             ))
 
@@ -204,6 +205,7 @@ class PageContentAnalyzer:
                 content_type=ContentType.UNKNOWN,
                 source="unknown",
                 confidence=0.0,
+                            confidence_source="heuristic",
                 reading_order=1,
             ))
 
@@ -269,6 +271,7 @@ class PageContentAnalyzer:
                 content_type=ContentType.IMAGE,
                 source="image",
                 confidence=0.78,
+                            confidence_source="heuristic",
                 region_type="two_up" if len(boundaries) == 3 else "multi_region",
                 orientation_status="UNKNOWN",
                 orientation_confidence=0.0,
@@ -315,6 +318,7 @@ class PageContentAnalyzer:
                 content_type=ContentType.TEXT,
                 source="native",
                 confidence=0.90,
+                            confidence_source="heuristic",
                 region_type="two_up",
                 reading_order=1,
             ),
@@ -324,6 +328,7 @@ class PageContentAnalyzer:
                 content_type=ContentType.TEXT,
                 source="native",
                 confidence=0.90,
+                            confidence_source="heuristic",
                 region_type="two_up",
                 reading_order=2,
             ),

@@ -31,6 +31,7 @@ from tabulate import tabulate
 
 from benchmark.scientific_evaluation.teds_metric import compute_teds, compute_teds_struct, evaluate_table_collection
 from benchmark.scientific_evaluation.dla_metric import compute_dla_map, box_xywh_to_xyxy
+from benchmark.scientific_evaluation.coco_layout import evaluate_layout_scoreboards
 from benchmark.scientific_evaluation.ocr_metric import compute_cer, compute_wer, compute_der, compute_reading_order
 from benchmark.evaluate import ground_truth_pages, _selected_pages
 from benchmark.scientific_evaluation.evaluation_protocol import text_metrics, aggregate_text_metrics
@@ -85,6 +86,8 @@ def evaluate_document_scientific(
     prediction_dir: Path,
     gt_dir: Optional[Path] = None,
     coco_gt_path: Optional[Path] = None,
+    common_layout_classes: Optional[List[str]] = None,
+    supported_layout_classes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Evaluates a document against ground truth adhering to Section 3 and Section 4.
@@ -373,8 +376,10 @@ def evaluate_document_scientific(
                                       "xywh" if "category_id" in ann else "xyxy"))
                 gt_boxes.append({
                     "bbox": box_xywh_to_xyxy(bbox) if bbox_format == "xywh" else bbox,
-                    "category": ann.get("category", categories.get(ann.get("category_id"), "text")),
-                    "image_id": f"{doc_id}_p{page}"
+                    "category": ann.get("category", categories.get(ann.get("category_id"))),
+                    "image_id": f"{doc_id}_p{page}",
+                    "ignore": bool(ann.get("ignore", False)),
+                    "iscrowd": int(ann.get("iscrowd", 0)),
                 })
 
             # Collect prediction boxes from pages JSON
@@ -386,6 +391,15 @@ def evaluate_document_scientific(
                 if page_num is None or (selected_pages is not None and page_num not in selected_pages):
                     continue
                 img_id = f"{doc_id}_p{page_num}"
+                model_regions = [region for region in p_data.get("regions", [])
+                                 if str(region.get("region_id", "")).startswith(f"p{page_num}_dla_")]
+                if model_regions:
+                    for region in model_regions:
+                        box = region["bbox"]
+                        pred_boxes.append({"bbox": [box[key] for key in ("x0", "y0", "x1", "y1")],
+                            "category": region.get("label", "UNKNOWN"),
+                            "score": region.get("confidence"), "image_id": img_id})
+                    continue
                 for b in p_data.get("blocks", []):
                     if not isinstance(b.get("bbox"), list) or len(b["bbox"]) != 4:
                         continue
@@ -393,15 +407,12 @@ def evaluate_document_scientific(
                         "bbox": b["bbox"],
                         "category": b.get("block_type", "text"),
                         # Model output without confidence ranks last.
-                        "score": b.get("confidence") or 0.0,
+                        "score": b.get("confidence"),
                         "image_id": img_id
                     })
 
-            classes = sorted({str(item["category"]).lower() for item in gt_boxes + pred_boxes})
-            dla_res = compute_dla_map(gt_boxes, pred_boxes, classes=classes)
-            dla_res.update(backend="PROJECT_COCO_IMPLEMENTATION",
-                           eligible_for_v6_acceptance=False,
-                           pending_requirement="pycocotools backend and two layout scoreboards (9.2)")
+            dla_res = evaluate_layout_scoreboards(gt_boxes, pred_boxes,
+                common_classes=common_layout_classes, supported_classes=supported_layout_classes)
         except Exception as e:
             dla_res = {"error": str(e), "mAP@50": None, "mAP@50:95": None}
 
@@ -455,6 +466,8 @@ def main():
     parser.add_argument("--prediction", required=True, help="Path to document prediction directory")
     parser.add_argument("--ground-truth", default=None, help="Path to ground truth directory")
     parser.add_argument("--coco-gt", default=None, help="Path to COCO layout annotations JSON")
+    parser.add_argument("--common-layout-classes", help="Locked common classes, comma separated")
+    parser.add_argument("--supported-layout-classes", help="Declared model classes, comma separated")
     parser.add_argument("--output-dir", default="benchmark/results", help="Directory to save report artifacts")
     parser.add_argument("--generate-latex", action="store_true", help="Generate publication-grade LaTeX tables")
 
@@ -473,7 +486,9 @@ def main():
     print(f"Ground Truth: {gt_dir}")
     print("=" * 65)
 
-    report = evaluate_document_scientific(pred_dir, gt_dir, coco_gt)
+    report = evaluate_document_scientific(pred_dir, gt_dir, coco_gt,
+        args.common_layout_classes.split(",") if args.common_layout_classes else None,
+        args.supported_layout_classes.split(",") if args.supported_layout_classes else None)
 
     metrics = report["academic_metrics"]
     timing = report["timing_and_throughput"]

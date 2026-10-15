@@ -1,0 +1,19 @@
+# Hardware profile (proposal V6 ENV-01, section 7.3): Google Colab GPU
+# session with outputs on Google Drive. Colab does not guarantee the GPU
+# type, CPU count or session length; run_manifest.json records what was
+# actually allocated, so nothing here is a measured capacity.
+# device: cuda fails fast when no GPU is attached instead of silently
+# measuring on CPU. The RapidOCR primary profile (`fast`) still runs on CPU
+# only; use `--device cpu` with that profile.
+hardware:
+  name: colab_gpu
+  description: Google Colab GPU; one worker, two CPU threads per backend; persistent Drive paths.
+  device: cuda
+  workers: 1
+  threads_per_worker: 2
+  batch_size: null
+  paths:
+    data_dir: /content/drive/MyDrive/ocr_pdf/data/raw
+    output_dir: /content/drive/MyDrive/ocr_pdf/outputs
+    cache_dir: /content/drive/MyDrive/ocr_pdf/cache
+    models_dir: /content/drive/MyDrive/ocr_pdf/models

@@ -3,17 +3,16 @@ import re
 import textwrap
 import unicodedata
 from pydantic import BaseModel, Field
+from src.ocr.domain.models.confidence import ConfidenceModel
 
 
-class TableCell(BaseModel):
+class TableCell(ConfidenceModel):
     row_idx: int
     col_idx: int
     row_span: int = 1
     col_span: int = 1
     text: str = ""
     bbox: List[float] = Field(default_factory=list)
-    confidence: Optional[float] = 1.0
-    confidence_source: Optional[str] = None
 
 
 class TableRenderer:
@@ -390,7 +389,7 @@ class TableRenderer:
         return cls.render_box_table(headers, data_rows, caption=table.caption)
 
 
-class TableStructure(BaseModel):
+class TableStructure(ConfidenceModel):
     table_id: str
     page: int
     bbox: List[float] = Field(default_factory=list)
@@ -399,8 +398,6 @@ class TableStructure(BaseModel):
     cells: List[TableCell] = Field(default_factory=list)
     caption: Optional[str] = None
     # None = model output without calibrated confidence (see confidence_source).
-    confidence: Optional[float] = 1.0
-    confidence_source: Optional[str] = None
     has_nested_tables: bool = False
     engine: str = "heuristic"
     needs_review: bool = False

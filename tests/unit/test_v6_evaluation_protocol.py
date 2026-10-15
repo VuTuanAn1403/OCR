@@ -239,8 +239,8 @@ def test_standard_coco_gt_uses_category_ids_xywh_and_selected_pages(tmp_path, sc
                         for image_id in (11, 12, 13)],
     }), encoding="utf-8")
     result = scientific_runner(doc, coco_gt_path=coco)["academic_metrics"]["dla_coco"]
-    assert result["mAP@50"] == 1.0
-    assert result["per_class"]["text"]["total_gt"] == 1
+    assert result["mAP@50"] == pytest.approx(1.0)
+    assert result["acceptance"]["per_class"]["Text"]["GT"] == 1
     assert result["eligible_for_v6_acceptance"] is False
 
 

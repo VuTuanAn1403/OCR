@@ -1,0 +1,149 @@
+{
+  "schema_version": "v6-remediation-evidence-addendum-v1",
+  "generated_at": "2026-10-14T17:46:46.783994+00:00",
+  "extends": {
+    "registry": "remediation_20261014.json",
+    "sha256": "2953aac1ecdee149fe8e654a8aaf8aa576d52a891c12a8135bbb39a14554c55e",
+    "note": "Earlier records are kept unchanged; this addendum adds later evidence only."
+  },
+  "git": {
+    "commit": "ee35d969a978c1a3a1f906f636deaf66a39e7b65",
+    "dirty": true,
+    "uncommitted_diff_sha256": "450d34ad5ff6608e96d06e34d7e6eb67e36f78c5b4e1d7660b068147c27d351d",
+    "untracked_files_sha256": {
+      "MANIFEST.in": "c026eddac419fafd45f5fb5a7c55a98d36968d902531744474c43379268c5100",
+      "benchmark/evidence/20261014/docling_lifetime_verification.json": "0ebda6fe958223b94aa0400b748c47ffa93b7933b2e9ebf199745163831c40d0",
+      "benchmark/evidence/20261014/parallel_resume_run_manifest.json": "63b9612e6274dc63c226ad592f1c3c80d51735d264b0aff7bf28a6dc172fdcd4",
+      "benchmark/evidence/20261014/pytest.txt": "74412f5f807081459015597b6d6ae2323174fca299c10fe21110ec9f5314b5b8",
+      "benchmark/evidence/20261014/runtime_verification.json": "1355740b5c157900483bb8821a86a8fd4c5a3c1ab763d0c6b2404df24d6a406b",
+      "benchmark/evidence/20261014/sequential_run_manifest.json": "40de27646ded77d6fe764f4974fb57bc2ad3f760e4fe59620757862245b47713",
+      "benchmark/evidence/20261014/source_inventory.json": "cc5d5d52ae199c18807a819cce429ffca6c342cfb68f80776794f74fd670d365",
+      "benchmark/evidence/20261014/wheel_verification.json": "da8490248a177a8ef338c9469b2e77cd6ec18b8894037b8048d87a73cdef75db",
+      "benchmark/evidence/20261015/financial_checks_real_probe.json": "a01b8cdc871e70b1cd95de90a8cc85d0b8e5cdd4c53315bd500e3fbd9e5b3d92",
+      "benchmark/evidence/20261015/matrix_exploratory_summary.json": "501ee2a63e989736d816a000abb3a80b3d2e0311c23ed2f7551aed9be31c63cc",
+      "benchmark/evidence/20261015/pytest.txt": "00248d6cbfeebab3c390c13877197592af33b469661ac22b9a106c842d98492b",
+      "benchmark/evidence/README.md": "365405b21f19224b4fac9017803118c160dbdfc1120516140e4f5c528a272bd6",
+      "benchmark/evidence/references.json": "740c256932083108619b15644ffb88cc45098595e110bbc63decb0038e94078e",
+      "benchmark/evidence/remediation_20261014.json": "2953aac1ecdee149fe8e654a8aaf8aa576d52a891c12a8135bbb39a14554c55e",
+      "benchmark/ground_truth_tools/ANNOTATION_V6.md": "3e62ba8d14277f290fcc2ee13aab7c672b6d9092df920327f8dc8b3db679b83c",
+      "benchmark/ground_truth_tools/sources.initial.catalog.json": "cc5d5d52ae199c18807a819cce429ffca6c342cfb68f80776794f74fd670d365",
+      "benchmark/ground_truth_tools/sources.initial.csv": "34dc727a06adfe490c787b31677a65b1a790edc6adb7068854d4abaa8d12efd9",
+      "benchmark/scientific_evaluation/cluster_statistics.py": "88375420948c4b09f57119b727561771a9d730cf112b05361e6b3bf3a47af2b2",
+      "benchmark/scientific_evaluation/coco_layout.py": "166982cfffef40de4536193fd243356faf863d95a3f707ffcb2c673a69ead226",
+      "benchmark/scientific_evaluation/matrix_runner.py": "1fdfb946250a91a678734459a287630ee752232057948f60624efed4700d6322",
+      "benchmark/scientific_evaluation/matrix_statistics.py": "523615d5d87befd7da46ce3777a6733e3855cdbab2cd7e91c8e508619e4c5a82",
+      "setup.py": "f58556ac64b004f8a1c5da8fc639f6ec1e34e6085095e6295b3018967493a64f",
+      "src/ocr/cli/collect.py": "eee96257f4f018013ecb68182dc94cbc8a85ea6549f92b6d6d1df26e0bcfb194",
+      "src/ocr/collect/__init__.py": "8b08b092742883c982a20ef9ee9393a901dfa3c5468359a0d6d5295b24d52f4a",
+      "src/ocr/collect/catalog.py": "1b56e4d099c953a468dba345d4a54789fd5f552580583ed902c25fed57564ed5",
+      "src/ocr/domain/models/confidence.py": "4251503a14c3d60bcbe2715277a6097afcf9cfd1d14cad1933007a8b0753dcf4",
+      "src/ocr/infrastructure/export/output_contract.py": "804cf097a652553a30cd6424f6231b9485d85de3cc60c5102523bf1e4153e872",
+      "src/ocr/infrastructure/pdf/coordinate_transform.py": "9c0934469ae5aa525ea97af0a9dcb181a29ed9ceedd4638827d88a98bc9b79d8",
+      "src/ocr/infrastructure/table/__init__.py": "e0e6a70e368c892e01cd7c532863a2f35bd0172ece393d0964c2e1ed168bf9ba",
+      "src/ocr/infrastructure/table/financial_checks.py": "625d7b88c9d8479fba71eda94d5dccb8d20d18206f8841325ffdefb75583a22a",
+      "src/ocr/resources/__init__.py": "4b82a6998e9d5112b120bf233d40510ee80225c0196caecef831d107b68fb5a0",
+      "src/ocr/runtime/document_pool.py": "d3d9d29183cf66358a406dafe465c34e8c3da8ea5baf4f689a16d1f72e1ed4eb",
+      "tests/scientific/test_v6_cluster_and_coco.py": "dfb133ffd9e8db4f3d7f014678ebd870130193cc64a1b93b66a7dd418a68cc1c",
+      "tests/scientific/test_v6_matrix_statistics.py": "e6b21eb29e631d9e2beafebde09b0dfab94d742af097d617987ad4b9f446a374",
+      "tests/unit/test_v6_collect.py": "1377e5ea62b8fde067ee7fcd1ea87f72ec548e15cb6b42b24bea9e004b9ae2ea",
+      "tests/unit/test_v6_financial_checks.py": "61f1c46e71ad0346f72816c7a3a5763c14b37d0a2e7fdc44d41ea565de46601c",
+      "tests/unit/test_v6_language_evidence.py": "a09bc82184a4c5d1ff12ca8004aadcb8c96a7e0b6f037d11a97d7ce2efc00d27",
+      "tests/unit/test_v6_matrix_runner.py": "bca2a380fc185beabfa595e94eb302b93f819f9233bb93dfe18364f097bb4815",
+      "tests/unit/test_v6_remediation.py": "5de06925f71584668c13fda21d2bdc930b32c17068df2f8497abc1e51f34c936",
+      "tests/unit/test_v6_visibility_and_coordinates.py": "9d142bc6a05219c4cd86393627f86c8dce0d0b0f1e3b88f70878fca0ce831fe4",
+      "tests/unit/test_v6_worker_lifetime.py": "dbb5ae415706c0f426b14b2e8d8dca8f496b0602ba28865775870be81d5e3f74"
+    }
+  },
+  "source_fingerprint": "95cace67366d4be0",
+  "changed_file_sha256": {
+    "src/ocr/infrastructure/table/__init__.py": "e0e6a70e368c892e01cd7c532863a2f35bd0172ece393d0964c2e1ed168bf9ba",
+    "src/ocr/infrastructure/table/financial_checks.py": "625d7b88c9d8479fba71eda94d5dccb8d20d18206f8841325ffdefb75583a22a",
+    "src/ocr/infrastructure/export/document_contracts.py": "691a223f81357655e342d49d13a2a45c475547dce005b9f4772ffc61321fee0c",
+    "src/ocr/infrastructure/export/contract_schema.py": "d8681b3c91337ee1589b308e993a82ad90145c16a5cd4265b455d2acf4efaa1b",
+    "src/ocr/application/export_document.py": "54ff7947a6bab4152a6da0dd4a6067d8c36592fbe1be735ddf6117ed22c23273",
+    "src/ocr/application/process_page.py": "4b90f19d1cb5b56df816baef734a2f2486269aed77b90110fb90950c8ca49b63",
+    "src/ocr/application/convert_document.py": "eef8f3eab50f1d1f953bfed25f7f31ed1842a081cb960b5127aa9174b86f901f",
+    "src/ocr/cli/batch_runner.py": "f5673366b994382cbf3cb1a35f3be9b18b2a35e9c20f9cbfcf77a8068e1b5eb7",
+    "benchmark/scientific_evaluation/matrix_runner.py": "1fdfb946250a91a678734459a287630ee752232057948f60624efed4700d6322",
+    "tests/unit/test_v6_financial_checks.py": "61f1c46e71ad0346f72816c7a3a5763c14b37d0a2e7fdc44d41ea565de46601c",
+    "tests/unit/test_v6_matrix_runner.py": "bca2a380fc185beabfa595e94eb302b93f819f9233bb93dfe18364f097bb4815",
+    "CLAUDE.md": "6687a7710a027bdcb1fe4cf41d141bd75823e489e8d18fbda6b0491ee5b53483"
+  },
+  "quality_acceptance": "NOT_EVALUATED",
+  "gt_sha256": null,
+  "splits_sha256": null,
+  "validation": {
+    "command": ".venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider --basetemp=scratch/pytest-claude-full3",
+    "exit_code": 0,
+    "passed": 510,
+    "skipped": 3,
+    "warnings": 1,
+    "skipped_reason": "Required CLW/BHN PDFs or CLW golden predictions unavailable",
+    "scope": "unit/scientific fixtures and available tests, not empirical quality acceptance"
+  },
+  "resolved_blocked_checks": [
+    {
+      "name": "real_docling_cross_document_lifetime",
+      "status": "EXECUTED_PASS",
+      "script": "scratch/verify_v6_docling_lifetime.py",
+      "evidence": "20261014/docling_lifetime_verification.json",
+      "result": "Same Docling worker (one PID) served two documents offline; 1 table + 1 formula each; worker closed at converter exit. First document 57.1 s incl. cold start, second 14.6 s.",
+      "scope": "native table/formula fixture, lifetime only; not quality or PERF evidence"
+    }
+  ],
+  "records": [
+    {
+      "kp_id": "KP-07",
+      "requirement_ids": [
+        "9.4",
+        "9.5",
+        "PERF-07"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "fixtures + one real-page runner smoke (no GT)",
+      "decision": "matrix_runner executes F/A1/A6/V1, keeps A2-A5 visible as NOT_APPLICABLE/NOT_IMPLEMENTED, emits paired GT counts (MISSING_OUTPUT for failed documents) and assembles the matrix_statistics payload. B0 accepted only at the protocol-locked commit. Locked B0, thresholds, margins and human GT still pending."
+    },
+    {
+      "kp_id": "KP-11",
+      "requirement_ids": [
+        "C3.5b",
+        "C3.5c"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "fixtures + real native pages (AGR p12/14/15/22/28, ADP p17/18/22), no GT",
+      "decision": "Flag-only total-row, balance-identity, multi-value and damaged-amount checks plus continuation candidates in document.json and review_queue.json. No value corrected, no table merged; VIOLATION needs a code formula or a fully numbered block. On the real pages AGR totals verified CONSISTENT via A./B. level and merged rows flagged; no false VIOLATION observed. C3.5(a) scan-table A/B/C experiment still BLOCKED_DATA."
+    },
+    {
+      "kp_id": "KP-13",
+      "requirement_ids": [
+        "T2",
+        "ENV-14"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "real Docling smoke across two documents",
+      "decision": "Cross-document Docling worker lifetime smoke executed and passed; GPU/VRAM, Docker/Colab/lab, hardware tuning and stage refactor still pending."
+    }
+  ],
+  "fixes_from_plugin_review": [
+    "Bare-year header rows no longer counted as detail rows (false VIOLATION)",
+    "Unnumbered blocks and 'Tổng X' labels can no longer produce VIOLATION; 'Tổng Giám đốc' is not a total",
+    "Balance identity pairs nearest preceding assets total on same/adjacent page, aligns periods by header, reports unit mismatch, one-sided blanks and unpaired totals as INCONCLUSIVE",
+    "Strict amount parsing: whole-value space grouping only, shape per convention, unbalanced brackets rejected",
+    "Damaged amount cells and duplicate cell positions flagged; skipped tables/columns recorded",
+    "Check crashes recorded as consistency_checks.status=FAILED instead of deleting document.json; structure-step errors named in the export failure and logged with traceback",
+    "OCR timeouts/exceptions recorded as page errors instead of silent empty results",
+    "A1 also disables vector tables; native_first must be a boolean; A1 pages counted as OCR",
+    "Matrix runner: RUNNING/FAILED records, tracebacks, MISSING_OUTPUT records, prefixed GT only, company verified by PDF hash, same-provenance check in assemble, --device auto passed through, A6 also pins fallback_upscale_dpi, strict override keys"
+  ],
+  "known_open_items_from_review": [
+    "A1 Docling table cells still come from the PDF text layer (docling.ocr=false); declared as a confound",
+    "Matrix counts use per-page Markdown; the primary final-Markdown protocol may differ (count_source recorded)",
+    "process_page reads top-level native_review_threshold (absent from profiles, so 0.70); the accuracy profile's native_quality.review_threshold 0.75 is not used for native eligibility (pre-existing)"
+  ],
+  "evidence": {
+    "20261014/docling_lifetime_verification.json": "0ebda6fe958223b94aa0400b748c47ffa93b7933b2e9ebf199745163831c40d0",
+    "20261015/pytest.txt": "00248d6cbfeebab3c390c13877197592af33b469661ac22b9a106c842d98492b",
+    "20261015/financial_checks_real_probe.json": "a01b8cdc871e70b1cd95de90a8cc85d0b8e5cdd4c53315bd500e3fbd9e5b3d92",
+    "20261015/matrix_exploratory_summary.json": "501ee2a63e989736d816a000abb3a80b3d2e0311c23ed2f7551aed9be31c63cc"
+  }
+}

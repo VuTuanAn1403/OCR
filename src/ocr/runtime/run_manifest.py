@@ -122,7 +122,8 @@ class RunRecorder:
 
     def __init__(self, kind: str, *, config_path: Path, profile: str, profile_config: Dict[str, Any],
                  device: str, cache_dir: Path, resume: bool, assets_mode: str,
-                 argv: Optional[List[str]] = None):
+                 argv: Optional[List[str]] = None, hardware_profile: Optional[Dict[str, Any]] = None,
+                 output_mode: str = "legacy"):
         cache_dir = Path(cache_dir)
         self.data: Dict[str, Any] = {
             "schema": RUN_MANIFEST_SCHEMA,
@@ -140,9 +141,12 @@ class RunRecorder:
                        "profile": profile, "resolved": copy.deepcopy(profile_config)},
             "device": device,
             "assets_mode": assets_mode,
+            "output_mode": output_mode,
             "models": model_hashes(profile_config),
             "packages": package_versions(),
             "hardware": hardware_info(),
+            # Requested settings (ENV-01); `hardware` above is what was measured.
+            "hardware_profile": copy.deepcopy(hardware_profile),
             "cache": {"dir": str(cache_dir.resolve()),
                       "empty_at_start": not any(cache_dir.iterdir()) if cache_dir.is_dir() else True,
                       "resume": resume, "pages_from_cache": 0},

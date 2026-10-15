@@ -1,0 +1,17 @@
+{
+  "module": "C:\\kk_2\\OCR_pdf\\scratch\\kp02-wheel-smoke\\venv\\Lib\\site-packages\\src\\ocr\\runtime\\config.py",
+  "profile": "C:\\kk_2\\OCR_pdf\\scratch\\kp02-wheel-smoke\\venv\\Lib\\site-packages\\src\\ocr\\resources\\profiles.yaml",
+  "worker": "C:\\kk_2\\OCR_pdf\\scratch\\kp02-wheel-smoke\\venv\\Lib\\site-packages\\src\\ocr\\resources\\docling_structure_worker.py",
+  "version": "6.1.0",
+  "ocrpdf_exit_code": 0,
+  "collect_exit_code": 0,
+  "batch_help_exit_code": 0,
+  "perf_help_exit_code": 0,
+  "wheel": "C:\\kk_2\\OCR_pdf\\scratch\\kp02-final-wheel\\ocr_pdf-6.1.0-py3-none-any.whl",
+  "wheel_sha256": "428db15acade852e22709b461032ef486f887ad42cf1986d7c0f986cf1b7fd0b",
+  "runtime_resources_equal_source": true,
+  "isolated_install": true,
+  "dependency_scope": "Existing .venv dependencies via PYTHONPATH; installed wheel source, not editable source",
+  "fixture_scope": "native_package_smoke_only",
+  "eligible_for_quality_acceptance": false
+}

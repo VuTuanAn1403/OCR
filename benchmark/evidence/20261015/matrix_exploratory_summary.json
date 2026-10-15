@@ -1,0 +1,222 @@
+{
+  "schema": "matrix-exploratory-run-summary-v1",
+  "git": {
+    "commit": "ee35d969a978c1a3a1f906f636deaf66a39e7b65",
+    "dirty": true,
+    "uncommitted_diff_sha256": "915eec956316bbcf9d11a8bf928a9f81b2f63937f019bf3874fb7110531c57c1",
+    "untracked_files_sha256": {
+      "MANIFEST.in": "c026eddac419fafd45f5fb5a7c55a98d36968d902531744474c43379268c5100",
+      "benchmark/evidence/20261014/docling_lifetime_verification.json": "0ebda6fe958223b94aa0400b748c47ffa93b7933b2e9ebf199745163831c40d0",
+      "benchmark/evidence/20261014/parallel_resume_run_manifest.json": "63b9612e6274dc63c226ad592f1c3c80d51735d264b0aff7bf28a6dc172fdcd4",
+      "benchmark/evidence/20261014/pytest.txt": "74412f5f807081459015597b6d6ae2323174fca299c10fe21110ec9f5314b5b8",
+      "benchmark/evidence/20261014/runtime_verification.json": "1355740b5c157900483bb8821a86a8fd4c5a3c1ab763d0c6b2404df24d6a406b",
+      "benchmark/evidence/20261014/sequential_run_manifest.json": "40de27646ded77d6fe764f4974fb57bc2ad3f760e4fe59620757862245b47713",
+      "benchmark/evidence/20261014/source_inventory.json": "cc5d5d52ae199c18807a819cce429ffca6c342cfb68f80776794f74fd670d365",
+      "benchmark/evidence/20261014/wheel_verification.json": "da8490248a177a8ef338c9469b2e77cd6ec18b8894037b8048d87a73cdef75db",
+      "benchmark/evidence/README.md": "365405b21f19224b4fac9017803118c160dbdfc1120516140e4f5c528a272bd6",
+      "benchmark/evidence/references.json": "740c256932083108619b15644ffb88cc45098595e110bbc63decb0038e94078e",
+      "benchmark/evidence/remediation_20261014.json": "2953aac1ecdee149fe8e654a8aaf8aa576d52a891c12a8135bbb39a14554c55e",
+      "benchmark/ground_truth_tools/ANNOTATION_V6.md": "3e62ba8d14277f290fcc2ee13aab7c672b6d9092df920327f8dc8b3db679b83c",
+      "benchmark/ground_truth_tools/sources.initial.catalog.json": "cc5d5d52ae199c18807a819cce429ffca6c342cfb68f80776794f74fd670d365",
+      "benchmark/ground_truth_tools/sources.initial.csv": "34dc727a06adfe490c787b31677a65b1a790edc6adb7068854d4abaa8d12efd9",
+      "benchmark/scientific_evaluation/cluster_statistics.py": "88375420948c4b09f57119b727561771a9d730cf112b05361e6b3bf3a47af2b2",
+      "benchmark/scientific_evaluation/coco_layout.py": "166982cfffef40de4536193fd243356faf863d95a3f707ffcb2c673a69ead226",
+      "benchmark/scientific_evaluation/matrix_runner.py": "1fdfb946250a91a678734459a287630ee752232057948f60624efed4700d6322",
+      "benchmark/scientific_evaluation/matrix_statistics.py": "523615d5d87befd7da46ce3777a6733e3855cdbab2cd7e91c8e508619e4c5a82",
+      "setup.py": "f58556ac64b004f8a1c5da8fc639f6ec1e34e6085095e6295b3018967493a64f",
+      "src/ocr/cli/collect.py": "eee96257f4f018013ecb68182dc94cbc8a85ea6549f92b6d6d1df26e0bcfb194",
+      "src/ocr/collect/__init__.py": "8b08b092742883c982a20ef9ee9393a901dfa3c5468359a0d6d5295b24d52f4a",
+      "src/ocr/collect/catalog.py": "1b56e4d099c953a468dba345d4a54789fd5f552580583ed902c25fed57564ed5",
+      "src/ocr/domain/models/confidence.py": "4251503a14c3d60bcbe2715277a6097afcf9cfd1d14cad1933007a8b0753dcf4",
+      "src/ocr/infrastructure/export/output_contract.py": "804cf097a652553a30cd6424f6231b9485d85de3cc60c5102523bf1e4153e872",
+      "src/ocr/infrastructure/pdf/coordinate_transform.py": "9c0934469ae5aa525ea97af0a9dcb181a29ed9ceedd4638827d88a98bc9b79d8",
+      "src/ocr/infrastructure/table/__init__.py": "e0e6a70e368c892e01cd7c532863a2f35bd0172ece393d0964c2e1ed168bf9ba",
+      "src/ocr/infrastructure/table/financial_checks.py": "625d7b88c9d8479fba71eda94d5dccb8d20d18206f8841325ffdefb75583a22a",
+      "src/ocr/resources/__init__.py": "4b82a6998e9d5112b120bf233d40510ee80225c0196caecef831d107b68fb5a0",
+      "src/ocr/runtime/document_pool.py": "d3d9d29183cf66358a406dafe465c34e8c3da8ea5baf4f689a16d1f72e1ed4eb",
+      "tests/scientific/test_v6_cluster_and_coco.py": "dfb133ffd9e8db4f3d7f014678ebd870130193cc64a1b93b66a7dd418a68cc1c",
+      "tests/scientific/test_v6_matrix_statistics.py": "e6b21eb29e631d9e2beafebde09b0dfab94d742af097d617987ad4b9f446a374",
+      "tests/unit/test_v6_collect.py": "1377e5ea62b8fde067ee7fcd1ea87f72ec548e15cb6b42b24bea9e004b9ae2ea",
+      "tests/unit/test_v6_financial_checks.py": "61f1c46e71ad0346f72816c7a3a5763c14b37d0a2e7fdc44d41ea565de46601c",
+      "tests/unit/test_v6_language_evidence.py": "a09bc82184a4c5d1ff12ca8004aadcb8c96a7e0b6f037d11a97d7ce2efc00d27",
+      "tests/unit/test_v6_matrix_runner.py": "bca2a380fc185beabfa595e94eb302b93f819f9233bb93dfe18364f097bb4815",
+      "tests/unit/test_v6_remediation.py": "5de06925f71584668c13fda21d2bdc930b32c17068df2f8497abc1e51f34c936",
+      "tests/unit/test_v6_visibility_and_coordinates.py": "9d142bc6a05219c4cd86393627f86c8dce0d0b0f1e3b88f70878fca0ce831fe4",
+      "tests/unit/test_v6_worker_lifetime.py": "dbb5ae415706c0f426b14b2e8d8dca8f496b0602ba28865775870be81d5e3f74"
+    }
+  },
+  "source_fingerprint": "95cace67366d4be0",
+  "input": {
+    "pdf": "inputs/ADP_Baocaothuongnien_2025.pdf",
+    "pdf_sha256": "7e2eeb86a60c6c2cf5b62adfff99d25b5b3e3a28e5d7fc107d43ab520a0696d8",
+    "pages": "17",
+    "profile": "balanced",
+    "device": "cpu"
+  },
+  "scope": "Runner smoke on one real page; dirty tree, single run, no GT. Latencies are not comparable (Docling cold start, no repeats) and are not PERF evidence.",
+  "slots": {
+    "B0": {
+      "status": "NOT_RUN",
+      "reason": "scratch\\claude-matrix-final\\B0\\run_record.json not found"
+    },
+    "F": {
+      "status": "COMPLETED",
+      "reason": null,
+      "quality_status": "NOT_EVALUATED",
+      "failed_documents": []
+    },
+    "A1": {
+      "status": "COMPLETED",
+      "reason": null,
+      "quality_status": "NOT_EVALUATED",
+      "failed_documents": []
+    },
+    "A2": {
+      "status": "NOT_APPLICABLE",
+      "reason": "F uses the heuristic layout because no D1 model is selected (KP-10); A2 would equal F",
+      "quality_status": "NOT_EVALUATED",
+      "failed_documents": []
+    },
+    "A3": {
+      "status": "NOT_APPLICABLE",
+      "reason": "F applies no dictionary/BARTpho diacritic correction yet (KP-12)",
+      "quality_status": "NOT_EVALUATED",
+      "failed_documents": []
+    },
+    "A4": {
+      "status": "NOT_APPLICABLE",
+      "reason": "F has no hidden-text scan-table path; the C3.5(a) A/B/C experiment is pending (KP-11)",
+      "quality_status": "NOT_EVALUATED",
+      "failed_documents": []
+    },
+    "A5": {
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Fixed-size chunking in place of the section tree is not implemented",
+      "quality_status": "NOT_EVALUATED",
+      "failed_documents": []
+    },
+    "A6": {
+      "status": "COMPLETED",
+      "reason": null,
+      "quality_status": "NOT_EVALUATED",
+      "failed_documents": []
+    },
+    "V1": {
+      "status": "COMPLETED",
+      "reason": null,
+      "quality_status": "NOT_EVALUATED",
+      "failed_documents": []
+    }
+  },
+  "runs": {
+    "F": {
+      "status": "COMPLETED",
+      "reason": null,
+      "variable": null,
+      "overrides": {},
+      "known_confounds": [],
+      "config_sha256": "dfe5b6fe28a9fe2d",
+      "quality_status": "NOT_EVALUATED",
+      "quality_status_reason": "No ground truth supplied",
+      "failed_documents": [],
+      "document_latency_seconds": 53.072
+    },
+    "A1": {
+      "status": "COMPLETED",
+      "reason": null,
+      "variable": "routing",
+      "overrides": {
+        "native_first": false
+      },
+      "known_confounds": [
+        "Docling runs with ocr: false and reads the PDF text layer for table cells and formulas; table content of A1 is therefore not OCR-only"
+      ],
+      "config_sha256": "886b635c115abef7",
+      "quality_status": "NOT_EVALUATED",
+      "quality_status_reason": "No ground truth supplied",
+      "failed_documents": [],
+      "document_latency_seconds": 29.092
+    },
+    "A2": {
+      "status": "NOT_APPLICABLE",
+      "reason": "F uses the heuristic layout because no D1 model is selected (KP-10); A2 would equal F",
+      "variable": "layout_source",
+      "overrides": null,
+      "known_confounds": [],
+      "config_sha256": null,
+      "quality_status": "NOT_EVALUATED",
+      "quality_status_reason": null,
+      "failed_documents": []
+    },
+    "A3": {
+      "status": "NOT_APPLICABLE",
+      "reason": "F applies no dictionary/BARTpho diacritic correction yet (KP-12)",
+      "variable": "diacritic_post_correction",
+      "overrides": null,
+      "known_confounds": [],
+      "config_sha256": null,
+      "quality_status": "NOT_EVALUATED",
+      "quality_status_reason": null,
+      "failed_documents": []
+    },
+    "A4": {
+      "status": "NOT_APPLICABLE",
+      "reason": "F has no hidden-text scan-table path; the C3.5(a) A/B/C experiment is pending (KP-11)",
+      "variable": "scan_table_path",
+      "overrides": null,
+      "known_confounds": [],
+      "config_sha256": null,
+      "quality_status": "NOT_EVALUATED",
+      "quality_status_reason": null,
+      "failed_documents": []
+    },
+    "A5": {
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Fixed-size chunking in place of the section tree is not implemented",
+      "variable": "structure",
+      "overrides": null,
+      "known_confounds": [],
+      "config_sha256": null,
+      "quality_status": "NOT_EVALUATED",
+      "quality_status_reason": null,
+      "failed_documents": []
+    },
+    "A6": {
+      "status": "COMPLETED",
+      "reason": null,
+      "variable": "regional_reocr",
+      "overrides": {
+        "fallback_enabled": false,
+        "fallback_only_on_review": false,
+        "fallback_upscale_dpi": 180
+      },
+      "known_confounds": [],
+      "config_sha256": "085ded69a963ce09",
+      "quality_status": "NOT_EVALUATED",
+      "quality_status_reason": "No ground truth supplied",
+      "failed_documents": [],
+      "document_latency_seconds": 16.689
+    },
+    "V1": {
+      "status": "COMPLETED",
+      "reason": null,
+      "variable": "tableformer_mode",
+      "overrides": {
+        "docling": {
+          "table_mode": "accurate"
+        }
+      },
+      "known_confounds": [],
+      "config_sha256": "d3492459eabfe568",
+      "quality_status": "NOT_EVALUATED",
+      "quality_status_reason": "No ground truth supplied",
+      "failed_documents": [],
+      "document_latency_seconds": 19.46
+    }
+  },
+  "family_size": 24,
+  "comparison_statuses": [
+    "NOT_EVALUATED"
+  ],
+  "eligible_for_quality_acceptance": false
+}

@@ -21,6 +21,9 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from src.ocr.infrastructure.export.result_reader import load_document_json
 
 HEADER_FILL = PatternFill("solid", fgColor="1F4E78")      # Deep Navy
 HEADER_FONT = Font(name="Arial", size=11, color="FFFFFF", bold=True)
@@ -108,7 +111,7 @@ def generate_7_files_excel(
     for d in doc_dirs:
         bm = load_json_utf8(d / "benchmark.json")
         val = load_json_utf8(d / "validation.json")
-        res = load_json_utf8(d / "result.json")
+        res = load_document_json(d / "result.json") if (d / "result.json").is_file() else {}
         md_file = d / "result.md"
         char_count = len(md_file.read_text(encoding="utf-8").strip()) if md_file.exists() else 0
 
@@ -287,7 +290,7 @@ def generate_7_files_excel(
 
     for d in doc_dirs:
         qual = load_json_utf8(d / "quality.json")
-        res = load_json_utf8(d / "result.json")
+        res = load_document_json(d / "result.json") if (d / "result.json").is_file() else {}
         pages_res = {p.get("page_num"): p for p in res.get("pages", [])}
 
         for p_rep in qual.get("page_reports", []):

@@ -63,7 +63,7 @@ def check_ocr_engines() -> bool:
     try:
         from rapidocr_onnxruntime import RapidOCR
         import numpy as np
-        engine = RapidOCR()
+        engine = RapidOCR(intra_op_num_threads=2, inter_op_num_threads=1)
         dummy = np.full((64, 128, 3), 255, dtype=np.uint8)
         engine(dummy)
         print("    [OK] RapidOCR DBNet Engine: Ready")
@@ -73,14 +73,13 @@ def check_ocr_engines() -> bool:
 
     # 2. VietOCR check
     try:
-        from vietocr.tool.config import Cfg
-        from vietocr.tool.predictor import Predictor
+        import torch
+        from src.ocr.infrastructure.ocr.vietnamese_seq2seq_engine import VietnameseSeq2SeqEngine
         from PIL import Image
         import numpy as np
 
-        cfg = Cfg.load_config_from_name("vgg_seq2seq")
-        cfg["device"] = "cpu"
-        predictor = Predictor(cfg)
+        torch.set_num_threads(2)
+        predictor = VietnameseSeq2SeqEngine(batch_size=4, device="cpu", num_threads=2)._recognizer
         dummy_crop = Image.fromarray(np.full((32, 100, 3), 255, dtype=np.uint8))
         _ = predictor.predict(dummy_crop)
         print("    [OK] VietOCR vgg_seq2seq Engine: Ready")

@@ -12,6 +12,29 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
+def runtime_resource(name: str) -> Path:
+    """Wheel copies are generated during build, never separately maintained."""
+    return Path(__file__).resolve().parents[1] / "resources" / name
+
+
+def default_profile_path() -> Path:
+    if (PROJECT_ROOT / "pyproject.toml").is_file():
+        return PROJECT_ROOT / "config/profiles.yaml"
+    return runtime_resource("profiles.yaml")
+
+
+def hardware_profile_dir() -> Path:
+    if (PROJECT_ROOT / "pyproject.toml").is_file():
+        return PROJECT_ROOT / "config/hardware"
+    return runtime_resource("hardware")
+
+
+def docling_worker_path() -> Path:
+    if (PROJECT_ROOT / "pyproject.toml").is_file():
+        return PROJECT_ROOT / "scripts/docling_structure_worker.py"
+    return runtime_resource("docling_structure_worker.py")
+
+
 def _env_dir(name: str, default: Path) -> Path:
     value = os.getenv(name)
     return Path(value).expanduser() if value else default

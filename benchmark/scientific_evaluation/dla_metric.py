@@ -1,6 +1,8 @@
 """
-Document Layout Analysis (DLA) Evaluation Metrics: Official COCO AP Protocol.
-Adheres strictly to the official COCO evaluation standard (cocoeval.py):
+Legacy diagnostic DLA metrics, retained for historical callers and fixtures.
+This custom approximation is NOT the official COCO backend. New scientific
+evaluations use coco_layout.evaluate_layout_scoreboards with pycocotools.
+The historical implementation provides:
 - Per-(image/page) matching (no cross-page leakage)
 - 101 recall thresholds [0.00, 0.01, ..., 1.00]
 - 10 IoU thresholds [0.50, 0.55, ..., 0.95] for mAP@50:95

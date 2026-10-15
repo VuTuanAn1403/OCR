@@ -32,7 +32,7 @@ class CandidateScorer:
     def score_candidate(
         self,
         text: str,
-        confidence: float,
+        confidence: Optional[float],
         expected_width: Optional[float] = None,
         actual_width: Optional[float] = None
     ) -> float:
@@ -41,7 +41,9 @@ class CandidateScorer:
             return 0.0
 
         # 1. OCR Confidence
-        c_conf = max(0.0, min(1.0, confidence))
+        # Missing confidence contributes nothing to this heuristic ranking;
+        # it remains None in the returned OCR evidence.
+        c_conf = max(0.0, min(1.0, confidence)) if confidence is not None else 0.0
 
         # 2. Vietnamese Quality
         vn_score, _, _ = self.vn_evaluator.evaluate_line(clean)

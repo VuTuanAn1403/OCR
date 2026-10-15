@@ -28,7 +28,7 @@ def mock_use_case():
         "profile": "balanced",
         "render_dpi": 180,
         "batch_size": 16,
-        "native_review_threshold": 0.70,
+        "native_quality": {"review_threshold": 0.70},
         "fallback_enabled": False,
         "orientation_fallback_enabled": False,
     }

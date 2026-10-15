@@ -65,7 +65,7 @@ class FallbackEngine:
         self,
         crop_bgr: np.ndarray,
         original_text: str,
-        original_conf: float
+        original_conf: Optional[float]
     ) -> Dict[str, Any]:
         """
         Re-OCRs a cropped image region using up to 2-3 candidates (Codex v3.1 Section 6):
@@ -95,7 +95,8 @@ class FallbackEngine:
         if cands_c:
             text_c = " ".join(c["text"] for c in cands_c).strip()
             numeric_disagreement |= not preserves_numeric_evidence(original_text, text_c)
-            conf_c = sum(c["confidence"] for c in cands_c) / len(cands_c)
+            known = [c["confidence"] for c in cands_c if c.get("confidence") is not None]
+            conf_c = sum(known) / len(known) if known else None
             score_c = self.scorer.score_candidate(text_c, conf_c)
             if score_c > best_cand["score"] + 0.015 and self._safe_replacement(original_text, text_c):
                 best_cand = {
@@ -127,7 +128,8 @@ class FallbackEngine:
             if cands_b:
                 text_b = " ".join(c["text"] for c in cands_b).strip()
                 numeric_disagreement |= not preserves_numeric_evidence(original_text, text_b)
-                conf_b = sum(c["confidence"] for c in cands_b) / len(cands_b)
+                known = [c["confidence"] for c in cands_b if c.get("confidence") is not None]
+                conf_b = sum(known) / len(known) if known else None
                 score_b = self.scorer.score_candidate(text_b, conf_b)
                 if score_b > best_cand["score"] + 0.015 and self._safe_replacement(original_text, text_b):
                     best_cand = {

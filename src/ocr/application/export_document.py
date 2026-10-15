@@ -1,4 +1,6 @@
 import gc
+import hashlib
+import json
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -10,6 +12,7 @@ from src.ocr.infrastructure.export.json_exporter import JSONExporter
 from src.ocr.infrastructure.export.artifact_validator import validate_document_artifacts
 from src.ocr.infrastructure.export.completion import clear_completed
 from src.ocr.infrastructure.export.document_contracts import write_document_contracts
+from src.ocr.infrastructure.export.output_contract import OUTPUT_CONTRACT_VERSION, V6_ARTIFACTS, OUTPUT_MODES
 from src.ocr.runtime.atomic_io import atomic_write_bytes, atomic_write_text
 
 logger = logging.getLogger(__name__)
@@ -29,9 +32,12 @@ class ExportDocumentUseCase:
         benchmark_data: Optional[Dict[str, Any]] = None,
         accuracy_data: Optional[Dict[str, Any]] = None,
         assets_mode: str = "png",
+        output_mode: str = "legacy",
     ) -> Path:
         if assets_mode not in ASSET_MODES:
             raise ValueError(f"Unknown assets_mode '{assets_mode}'. Use one of: {', '.join(ASSET_MODES)}")
+        if output_mode not in OUTPUT_MODES:
+            raise ValueError(f"Unknown output_mode {output_mode!r}. Use one of: {', '.join(OUTPUT_MODES)}")
         doc_dir = output_dir / doc.document_id
         pages_dir = doc_dir / "pages"
         pages_dir.mkdir(parents=True, exist_ok=True)
@@ -39,6 +45,11 @@ class ExportDocumentUseCase:
         # completion of a partially rewritten output.
         clear_completed(doc_dir)
         doc.manifest["assets_mode"] = assets_mode
+        doc.manifest["output_mode"] = output_mode
+        doc.manifest["output_contract"] = {
+            "schema_version": OUTPUT_CONTRACT_VERSION,
+            "required_artifacts": list(V6_ARTIFACTS),
+        }
 
         cls._export_image_assets(doc, doc_dir, assets_mode)
 
@@ -101,11 +112,17 @@ class ExportDocumentUseCase:
         # 8. V6 document-level contracts (C2.4, C3.7). Additive: the files above
         # keep their format (D3); this step only reads `doc`.
         write_document_contracts(doc, doc_dir, assets_mode)
+        markdown_path = doc_dir / "document.md"
+        if markdown_path.is_file():
+            doc.manifest["output_contract"]["markdown_sha256"] = hashlib.sha256(markdown_path.read_bytes()).hexdigest()
+        JSONExporter.save_json(doc.manifest, doc_dir / "manifest.json")
 
         validation = validate_document_artifacts(doc_dir)
         JSONExporter.save_json(validation, doc_dir / "validation.json")
         if validation["status"] == "FAIL":
-            raise ValueError(f"Artifact validation failed: {validation['errors'][:3]}")
+            cause = _structure_error(doc_dir)
+            raise ValueError(f"Artifact validation failed: {validation['errors'][:3]}"
+                             + (f"; structure step error: {cause}" if cause else ""))
 
         return doc_dir
 
@@ -214,3 +231,11 @@ def _save_crop(page: pymupdf.Page, clip: pymupdf.Rect, path: Path, output: str) 
             gc.collect()
     return False
 
+
+def _structure_error(doc_dir: Path) -> Optional[str]:
+    """The recorded structure-step failure, if any, so a validation error
+    caused by it names the real exception."""
+    try:
+        return json.loads((doc_dir / "structure.json").read_text(encoding="utf-8")).get("error")
+    except (OSError, ValueError, AttributeError):
+        return None

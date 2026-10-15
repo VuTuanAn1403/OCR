@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 from src.ocr.infrastructure.quality.vietnamese_quality import VietnameseQualityEvaluator
 
 class OCRQualityEvaluator:
@@ -12,14 +12,16 @@ class OCRQualityEvaluator:
     def evaluate_ocr_result(
         self,
         text: str,
-        confidence: float
-    ) -> Tuple[float, bool, List[str]]:
+        confidence: Optional[float]
+    ) -> Tuple[Optional[float], bool, List[str]]:
         """
         Returns (combined_quality_score, needs_fallback, reasons).
         """
         vn_score, vn_suspicious, vn_reasons = self.vn_evaluator.evaluate_line(text)
 
         reasons = list(vn_reasons)
+        if confidence is None:
+            return None, True, reasons + ["Recognizer confidence unavailable"]
         if confidence < self.min_confidence:
             reasons.append(f"Low engine confidence: {confidence:.2f} < {self.min_confidence:.2f}")
 

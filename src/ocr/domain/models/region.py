@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
+from src.ocr.domain.models.confidence import ConfidenceModel
 
 
 class ContentType(str, Enum):
@@ -66,7 +67,7 @@ class BoundingBox(BaseModel):
         return inter_area / min_area
 
 
-class Region(BaseModel):
+class Region(ConfidenceModel):
     """
     V5.0 Document Layout Analysis region.
 
@@ -77,15 +78,14 @@ class Region(BaseModel):
     bbox: BoundingBox
     # --- Backward compatibility fields ---
     region_type: str = "text"  # text, table, figure, header, footer, caption, title
-    confidence: Optional[float] = 1.0
-    quality_score: Optional[float] = 1.0
+    quality_score: Optional[float] = None
     needs_fallback: bool = False
     failure_reason: Optional[str] = None
     # --- V5.0 Layout Analysis fields ---
     content_type: ContentType = ContentType.TEXT
     label: str = "text"
     category_id: Optional[int] = None
-    dla_score: float = 1.0
+    dla_score: Optional[float] = None
     source: Literal["native", "ocr", "vector", "image", "unknown"] = "unknown"
     rotation: float = 0.0
     reading_order: int = -1

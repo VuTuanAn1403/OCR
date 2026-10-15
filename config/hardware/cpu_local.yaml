@@ -1,0 +1,13 @@
+# Hardware profile (proposal V6 ENV-01): personal CPU machine, the
+# environment of the agreed CPU requirements REQ-01..03 and of baseline B0.
+# null keeps the processing profile / library default. Explicit CLI flags
+# (--device, --workers, --threads-per-worker) win over these values, and an
+# already-set OCR_*_DIR variable wins over `paths`.
+hardware:
+  name: cpu_local
+  description: Personal CPU machine; one document worker, profile thread settings.
+  device: cpu
+  workers: 1
+  threads_per_worker: null
+  batch_size: null
+  paths: {}

@@ -28,17 +28,22 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
     _recognizer: Optional[Predictor] = None
     _device: Optional[str] = None
     _model_signature: Optional[Tuple[Any, ...]] = None
+    _detector_threads: Optional[int] = None
+    batch_size: int = 16
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super(VietnameseSeq2SeqEngine, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, batch_size: int = 16, device: Optional[str] = None):
+    def __init__(self, batch_size: int = 16, device: Optional[str] = None, num_threads: Optional[int] = None):
+        if type(batch_size) is not int or batch_size < 1:
+            raise ValueError("batch_size must be a positive integer")
         self.batch_size = batch_size
 
-        if self._detector is None:
-            self._detector = RapidOCR()
+        if self._detector is None or num_threads != self._detector_threads:
+            self._detector = RapidOCR(intra_op_num_threads=num_threads, inter_op_num_threads=1) if num_threads else RapidOCR()
+            self._detector_threads = num_threads
 
         model_dir = Path(os.environ.get("VIETOCR_MODEL_DIR") or models_dir() / "vietocr").expanduser().resolve()
         base_config = model_dir / "base.yml"
@@ -167,17 +172,30 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
         if not boxes_and_crops:
             return []
 
-        # 2. Batch Recognition with vgg_seq2seq
+        # 2. Bound the number of lines passed to VietOCR. Its predict_batch
+        # buckets crops by width but does not impose a maximum batch size.
+        # Nearby aspect ratios share resized widths, so group them before
+        # chunking to avoid turning each bounded batch into many single lines.
+        # Scatter predictions back to detection order below.
         pil_crops = [bc["pil_crop"] for bc in boxes_and_crops]
-        try:
-            recognized_texts, recognized_probs = self._recognizer.predict_batch(
-                pil_crops, return_prob=True
-            )
-        except Exception:
-            # Fallback to sequential predict if batch fails
-            predictions = [self._recognizer.predict(img, return_prob=True) for img in pil_crops]
-            recognized_texts = [prediction[0] for prediction in predictions]
-            recognized_probs = [prediction[1] for prediction in predictions]
+        recognition_order = sorted(range(len(pil_crops)), key=lambda i: pil_crops[i].width / pil_crops[i].height)
+        recognized_texts, recognized_probs = [""] * len(pil_crops), [0.0] * len(pil_crops)
+        for start in range(0, len(pil_crops), self.batch_size):
+            indices = recognition_order[start:start + self.batch_size]
+            chunk = [pil_crops[index] for index in indices]
+            try:
+                texts, probs = self._recognizer.predict_batch(chunk, return_prob=True)
+                if len(texts) != len(chunk) or len(probs) != len(chunk):
+                    raise ValueError("VietOCR batch result does not match the crop count")
+            except Exception:
+                # Retry only this chunk, preserving successful earlier batches
+                # and the association of each line/probability with its box.
+                predictions = [self._recognizer.predict(img, return_prob=True) for img in chunk]
+                texts = [prediction[0] for prediction in predictions]
+                probs = [prediction[1] for prediction in predictions]
+            for index, text, probability in zip(indices, texts, probs):
+                recognized_texts[index] = text
+                recognized_probs[index] = probability
 
         # 3. Format results
         results = []

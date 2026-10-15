@@ -10,6 +10,8 @@ Adds four files next to the existing outputs, which stay byte-compatible:
 from __future__ import annotations
 
 import logging
+import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -18,7 +20,12 @@ from src.ocr.domain.models.region import ContentType
 from src.ocr.infrastructure.export.json_exporter import JSONExporter
 from src.ocr.infrastructure.export.manifest_exporter import PIPELINE_VERSION
 from src.ocr.infrastructure.export.markdown_exporter import MarkdownExporter
+from src.ocr.infrastructure.structure.figures import METHOD as FIGURE_LINK_METHOD, link_figures
 from src.ocr.infrastructure.structure.ids import Item, document_items
+from src.ocr.infrastructure.table.financial_checks import (
+    METHOD as FINANCIAL_CHECKS_METHOD, balance_identity_checks, continuation_candidate, multi_value_cells,
+    table_total_checks,
+)
 from src.ocr.infrastructure.structure.section_tree import (
     ACCEPT_SCORE, MAX_LEVEL, METHOD, DocStructure, Paragraph, Section, build_structure,
 )
@@ -31,19 +38,41 @@ SCHEMA_STRUCTURE = "structure-v1"
 SCHEMA_DOCUMENT = "doc-v1"
 REVIEW_QUALITY = 0.75  # same threshold as EvidenceBlock status in ProcessPageUseCase
 _VI_LETTERS = set("ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ")
+LANGUAGE_METHOD = "vi-en-lexical-heuristic-v2"
+_VI_PHRASES = ("bao cao", "doanh thu", "loi nhuan", "tai chinh", "hoi dong", "co dong",
+               "cong ty", "quan tri", "von dieu le", "dai hoi", "nam truoc", "tong tai san")
+_EN_WORDS = set("the and of for with from to in is are was were has have revenue grew strongly annual report financial statements board directors shareholders profit assets liabilities cash flow company year results".split())
+_EN_PHRASES = ("annual report", "financial statements", "board of directors", "cash flow")
 
 
 def detect_language(text: str) -> str:
-    """vi / en / unknown for bilingual reports (C2.3e). Vietnamese letters decide."""
-    letters = [c.lower() for c in text if c.isalpha()]
+    return language_detection(text)["language"]
+
+
+def language_detection(text: str) -> dict:
+    """Conservative, inspectable baseline; ASCII alone is not English evidence."""
+    normalized = unicodedata.normalize("NFC", text).lower()
+    letters = [c for c in normalized if c.isalpha()]
+    result = {"language": "unknown", "method": LANGUAGE_METHOD, "reason": "insufficient_lexical_evidence"}
     if len(letters) < 4:
-        return "unknown"
+        return result
     vietnamese = sum(c in _VI_LETTERS for c in letters)
     if vietnamese >= 0.03 * len(letters):
-        return "vi"
-    if all(ord(c) < 128 for c in letters):
-        return "en"
-    return "unknown"
+        return {**result, "language": "vi", "reason": "vietnamese_character_ratio"}
+    tokens = re.findall(r"[a-z]+", normalized)
+    words = " " + " ".join(tokens) + " "
+    vi_hits = [phrase for phrase in _VI_PHRASES if f" {phrase} " in words]
+    en_hits = sorted(set(tokens) & _EN_WORDS)
+    en_phrases = [phrase for phrase in _EN_PHRASES if f" {phrase} " in words]
+    result.update(vi_phrases=vi_hits, en_words=en_hits, en_phrases=en_phrases)
+    if not all(ord(c) < 128 for c in letters):
+        return result
+    en_evidence = bool(en_phrases) or (len(en_hits) >= 2 and len(en_hits) >= .25 * len(tokens))
+    if vi_hits and not en_evidence:
+        return {**result, "language": "vi", "reason": "unaccented_vietnamese_phrase"}
+    if en_evidence and not vi_hits:
+        return {**result, "language": "en", "reason": "english_lexical_evidence"}
+    return {**result, "reason": "mixed_lexical_evidence" if vi_hits and en_evidence else result["reason"]}
 
 
 def _block_needs_review(block) -> bool:
@@ -64,6 +93,9 @@ def _cell_json(item: Item, cell, device: str) -> Dict[str, Any]:
             "text_raw": cell.text, "text_corrected": cell.text, "correction_source": None,
             "bbox": [round(v, 2) for v in bbox],
             "bbox_source": "cell" if len(cell.bbox) == 4 else "table_fallback",
+            "localization": "cell" if len(cell.bbox) == 4 else "coarse",
+            "needs_review": len(cell.bbox) != 4 or cell.confidence is None,
+            "review_reason": "cell_bbox_unavailable" if len(cell.bbox) != 4 else None,
             "spans": _spans([(item.page, item.id, bbox)]),
             "source": item.table.engine, "device": device, "confidence": cell.confidence,
             "confidence_source": _confidence_source(cell.confidence, cell.confidence_source)}
@@ -159,7 +191,9 @@ def _section_extents(structure: DocStructure) -> Dict[int, int]:
 def build_structure_json(doc: ExtractedDocument, structure: DocStructure) -> Dict[str, Any]:
     extents = _section_extents(structure)
     toc = structure.toc
-    dropped = sorted((item_id, reason) for item_id, reason in structure.dropped.items() if reason != "table_cell")
+    reasons = dict(structure.dropped)
+    reasons.update({item_id: "duplicate_formula" for item_id in _duplicate_formula_blocks(structure)})
+    dropped = sorted(reasons.items())
     return {
         "schema_version": SCHEMA_STRUCTURE, "doc_sha16": doc.file_hash, "method": METHOD,
         "params": {"accept_score": ACCEPT_SCORE, "max_level": MAX_LEVEL,
@@ -179,7 +213,7 @@ def build_structure_json(doc: ExtractedDocument, structure: DocStructure) -> Dic
             "needs_review": any(_block_needs_review(line) for line in s.heading.lines),
             "score": round(s.heading.score, 2), "signals": s.heading.signals,
         } for s in structure.sections],
-        "dropped": [{"item_id": item_id, "reason": reason} for item_id, reason in dropped[:500]],
+        "dropped": [{"item_id": item_id, "reason": reason} for item_id, reason in dropped],
     }
 
 
@@ -311,11 +345,83 @@ def build_document_json(doc: ExtractedDocument, structure: DocStructure, device:
             images.append({"image_id": item.id, "chunk_id": item.id, "section_id": current,
                            "asset": item.region.asset})
 
+    try:
+        figure_links = link_figures(chunks, images)
+    except Exception as exc:  # annotation only; never costs the export
+        logger.exception("Figure caption linking failed for %s", doc.document_id)
+        for entry in (*chunks, *images):
+            for key in ("role", "figure_id", "caption", "figure_text_chunk_ids"):
+                entry.pop(key, None)
+        figure_links = {"method": FIGURE_LINK_METHOD, "status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}
+    try:
+        consistency = _table_consistency(doc, structure, tables, chunks)
+    except Exception as exc:  # flag-only checks must never cost the export
+        logger.exception("Financial consistency checks failed for %s", doc.document_id)
+        for entry in tables:
+            entry["needs_review"] = True  # unchecked, so not cleared for use
+        consistency = {"method": FINANCIAL_CHECKS_METHOD, "status": "FAILED",
+                       "error": f"{type(exc).__name__}: {exc}"}
     ordered = sorted(sections.values(), key=lambda s: (s["section_id"] != preamble, s["section_id"]))
     return {"schema_version": SCHEMA_DOCUMENT, "doc_id": doc.document_id, "doc_sha16": doc.file_hash,
             "source": {"sha256_16": doc.file_hash, "file_name": Path(doc.file_path).name},
             "extraction": "extraction.json", "sections": ordered, "chunks": chunks,
-            "tables": tables, "formulas": formulas, "images": images}
+            "tables": tables, "formulas": formulas, "images": images,
+            "consistency_checks": consistency, "figure_links": figure_links}
+
+
+def _table_consistency(doc: ExtractedDocument, structure: DocStructure, tables: List[Dict[str, Any]],
+                       chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """C3.5(b)/(c): flag-only arithmetic checks and multi-page continuation
+    candidates. Numbers are never changed and tables are never merged; a
+    violation or candidate only marks the table for review."""
+    entries = {t["table_id"]: t for t in tables}
+    chunk_by_id = {c["chunk_id"]: c for c in chunks}
+    # Every table entry states its review flag, mirroring its chunk.
+    for entry in tables:
+        entry["needs_review"] = bool(chunk_by_id[entry["chunk_id"]]["needs_review"])
+    flow_tables = [(i, v) for i, (k, v) in enumerate(structure.flow)
+                   if k == "item" and v.kind == "t" and v.id in entries]
+
+    def review(table_id: str) -> None:
+        entries[table_id]["needs_review"] = True
+        chunk_by_id[entries[table_id]["chunk_id"]]["needs_review"] = True
+
+    statuses: Dict[str, int] = {"CONSISTENT": 0, "VIOLATION": 0, "INCONCLUSIVE": 0}
+    for _, item in flow_tables:
+        checks = table_total_checks(item.table, item.id) + multi_value_cells(item.table, item.id)
+        entries[item.id]["arithmetic_checks"] = checks
+        for check in checks:
+            statuses[check["status"]] += 1
+        if any(c["status"] == "VIOLATION" for c in checks):
+            review(item.id)
+    balance = balance_identity_checks([(item.id, item.table) for _, item in flow_tables])
+    for check in balance:
+        statuses[check["status"]] += 1
+        if check["status"] == "VIOLATION":
+            review(check["assets"]["table_id"])
+            review(check["equity"]["table_id"])
+
+    heights = {page.page_num: page.height for page in doc.pages}
+    continuations = []
+    for (i, previous), (j, following) in zip(flow_tables, flow_tables[1:]):
+        if following.page != previous.page + 1:
+            continue
+        between = structure.flow[i + 1:j]
+        candidate = continuation_candidate(
+            previous.table, previous.bbox, heights.get(previous.page, 0.0),
+            following.table, following.bbox, heights.get(following.page, 0.0),
+            [v.text for k, v in between if k == "paragraph"], any(k == "heading" for k, _ in between))
+        if candidate:
+            candidate.update(previous_table_id=previous.id, table_id=following.id)
+            entries[following.id]["continuation"] = candidate
+            review(following.id)
+            continuations.append(candidate)
+    return {"method": FINANCIAL_CHECKS_METHOD, "status": "COMPLETED",
+            "summary": {**statuses, "tables": len(flow_tables),
+                        "tables_with_checks": sum(1 for _, item in flow_tables if entries[item.id]["arithmetic_checks"]),
+                        "continuation_candidates": len(continuations)},
+            "balance_identity": balance, "continuation_candidates": continuations,
+            "note": "Flag-only: no value is corrected and no table is merged (proposal C3.5b/c)"}
 
 
 def _paragraph_chunk(paragraph: Paragraph, section_id: str, device: str) -> Dict[str, Any]:
@@ -327,7 +433,8 @@ def _paragraph_chunk(paragraph: Paragraph, section_id: str, device: str) -> Dict
     if dehyphenated:
         sources.add("line_wrap_dehyphenation")
     return {"chunk_id": paragraph.lines[0].item_id, "section_id": section_id, "type": paragraph.kind,
-            "lang": detect_language(paragraph.text), "text_raw": raw_text, "text_corrected": paragraph.text,
+            "lang": detect_language(paragraph.text), "language_detection": language_detection(paragraph.text),
+            "text_raw": raw_text, "text_corrected": paragraph.text,
             "correction_source": "+".join(sorted(sources)) if sources else None,
             "spans": _spans([(line.page, line.item_id, line.bbox) for line in paragraph.lines]),
             "source": _source([line.source for line in paragraph.lines]), "device": device,
@@ -341,11 +448,14 @@ def _table_chunk(item: Item, section_id: str, device: str) -> Dict[str, Any]:
     text = " | ".join(c.text.strip() for c in sorted(table.cells, key=lambda c: (c.row_idx, c.col_idx)) if c.text.strip())
     cells = [_cell_json(item, c, device) for c in table.cells]
     return {"chunk_id": item.id, "section_id": section_id, "type": "table", "lang": detect_language(text),
+            "language_detection": language_detection(text),
             "text_raw": text, "text_corrected": text, "correction_source": None,
             "spans": _spans([(item.page, item.id, item.bbox)]), "source": table.engine, "device": device,
             "confidence": table.confidence,
             "confidence_source": _confidence_source(table.confidence, table.confidence_source),
-            "needs_review": bool(table.needs_review) or not text, "has_merged_cells": merged, "cells": cells}
+            "needs_review": bool(table.needs_review) or table.confidence is None or not text
+                or any(c["bbox_source"] == "table_fallback" for c in cells),
+            "has_merged_cells": merged, "cells": cells}
 
 
 # ---------------------------------------------------------------- markdown --
@@ -406,9 +516,10 @@ def _overlaps(a: Sequence[float], b: Sequence[float], threshold: float = 0.5) ->
 # ------------------------------------------------------------------- write --
 
 def write_document_contracts(doc: ExtractedDocument, doc_dir: Path, assets_mode: str) -> None:
-    """Write the four C3.7 files. extraction.json is always written; a failure
-    in the structure heuristics is recorded in structure.json instead of
-    aborting an otherwise valid export."""
+    """Write the four C3.7 files. extraction.json is always written. A failure
+    in the structure heuristics is recorded in structure.json and the stale
+    document files are removed, so V6 validation fails and names the cause
+    instead of shipping an outdated document.json."""
     device = doc.manifest.get("device", "cpu")
     items_by_page = document_items(doc)
     JSONExporter.save_json(build_extraction_json(doc, items_by_page, device), doc_dir / "extraction.json")
@@ -417,8 +528,8 @@ def write_document_contracts(doc: ExtractedDocument, doc_dir: Path, assets_mode:
         structure_json = build_structure_json(doc, structure)
         document_json = build_document_json(doc, structure, device)
         markdown = render_document_md(doc, structure, assets_mode)
-    except Exception as exc:  # heuristic failure must not lose the export
-        logger.warning("Structure step failed for %s: %s", doc.document_id, exc)
+    except Exception as exc:  # recorded for validation; see docstring
+        logger.exception("Structure step failed for %s", doc.document_id)
         JSONExporter.save_json({"schema_version": SCHEMA_STRUCTURE, "doc_sha16": doc.file_hash,
                                 "error": f"{type(exc).__name__}: {exc}"}, doc_dir / "structure.json")
         for stale in ("document.json", "document.md"):

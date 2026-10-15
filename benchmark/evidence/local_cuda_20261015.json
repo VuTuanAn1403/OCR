@@ -1,0 +1,394 @@
+{
+  "purpose": "Paired local CPU/CUDA functional and performance smoke, not accuracy acceptance",
+  "gpu": "NVIDIA GeForce RTX 2050",
+  "fixture_sha256": "04dd9dfc2abb6b3f21a9db9e8ba3b373c0b177cb7f4f5dd81b19e3279a56db08",
+  "source_fingerprint": "3d8aa2afc8ba1983",
+  "same_resolved_config_except_device": true,
+  "page_median_speedup": 1.877,
+  "primary_ocr_speedup": 2.488,
+  "document_speedup": 1.651,
+  "all_extracted_text_equal": false,
+  "all_numeric_fragments_equal": true,
+  "comparisons": [
+    {
+      "page": 1,
+      "cpu_seconds": 22.59,
+      "cuda_seconds": 13.37,
+      "text_exact_equal": false,
+      "numeric_fragments_equal": true,
+      "text_diff": [
+        "--- cpu\n",
+        "+++ cuda\n",
+        "@@ -124,3 +124,3 @@\n",
+        " 134",
+        "-BẢO CÀO THƯỜNG NIỀN",
+        "+BẢO CAO THƯỜNG NIỀN",
+        " 2025"
+      ]
+    },
+    {
+      "page": 2,
+      "cpu_seconds": 19.91,
+      "cuda_seconds": 10.61,
+      "text_exact_equal": false,
+      "numeric_fragments_equal": true,
+      "text_diff": [
+        "--- cpu\n",
+        "+++ cuda\n",
+        "@@ -124,3 +124,3 @@\n",
+        " 134",
+        "-BẢO CÀO THƯỜNG NIỀN",
+        "+BẢO CAO THƯỜNG NIỀN",
+        " 2025"
+      ]
+    },
+    {
+      "page": 3,
+      "cpu_seconds": 15.09,
+      "cuda_seconds": 10.41,
+      "text_exact_equal": false,
+      "numeric_fragments_equal": true,
+      "text_diff": [
+        "--- cpu\n",
+        "+++ cuda\n",
+        "@@ -124,3 +124,3 @@\n",
+        " 134",
+        "-BẢO CÀO THƯỜNG NIỀN",
+        "+BẢO CAO THƯỜNG NIỀN",
+        " 2025"
+      ]
+    }
+  ],
+  "runs": {
+    "cpu": {
+      "device": "cpu",
+      "actual_model_device": "cpu",
+      "torch": "2.12.1+cu126",
+      "cuda_build": "12.6",
+      "gpu": null,
+      "source_fingerprint": "3d8aa2afc8ba1983",
+      "resolved_configuration": {
+        "profile": "local",
+        "device": "cpu",
+        "native_first": true,
+        "render_dpi": 180,
+        "primary_engine": "vietocr",
+        "num_threads": 2,
+        "batch_size": 4,
+        "layout": "standard",
+        "docling": {
+          "enabled": false,
+          "device": "cpu"
+        },
+        "fallback_enabled": false,
+        "fallback_only_on_review": true,
+        "max_fallback_region_ratio": 0.15,
+        "max_fallback_regions_per_page": 5,
+        "fallback_upscale_dpi": 250,
+        "min_confidence": 0.8,
+        "numeric_retry_threshold": 0.85,
+        "orientation_fallback_enabled": true,
+        "vector_table_min_native_score": 0.9,
+        "skip_vector_tables_on_restricted_pdf": true,
+        "two_up_detection_enabled": true,
+        "multi_region_detection_enabled": true,
+        "page_timeout_seconds": 120,
+        "native_quality": {
+          "reliable_threshold": 0.9,
+          "review_threshold": 0.7
+        },
+        "backend_devices": {
+          "ocr_detection": "cpu",
+          "ocr_recognition": "cpu",
+          "layout": "cpu",
+          "docling": null
+        }
+      },
+      "fixture": "scratch\\local-vietocr-grouped-smoke\\inputs\\BSI_scan_page70_repeated.pdf",
+      "fixture_sha256": "04dd9dfc2abb6b3f21a9db9e8ba3b373c0b177cb7f4f5dd81b19e3279a56db08",
+      "warmup_seconds": 15.6789,
+      "document_seconds": 58.7703,
+      "timing": {
+        "model_init_seconds": 0.039,
+        "startup_seconds": 0.039,
+        "pages_seconds": 58.006,
+        "export_seconds": 0.462,
+        "document_latency_seconds": 58.542
+      },
+      "median_page_seconds": 19.91,
+      "mean_primary_ocr_seconds": 13.397333333333332,
+      "max_batch_size": 4,
+      "batch_calls": 213,
+      "process_peak_rss_mib": 1739.53,
+      "process_peak_vms_mib": 2680.85,
+      "process_peak_threads": 36,
+      "torch_peak_cuda_allocated_mib": null,
+      "torch_peak_cuda_reserved_mib": null,
+      "pages": [
+        {
+          "page": 1,
+          "seconds": 22.59,
+          "stages": {
+            "inspect": 0.09,
+            "native_extract": 0.0,
+            "image_region_ocr": 0.0,
+            "render_and_refine": 0.111,
+            "primary_ocr": 15.652,
+            "fallback": 6.702,
+            "table": 0.009,
+            "docling_structure": 0.0,
+            "layout_model": 0.0,
+            "reading_order": 0.0,
+            "postprocess": 0.026
+          },
+          "recognized_lines": 239,
+          "ocr_calls": 2,
+          "errors": 0,
+          "tables": 2,
+          "review_required_count": 67,
+          "text_sha256": "df26d84d932e1b8a816204ff562604bccc430a12e8c9115ad9e9b96f04684fef",
+          "docling_status": "DISABLED"
+        },
+        {
+          "page": 2,
+          "seconds": 19.91,
+          "stages": {
+            "inspect": 0.072,
+            "native_extract": 0.0,
+            "image_region_ocr": 0.0,
+            "render_and_refine": 0.102,
+            "primary_ocr": 14.19,
+            "fallback": 5.519,
+            "table": 0.011,
+            "docling_structure": 0.0,
+            "layout_model": 0.0,
+            "reading_order": 0.0,
+            "postprocess": 0.016
+          },
+          "recognized_lines": 239,
+          "ocr_calls": 2,
+          "errors": 0,
+          "tables": 2,
+          "review_required_count": 67,
+          "text_sha256": "df26d84d932e1b8a816204ff562604bccc430a12e8c9115ad9e9b96f04684fef",
+          "docling_status": "DISABLED"
+        },
+        {
+          "page": 3,
+          "seconds": 15.09,
+          "stages": {
+            "inspect": 0.065,
+            "native_extract": 0.0,
+            "image_region_ocr": 0.0,
+            "render_and_refine": 0.101,
+            "primary_ocr": 10.35,
+            "fallback": 4.556,
+            "table": 0.008,
+            "docling_structure": 0.0,
+            "layout_model": 0.0,
+            "reading_order": 0.0,
+            "postprocess": 0.011
+          },
+          "recognized_lines": 239,
+          "ocr_calls": 2,
+          "errors": 0,
+          "tables": 2,
+          "review_required_count": 67,
+          "text_sha256": "df26d84d932e1b8a816204ff562604bccc430a12e8c9115ad9e9b96f04684fef",
+          "docling_status": "DISABLED"
+        }
+      ],
+      "validation_status": "NEEDS_REVIEW",
+      "smoke_status": "PASSED",
+      "accuracy_acceptance": "NOT_EVALUATED"
+    },
+    "cuda": {
+      "device": "cuda",
+      "actual_model_device": "cuda:0",
+      "torch": "2.12.1+cu126",
+      "cuda_build": "12.6",
+      "gpu": "NVIDIA GeForce RTX 2050",
+      "source_fingerprint": "3d8aa2afc8ba1983",
+      "resolved_configuration": {
+        "profile": "local",
+        "device": "cuda",
+        "native_first": true,
+        "render_dpi": 180,
+        "primary_engine": "vietocr",
+        "num_threads": 2,
+        "batch_size": 4,
+        "layout": "standard",
+        "docling": {
+          "enabled": false,
+          "device": "cuda"
+        },
+        "fallback_enabled": false,
+        "fallback_only_on_review": true,
+        "max_fallback_region_ratio": 0.15,
+        "max_fallback_regions_per_page": 5,
+        "fallback_upscale_dpi": 250,
+        "min_confidence": 0.8,
+        "numeric_retry_threshold": 0.85,
+        "orientation_fallback_enabled": true,
+        "vector_table_min_native_score": 0.9,
+        "skip_vector_tables_on_restricted_pdf": true,
+        "two_up_detection_enabled": true,
+        "multi_region_detection_enabled": true,
+        "page_timeout_seconds": 120,
+        "native_quality": {
+          "reliable_threshold": 0.9,
+          "review_threshold": 0.7
+        },
+        "backend_devices": {
+          "ocr_detection": "cpu",
+          "ocr_recognition": "cuda",
+          "layout": "cuda",
+          "docling": null
+        }
+      },
+      "fixture": "scratch\\local-vietocr-grouped-smoke\\inputs\\BSI_scan_page70_repeated.pdf",
+      "fixture_sha256": "04dd9dfc2abb6b3f21a9db9e8ba3b373c0b177cb7f4f5dd81b19e3279a56db08",
+      "warmup_seconds": 8.1099,
+      "document_seconds": 35.6057,
+      "timing": {
+        "model_init_seconds": 0.292,
+        "startup_seconds": 0.292,
+        "pages_seconds": 34.738,
+        "export_seconds": 0.38,
+        "document_latency_seconds": 35.447
+      },
+      "median_page_seconds": 10.61,
+      "mean_primary_ocr_seconds": 5.384,
+      "max_batch_size": 4,
+      "batch_calls": 213,
+      "process_peak_rss_mib": 2302.12,
+      "process_peak_vms_mib": 3404.3,
+      "process_peak_threads": 28,
+      "torch_peak_cuda_allocated_mib": 133.38,
+      "torch_peak_cuda_reserved_mib": 290.0,
+      "pages": [
+        {
+          "page": 1,
+          "seconds": 13.37,
+          "stages": {
+            "inspect": 0.096,
+            "native_extract": 0.0,
+            "image_region_ocr": 0.0,
+            "render_and_refine": 0.121,
+            "primary_ocr": 5.746,
+            "fallback": 7.371,
+            "table": 0.009,
+            "docling_structure": 0.0,
+            "layout_model": 0.0,
+            "reading_order": 0.0,
+            "postprocess": 0.026
+          },
+          "recognized_lines": 239,
+          "ocr_calls": 2,
+          "errors": 0,
+          "tables": 2,
+          "review_required_count": 67,
+          "text_sha256": "727c22c8b94382fad4fb3eab4dd2fc8f03be7da88bc6dd59bd59cabb6c4b051e",
+          "docling_status": "DISABLED"
+        },
+        {
+          "page": 2,
+          "seconds": 10.61,
+          "stages": {
+            "inspect": 0.072,
+            "native_extract": 0.0,
+            "image_region_ocr": 0.0,
+            "render_and_refine": 0.11,
+            "primary_ocr": 5.374,
+            "fallback": 5.022,
+            "table": 0.007,
+            "docling_structure": 0.0,
+            "layout_model": 0.0,
+            "reading_order": 0.0,
+            "postprocess": 0.024
+          },
+          "recognized_lines": 239,
+          "ocr_calls": 2,
+          "errors": 0,
+          "tables": 2,
+          "review_required_count": 67,
+          "text_sha256": "727c22c8b94382fad4fb3eab4dd2fc8f03be7da88bc6dd59bd59cabb6c4b051e",
+          "docling_status": "DISABLED"
+        },
+        {
+          "page": 3,
+          "seconds": 10.41,
+          "stages": {
+            "inspect": 0.102,
+            "native_extract": 0.0,
+            "image_region_ocr": 0.0,
+            "render_and_refine": 0.114,
+            "primary_ocr": 5.032,
+            "fallback": 5.135,
+            "table": 0.007,
+            "docling_structure": 0.0,
+            "layout_model": 0.0,
+            "reading_order": 0.0,
+            "postprocess": 0.02
+          },
+          "recognized_lines": 239,
+          "ocr_calls": 2,
+          "errors": 0,
+          "tables": 2,
+          "review_required_count": 67,
+          "text_sha256": "727c22c8b94382fad4fb3eab4dd2fc8f03be7da88bc6dd59bd59cabb6c4b051e",
+          "docling_status": "DISABLED"
+        }
+      ],
+      "validation_status": "NEEDS_REVIEW",
+      "smoke_status": "PASSED",
+      "accuracy_acceptance": "NOT_EVALUATED"
+    }
+  },
+  "environment_changed_packages": [
+    "torch: 2.12.1+cpu -> 2.12.1+cu126",
+    "torchvision: 0.27.1 -> 0.27.1+cu126"
+  ],
+  "limitations": [
+    "Three identical copies of one dense financial scan page",
+    "No human-labeled ground truth",
+    "Timing includes per-page processing and export; model startup and warmup recorded separately",
+    "GPU tensor allocator memory is not total NVIDIA driver VRAM usage",
+    "Numeric agreement between devices does not establish numeric correctness"
+  ],
+  "accuracy_acceptance": "NOT_EVALUATED",
+  "tests": {
+    "passed": 622,
+    "skipped": 3,
+    "warnings": 1,
+    "seconds": 49.71,
+    "log": "scratch/local-cuda-final-tests.log"
+  },
+  "default_cli_smoke": {
+    "resolved_device": "cuda",
+    "backend_devices": {
+      "ocr_detection": "cpu",
+      "ocr_recognition": "cuda",
+      "layout": "cuda",
+      "docling": null
+    },
+    "profile": "local",
+    "completed_marker": true,
+    "v6_artifacts": {
+      "extraction.json": true,
+      "structure.json": true,
+      "document.json": true,
+      "document.md": true
+    },
+    "excel": true,
+    "validation": "NEEDS_REVIEW",
+    "log": "scratch/local-cuda-cli-auto.log"
+  },
+  "precision_diagnostic": {
+    "experiment": "CUDA TF32 disabled in a separate probe process; not the selected runtime configuration",
+    "recognized_lines": 239,
+    "still_has_text_differences_vs_cpu": true,
+    "log": "scratch/probe-local-cuda-precision.log",
+    "no_ground_truth_selection": true
+  }
+}

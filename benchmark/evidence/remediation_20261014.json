@@ -1,0 +1,368 @@
+{
+  "schema_version": "v6-remediation-evidence-v1",
+  "generated_at": "2026-10-14T06:53:07.651724+00:00",
+  "client_date": "2026-10-14",
+  "pipeline_version": "6.1.0",
+  "base_revision": "ee35d969a978c1a3a1f906f636deaf66a39e7b65",
+  "working_tree_changes": true,
+  "source_fingerprint": "5059de9edd5c7b44",
+  "changed_file_sha256": {
+    "MANIFEST.in": "c026eddac419fafd45f5fb5a7c55a98d36968d902531744474c43379268c5100",
+    "README.md": "dc401d0d682256c8bf1958b46757416d1ad10c434a38e146b56b3ccb2b3892fc",
+    "benchmark/ground_truth_tools/ANNOTATION_V6.md": "3e62ba8d14277f290fcc2ee13aab7c672b6d9092df920327f8dc8b3db679b83c",
+    "benchmark/ground_truth_tools/sources.initial.catalog.json": "cc5d5d52ae199c18807a819cce429ffca6c342cfb68f80776794f74fd670d365",
+    "benchmark/ground_truth_tools/sources.initial.csv": "34dc727a06adfe490c787b31677a65b1a790edc6adb7068854d4abaa8d12efd9",
+    "benchmark/scientific_evaluation/cluster_statistics.py": "88375420948c4b09f57119b727561771a9d730cf112b05361e6b3bf3a47af2b2",
+    "benchmark/scientific_evaluation/coco_layout.py": "166982cfffef40de4536193fd243356faf863d95a3f707ffcb2c673a69ead226",
+    "benchmark/scientific_evaluation/dla_metric.py": "986885ea21e6a765d8a5bed83e65aca473390b08f81cf89a9af1da625af91da8",
+    "benchmark/scientific_evaluation/matrix_statistics.py": "523615d5d87befd7da46ce3777a6733e3855cdbab2cd7e91c8e508619e4c5a82",
+    "pyproject.toml": "d2468b2092b6c93bef9cc9543dcfbcf6cd2d29c7c558966cfc7daf9ecfb249ab",
+    "scripts/run_scientific_benchmark.py": "f7d6b6affbd0ccb9d4d96e13ffd7782019cee6518e1302df0f305387a1faad29",
+    "setup.py": "f58556ac64b004f8a1c5da8fc639f6ec1e34e6085095e6295b3018967493a64f",
+    "src/ocr/application/convert_document.py": "6b2c1df58721efd1265b97125d48aeeb2d31291f57038be98af0d7a456c89e39",
+    "src/ocr/application/export_document.py": "c19b930c2f7608c00bbe321d8910a1babbd0e38d3e1c3f8a652dbc95f3297f1e",
+    "src/ocr/application/process_page.py": "392bf5ef2374f4320c83e375df10ea05b85a43863f1ef2540a7cd45f381880cf",
+    "src/ocr/application/reocr_region.py": "14ab8adbfcc916f43930f74a2afa8d34cf16c9a22dd85fa6d328328c929bc9dc",
+    "src/ocr/cli/batch_runner.py": "287cb84653ac5167ffe82ccb2d82eb987c68987ce76bbfac65a2fc2c32963bc3",
+    "src/ocr/cli/collect.py": "eee96257f4f018013ecb68182dc94cbc8a85ea6549f92b6d6d1df26e0bcfb194",
+    "src/ocr/collect/__init__.py": "8b08b092742883c982a20ef9ee9393a901dfa3c5468359a0d6d5295b24d52f4a",
+    "src/ocr/collect/catalog.py": "1b56e4d099c953a468dba345d4a54789fd5f552580583ed902c25fed57564ed5",
+    "src/ocr/config/profiles.yaml": null,
+    "src/ocr/domain/models/confidence.py": "4251503a14c3d60bcbe2715277a6097afcf9cfd1d14cad1933007a8b0753dcf4",
+    "src/ocr/domain/models/evidence_block.py": "23ba3b46953431f7bbcc20855d23b328f9d9733d267b39f4d59091cf7e3e18ff",
+    "src/ocr/domain/models/quality.py": "20d1503e65f87f48944960e5d16fa0bcd6e7e69b2d54b267c01760b32daf739d",
+    "src/ocr/domain/models/region.py": "4df2d2948743f2c3bd4214927cfaa7b1eab33223b1e2fd405512c3ab945ba31e",
+    "src/ocr/domain/models/table.py": "93f17182928d490e1e50a61e29923f46f54c9e34027ebc85a78d1772eac4efc1",
+    "src/ocr/domain/models/text_block.py": "863ebf29ff6f67d2f882d24e9b0cda4be67e3ec5274903117e415b9bb6c7f033",
+    "src/ocr/domain/routing/page_type.py": "a6e2bd65e17bde7643a9695cddda87ed827bddf81a3b9431fc60e355a36f62b2",
+    "src/ocr/domain/routing/routing_policy.py": "838498326c281249844ddb469fb05b425575518dab15475528f10cf8e18be111",
+    "src/ocr/infrastructure/export/artifact_validator.py": "1bf47b115af56d6c13494ba3c7b5343bfacfc52163045ba1bdfae1ec04bf626d",
+    "src/ocr/infrastructure/export/completion.py": "96afda4ba4703db8d96aff67609c51e27f36d7bf5a4ead063513dffbe413cef3",
+    "src/ocr/infrastructure/export/contract_schema.py": "4357ff134db5377ef232ceb4327005616352309ef35cd28fdb5dd6eee2598154",
+    "src/ocr/infrastructure/export/document_contracts.py": "d97eea5f4bff37a0fa3db009f0b9a7fa2e1a1736f84d9224252ebc74705e7885",
+    "src/ocr/infrastructure/export/manifest_exporter.py": "ec27ba6d025e94abeb0452e815672a745ee05e01017c7de16f62ee387f792c44",
+    "src/ocr/infrastructure/export/output_contract.py": "804cf097a652553a30cd6424f6231b9485d85de3cc60c5102523bf1e4153e872",
+    "src/ocr/infrastructure/layout/dla_engine.py": "2603aa91568d7c73d8d5fd634bff32cb8a3c46c24885e556b73ed8a4306b7a67",
+    "src/ocr/infrastructure/layout/docling_structure.py": "c3493c74409bafbe9e6f7965a014d0d6da266896a512f0d8a1f113a93aaaa607",
+    "src/ocr/infrastructure/layout/document_layout_engine.py": "5acb992dfda0dbb0ace91d33626938e12cd53497e4ecd6c1f1adcecdc43f7122",
+    "src/ocr/infrastructure/layout/model_adapters.py": "9fa5f6888c6f8b8dd5e52582630ed10967b29b24e28f1dcdde1f28d0d4f0e1f0",
+    "src/ocr/infrastructure/layout/page_content_analyzer.py": "47fcbd1b057cde821bde5d99cf80540f5f7259c258d2f23986d23c25f8f5324b",
+    "src/ocr/infrastructure/ocr/candidate_scorer.py": "6ba780a5afd250f82b9296e2990d546e847275827217c458123724598e331411",
+    "src/ocr/infrastructure/ocr/fallback_engine.py": "3df8c2ce2b7027f0678c2d841bb9f7afc4f4f6188db200a8eb9cb1bcc0742c7d",
+    "src/ocr/infrastructure/ocr/rapidocr_engine.py": "31863b9e926b72e0b3afc2729fdf768c7a2c97f5f974cdc36c1f749c405fdae3",
+    "src/ocr/infrastructure/ocr/vietnamese_seq2seq_engine.py": "ae4c36c58116d06992298249d3a451cc4fbc2ad55b654dd96d9b504d1d209ef6",
+    "src/ocr/infrastructure/pdf/coordinate_transform.py": "9c0934469ae5aa525ea97af0a9dcb181a29ed9ceedd4638827d88a98bc9b79d8",
+    "src/ocr/infrastructure/pdf/pdf_inspector.py": "1809b721a58d685e711e2a2708f66d8e52a0a00ef7bdde2233b08bd22b25000b",
+    "src/ocr/infrastructure/quality/ocr_quality.py": "67242a32a7757f5d83eb8196e549aa2bb49b4884398f64e8acd531a12aefaada",
+    "src/ocr/resources/__init__.py": "4b82a6998e9d5112b120bf233d40510ee80225c0196caecef831d107b68fb5a0",
+    "src/ocr/runtime/config.py": "82a32eb9ac29ac637b13c81b47a5e1bb973d23ac1ee964c4590314f5c319afc9",
+    "src/ocr/runtime/document_pool.py": "d3d9d29183cf66358a406dafe465c34e8c3da8ea5baf4f689a16d1f72e1ed4eb",
+    "src/ocr/runtime/paths.py": "856d1d98356cf40548e508fbf2f9629fb7c6e94ef967906e5567a5e78888c826",
+    "tests/scientific/test_v6_cluster_and_coco.py": "dfb133ffd9e8db4f3d7f014678ebd870130193cc64a1b93b66a7dd418a68cc1c",
+    "tests/scientific/test_v6_matrix_statistics.py": "e6b21eb29e631d9e2beafebde09b0dfab94d742af097d617987ad4b9f446a374",
+    "tests/unit/test_one_up_landscape_v322.py": "274fc99d9e4e57a5653181d2fa885f817cf82c1d250136bc28d0b4b6187a6e9f",
+    "tests/unit/test_v6_collect.py": "1377e5ea62b8fde067ee7fcd1ea87f72ec548e15cb6b42b24bea9e004b9ae2ea",
+    "tests/unit/test_v6_evaluation_protocol.py": "63fe75b61be9c8d03612b3b742113bf048a35ae25cf49dad61168f512053a919",
+    "tests/unit/test_v6_honest_outputs.py": "5a46c1e9769c14204c6c247fce66730388165f92d657b154a68d7cb3aea329eb",
+    "tests/unit/test_v6_language_evidence.py": "a09bc82184a4c5d1ff12ca8004aadcb8c96a7e0b6f037d11a97d7ce2efc00d27",
+    "tests/unit/test_v6_remediation.py": "5de06925f71584668c13fda21d2bdc930b32c17068df2f8497abc1e51f34c936",
+    "tests/unit/test_v6_structure.py": "09c7950a4edbb78b2c038f737f2790475868d1909ba252b25e250e26fbc012d4",
+    "tests/unit/test_v6_visibility_and_coordinates.py": "9d142bc6a05219c4cd86393627f86c8dce0d0b0f1e3b88f70878fca0ce831fe4",
+    "tests/unit/test_v6_worker_lifetime.py": "dbb5ae415706c0f426b14b2e8d8dca8f496b0602ba28865775870be81d5e3f74"
+  },
+  "gt_sha256": null,
+  "splits_sha256": null,
+  "quality_acceptance": "NOT_EVALUATED",
+  "user_data_status": "Human GT and locked company splits unavailable; user requested code fixes and GT tools",
+  "validation": {
+    "command": ".venv/Scripts/python.exe -m pytest tests -q --tb=short --basetemp scratch/pytest-v6-final-20261014 -p no:cacheprovider",
+    "exit_code": 0,
+    "passed": 462,
+    "skipped": 3,
+    "warnings": 1,
+    "skipped_reason": "Required CLW/BHN PDFs or CLW golden predictions unavailable",
+    "scope": "unit/scientific fixtures and available tests, not empirical quality acceptance"
+  },
+  "records": [
+    {
+      "kp_id": "KP-01",
+      "requirement_ids": [
+        "H27",
+        "C2.3d"
+      ],
+      "status": "VERIFIED",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Unknown confidence/quality defaults, zero preservation, heuristic score provenance and measured sample coverage verified on fixtures; not calibrated against GT."
+    },
+    {
+      "kp_id": "KP-02",
+      "requirement_ids": [
+        "H21",
+        "ENV-13"
+      ],
+      "status": "VERIFIED",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "One authoritative YAML, generated wheel resources; isolated wheel entry points and native conversion verified, full dependency reinstall/GPU not tested."
+    },
+    {
+      "kp_id": "KP-03",
+      "requirement_ids": [
+        "C3.7",
+        "D3"
+      ],
+      "status": "VERIFIED",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Four-file required set, extraction/structure semantics, Markdown digest/content and completion validation verified; legacy-only policy retained."
+    },
+    {
+      "kp_id": "KP-04",
+      "requirement_ids": [
+        "C3.7",
+        "H20"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Coarse cell localization/review implemented and tested; compact export, size measurements and GT cell IoU remain pending."
+    },
+    {
+      "kp_id": "KP-05",
+      "requirement_ids": [
+        "C2.0",
+        "C2.6"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Source inventory, immutable company splits and train/dev UNANNOTATED drafts tools tested. All 10 real source companies remain unverified; human GT/splits absent."
+    },
+    {
+      "kp_id": "KP-06",
+      "requirement_ids": [
+        "C2.6",
+        "9.2"
+      ],
+      "status": "VERIFIED",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Installed pycocotools backend and two scoreboards verified on mathematical fixtures; no empirical V6 layout acceptance."
+    },
+    {
+      "kp_id": "KP-07",
+      "requirement_ids": [
+        "9.5",
+        "PERF-07"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Paired micro company-cluster bootstrap and Holm family retaining failed/missing slots tested. Nine-config execution runner, locked B0/margins/thresholds and real evaluation pending."
+    },
+    {
+      "kp_id": "KP-08",
+      "requirement_ids": [
+        "C2.2",
+        "C3.5a"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Invertible affine chain and PDF render/model adapter integration tested; full OCR rotation/crop/embedded-image/deskew path remains incomplete."
+    },
+    {
+      "kp_id": "KP-09",
+      "requirement_ids": [
+        "C2.1",
+        "H9"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Hidden type-3 OCR layer routed conservatively to OCR on real PDF fixtures; agreement sampling and four-angle classifier pending."
+    },
+    {
+      "kp_id": "KP-10",
+      "requirement_ids": [
+        "C3.1",
+        "C3.2",
+        "H28",
+        "T1"
+      ],
+      "status": "BLOCKED_DATA",
+      "verification_scope": "no empirical verification",
+      "gt_and_split": null,
+      "decision": "No D1 model selected or GT-gated production setting enabled; need verified model weights/license and independent dev GT."
+    },
+    {
+      "kp_id": "KP-11",
+      "requirement_ids": [
+        "C3.5",
+        "H7"
+      ],
+      "status": "BLOCKED_DATA",
+      "verification_scope": "no empirical verification",
+      "gt_and_split": null,
+      "decision": "Scan table A/B/C experiment not performed; human L5 GT and selected D1/coordinate path required."
+    },
+    {
+      "kp_id": "KP-12",
+      "requirement_ids": [
+        "C2.3",
+        "C2.4",
+        "C3.3",
+        "C3.4"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Conservative unaccented Vietnamese/English evidence with method version tested; model-based reading order, post-correction and structure/OCR dev gains unmeasured."
+    },
+    {
+      "kp_id": "KP-13",
+      "requirement_ids": [
+        "T2",
+        "T3",
+        "T4",
+        "ENV-01..14"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Document process pool, thread budgets and shared client ownership tested; native sequential/parallel/cache outputs identical. Docling cross-document real smoke blocked by approval-review usage limit; GPU/Docker/Colab/hardware tuning/stage refactor remain pending."
+    },
+    {
+      "kp_id": "KP-14",
+      "requirement_ids": [
+        "C2.5",
+        "C3.6..9",
+        "ENV-02",
+        "H25"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "fixtures/package/runtime only",
+      "gt_and_split": null,
+      "decision": "Collect entry point, version alignment, GT guide and evidence registry prepared. Legacy claims retained as unverified. Labels/KIE/extraction API and empirical acceptance pending."
+    }
+  ],
+  "config": {
+    "path": "config\\profiles.yaml",
+    "yaml_sha256": "126db0d4d547725ba3fae27933e7d6908767c7d203e4530f56919e0e37a96aae",
+    "profile_hashes": {
+      "fast": "f3939697ecff0d4e",
+      "balanced": "00fb0360c41ca5ac",
+      "accuracy": "682cfed98a48e74f"
+    }
+  },
+  "models": {
+    "fast": {
+      "fingerprint": "d5bcda49376a1530",
+      "sha256": {
+        "rapidocr/ch_PP-OCRv4_det_infer.onnx": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+        "rapidocr/ch_PP-OCRv4_rec_infer.onnx": "48fc40f24f6d2a207a2b1091d3437eb3cc3eb6b676dc3ef9c37384005483683b",
+        "rapidocr/ch_ppocr_mobile_v2.0_cls_infer.onnx": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c"
+      }
+    },
+    "balanced": {
+      "fingerprint": "029b7439aa8d3338",
+      "sha256": {
+        "vietocr/base.yml": "42511ad7fc72b4e69c8583e78046c6e41c83f3c2ad8eb85a942532acfca9d94a",
+        "vietocr/vgg-seq2seq.yml": "1aaae4bbd7601ce465ffb7894c0f570cbf687d2d97979e054e2cbb40edd97a9a",
+        "vietocr/vgg_seq2seq.pth": "0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db",
+        "rapidocr/ch_PP-OCRv4_det_infer.onnx": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+        "rapidocr/ch_PP-OCRv4_rec_infer.onnx": "48fc40f24f6d2a207a2b1091d3437eb3cc3eb6b676dc3ef9c37384005483683b",
+        "rapidocr/ch_ppocr_mobile_v2.0_cls_infer.onnx": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+        "docling/easyocr/model/craft_mlt_25k.pth": "4a5efbfb48b4081100544e75e1e2b57f8de3d84f213004b14b85fd4b3748db17",
+        "docling/easyocr/model/latin_g2.pth": "aaa95be1c4a9cb3496879bed7c520886ce1164f89e026f0c54488394e74e8c55",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/refs/main": "b08c95847202b4734e6da618a5a559b06eff263d93bd47117f18478e6e59b6b5",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/added_tokens.json": "002686b2efb9535c359458cd1121de8e1b58e67426a46e2bd4425843766a3a5e",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/chat_template.json": "c9d21553af689882ac89ad8e8412164662d1605f6595119664e85626df7be421",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/config.json": "98f55cfe07dd168f9fab1f1eec35f754b23631ea1a9a7c9759b1b7cb41ab76b1",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/generation_config.json": "b17f1890b2b2baf172761c9c4d6eb956482ffa05964f357e67544ec998c9851f",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/model.safetensors": "4b04e77af34c4e682a7ab1617628340d658f3c3dcd12456dd2a7fff805cf79d2",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/preprocessor_config.json": "6cb6e36d6fcb88ca1502c4a26750715dc3e7dedddc9a8f17b27d8d167d1457e7",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/processor_config.json": "e7bff42da73ae9eec9042ef20e066e11f1ee20f025358ff79131e3c0fb549b46",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/special_tokens_map.json": "1b17e900a73384d256db6f1a7591fd0d95c09e6aede680022b047386b97afcba",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/tokenizer.json": "5ec5d3780a2e01b140cf34f023eb600263855a99aacdc3eb0f2600d7b1b4ac96",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/tokenizer_config.json": "37a0e94be9c9ab5197b2188e61cf764bbc015f45261013881fe37bd2fe8599e6",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/vocab.json": "8922f7e91084b9862d270c16ce1027071214aa252a1567a4b410f952101005fc",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/refs/main": "8084bbc31e333903f4bd839da812667ebd7dca0e27f6a193e372828ae11aabe5",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/config.json": "fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/model.safetensors": "00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/preprocessor_config.json": "cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1",
+        "docling/huggingface/hub/models--docling-project--docling-models/refs/v2.3.0": "7eb53216902c7f3103528631e03d9f64f235d52b4ba8e59f662617ccd5cba0c4",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/config.json": "9c34024dc28ff47b75818f415e769809798c29bf9bde6f2ccc63a4acb62396d9",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors": "2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tm_config.json": "984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/fast/tableformer_fast.safetensors": "3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/fast/tm_config.json": "dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a",
+        "docling/model_manifest.json": "cd1ee09b49ed3059b054ac9020e3383f832fbed19701e7eeb5697d512ed682ed"
+      }
+    },
+    "accuracy": {
+      "fingerprint": "029b7439aa8d3338",
+      "sha256": {
+        "vietocr/base.yml": "42511ad7fc72b4e69c8583e78046c6e41c83f3c2ad8eb85a942532acfca9d94a",
+        "vietocr/vgg-seq2seq.yml": "1aaae4bbd7601ce465ffb7894c0f570cbf687d2d97979e054e2cbb40edd97a9a",
+        "vietocr/vgg_seq2seq.pth": "0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db",
+        "rapidocr/ch_PP-OCRv4_det_infer.onnx": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+        "rapidocr/ch_PP-OCRv4_rec_infer.onnx": "48fc40f24f6d2a207a2b1091d3437eb3cc3eb6b676dc3ef9c37384005483683b",
+        "rapidocr/ch_ppocr_mobile_v2.0_cls_infer.onnx": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+        "docling/easyocr/model/craft_mlt_25k.pth": "4a5efbfb48b4081100544e75e1e2b57f8de3d84f213004b14b85fd4b3748db17",
+        "docling/easyocr/model/latin_g2.pth": "aaa95be1c4a9cb3496879bed7c520886ce1164f89e026f0c54488394e74e8c55",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/refs/main": "b08c95847202b4734e6da618a5a559b06eff263d93bd47117f18478e6e59b6b5",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/added_tokens.json": "002686b2efb9535c359458cd1121de8e1b58e67426a46e2bd4425843766a3a5e",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/chat_template.json": "c9d21553af689882ac89ad8e8412164662d1605f6595119664e85626df7be421",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/config.json": "98f55cfe07dd168f9fab1f1eec35f754b23631ea1a9a7c9759b1b7cb41ab76b1",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/generation_config.json": "b17f1890b2b2baf172761c9c4d6eb956482ffa05964f357e67544ec998c9851f",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/model.safetensors": "4b04e77af34c4e682a7ab1617628340d658f3c3dcd12456dd2a7fff805cf79d2",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/preprocessor_config.json": "6cb6e36d6fcb88ca1502c4a26750715dc3e7dedddc9a8f17b27d8d167d1457e7",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/processor_config.json": "e7bff42da73ae9eec9042ef20e066e11f1ee20f025358ff79131e3c0fb549b46",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/special_tokens_map.json": "1b17e900a73384d256db6f1a7591fd0d95c09e6aede680022b047386b97afcba",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/tokenizer.json": "5ec5d3780a2e01b140cf34f023eb600263855a99aacdc3eb0f2600d7b1b4ac96",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/tokenizer_config.json": "37a0e94be9c9ab5197b2188e61cf764bbc015f45261013881fe37bd2fe8599e6",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/vocab.json": "8922f7e91084b9862d270c16ce1027071214aa252a1567a4b410f952101005fc",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/refs/main": "8084bbc31e333903f4bd839da812667ebd7dca0e27f6a193e372828ae11aabe5",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/config.json": "fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/model.safetensors": "00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/preprocessor_config.json": "cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1",
+        "docling/huggingface/hub/models--docling-project--docling-models/refs/v2.3.0": "7eb53216902c7f3103528631e03d9f64f235d52b4ba8e59f662617ccd5cba0c4",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/config.json": "9c34024dc28ff47b75818f415e769809798c29bf9bde6f2ccc63a4acb62396d9",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors": "2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tm_config.json": "984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/fast/tableformer_fast.safetensors": "3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/fast/tm_config.json": "dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a",
+        "docling/model_manifest.json": "cd1ee09b49ed3059b054ac9020e3383f832fbed19701e7eeb5697d512ed682ed"
+      }
+    }
+  },
+  "environment": {
+    "python": "3.11.16",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "cpu_only_verification": true
+  },
+  "evidence": {
+    "20261014/parallel_resume_run_manifest.json": "63b9612e6274dc63c226ad592f1c3c80d51735d264b0aff7bf28a6dc172fdcd4",
+    "20261014/pytest.txt": "74412f5f807081459015597b6d6ae2323174fca299c10fe21110ec9f5314b5b8",
+    "20261014/runtime_verification.json": "1355740b5c157900483bb8821a86a8fd4c5a3c1ab763d0c6b2404df24d6a406b",
+    "20261014/sequential_run_manifest.json": "40de27646ded77d6fe764f4974fb57bc2ad3f760e4fe59620757862245b47713",
+    "20261014/source_inventory.json": "cc5d5d52ae199c18807a819cce429ffca6c342cfb68f80776794f74fd670d365",
+    "20261014/wheel_verification.json": "da8490248a177a8ef338c9469b2e77cd6ec18b8894037b8048d87a73cdef75db"
+  },
+  "legacy_claim_registry": {
+    "path": "benchmark/research_v1/claim_evidence.csv",
+    "sha256": "1565064dc3a6391541238142bed09e6d1b31e1bc5ded8d78af1d39278780a633",
+    "status": "LEGACY_UNVERIFIED",
+    "used_as_v6_quality_evidence": false
+  },
+  "blocked_checks": [
+    {
+      "name": "real_docling_cross_document_lifetime",
+      "status": "NOT_EXECUTED_REVIEW_FAILURE",
+      "script": "scratch/verify_v6_docling_lifetime.py",
+      "reason": "Automatic approval review could not complete because account usage limit was reached; no unsafe-action determination"
+    }
+  ]
+}

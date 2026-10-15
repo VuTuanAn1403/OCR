@@ -16,6 +16,13 @@ class RoutingPolicy:
         is_full_page_image = meta.get("is_full_page_image", False)
         table_count = meta.get("table_count", 0)
 
+        # A syntactically clean but invisible OCR layer is not visible native
+        # ground truth. Reuse requires an independently validated agreement gate.
+        if meta.get("has_hidden_ocr_layer"):
+            return PageType.SCANNED_WITH_OCR_LAYER
+        if meta.get("hidden_text_only"):
+            return PageType.NATIVE_TEXT_LOW_QUALITY
+
         # Scanned page with no or almost no text
         if char_count < 30:
             if image_count > 0:
@@ -51,6 +58,7 @@ class RoutingPolicy:
         """
         return page_type in (
             PageType.SCANNED_IMAGE,
+            PageType.SCANNED_WITH_OCR_LAYER,
             PageType.NATIVE_TEXT_LOW_QUALITY,
             PageType.IMAGE_ONLY,
             PageType.MIXED

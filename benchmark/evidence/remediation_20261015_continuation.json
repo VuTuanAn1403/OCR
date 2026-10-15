@@ -1,0 +1,256 @@
+{
+  "schema": "remediation-continuation-v1",
+  "date_local": "2026-10-15",
+  "timezone": "Asia/Bangkok",
+  "revision": "ee35d969a978c1a3a1f906f636deaf66a39e7b65",
+  "dirty": true,
+  "uncommitted_diff_sha256": "b5d50504ce6be81e518e40d34a3bed8706204c9cb461fe2103286bb9ebe5ee71",
+  "source_fingerprint": "16040a5acf23be25",
+  "changed_files_in_this_turn": [
+    "README.md",
+    ".github/workflows/tests.yml",
+    "benchmark/perf/run_perf.py",
+    "benchmark/scientific_evaluation/scan_table_experiment.py",
+    "scripts/export_7_files_excel.py",
+    "scripts/export_batch_excel.py",
+    "scripts/summarize_docling_smoke.py",
+    "src/ocr/application/convert_document.py",
+    "src/ocr/application/export_document.py",
+    "src/ocr/application/process_page.py",
+    "src/ocr/cli/run_ocr.py",
+    "src/ocr/cli/batch_runner.py",
+    "src/ocr/infrastructure/export/output_contract.py",
+    "src/ocr/infrastructure/export/result_reader.py",
+    "src/ocr/infrastructure/export/json_exporter.py",
+    "src/ocr/infrastructure/export/artifact_validator.py",
+    "src/ocr/infrastructure/pdf/scan_image.py",
+    "src/ocr/infrastructure/table/hidden_text_layer.py",
+    "src/ocr/runtime/document_pool.py",
+    "src/ocr/runtime/run_manifest.py",
+    "tests/unit/test_v6_compact_output.py",
+    "tests/unit/test_v6_scan_image.py",
+    "tests/unit/test_v6_scan_table_experiment.py",
+    "tests/unit/test_v6_runtime.py",
+    "tests/unit/test_docling_structures.py"
+  ],
+  "file_hashes": {
+    "README.md": "a9992b23650930827dfcd7cb1101952fb45a1af6ce291daa7a3b2e556a325994",
+    ".github/workflows/tests.yml": "de4052b97fcc8a4b50d32bf57c83ac5d8432b4696e54d48aa1b1b5d474e4d4a3",
+    "benchmark/perf/run_perf.py": "d8b62eb1c0dc8e415a58546429abbe3b36f3cf3f3aa6d7eda22bcdc9e2b13bee",
+    "benchmark/scientific_evaluation/scan_table_experiment.py": "0ea598e57e8572e50331db7dec3f65e499e2eb19f360de26503d9ac125859c5c",
+    "scripts/export_7_files_excel.py": "f08bac67004c24504ab00e2ccb8a506ce60c0d3791ee9e700ac18f9e190e43e9",
+    "scripts/export_batch_excel.py": "bfd15ef7e2c02b5872e1493d139fdd19c8986eabefb4059ff8b7d445a78f957f",
+    "scripts/summarize_docling_smoke.py": "b8ba88a34efcc094ec1a2c40b0691118d45e44c0bfe20f20254e5f0777f73996",
+    "src/ocr/application/convert_document.py": "a3717e5a74cd782fa28fa259e1c90c45917e1b2472a0a8f2dbb0a9498e856c2e",
+    "src/ocr/application/export_document.py": "1d67a7c300ff9362f512cb341984f6f62715eac40cf00b4bdae49b2ec4988311",
+    "src/ocr/application/process_page.py": "2b840d5fdd260df12acdf80831cde25d41ebd5e45686f990b614211a1983d4e8",
+    "src/ocr/cli/run_ocr.py": "9f3b7ea016fe8270a6bbdac9a54cf042ed0d9fcaaf4ee4749c3c29d13be7bd93",
+    "src/ocr/cli/batch_runner.py": "fb90280957d22e1c47d066707dcf1d62bd47debdc651c0d7746e8bc6d0925462",
+    "src/ocr/infrastructure/export/output_contract.py": "c3074a7426eb42bfa5176a012adfdc478f3a8f7eec9716bf80c3ff5236d52bbe",
+    "src/ocr/infrastructure/export/result_reader.py": "2ec3b40ab4a264f0994cfee583ad82c294f8eeb41b05f59e896b5e03943f5473",
+    "src/ocr/infrastructure/export/json_exporter.py": "c835fe1ab9b4a539a714f55a20e51a1d97329a6c1d3edff55e2f9dc5d6e9e0d2",
+    "src/ocr/infrastructure/export/artifact_validator.py": "08fce68b00ccfa396654d0fa8313bc7d9b5519c4351987f9271dee2e4443bdc5",
+    "src/ocr/infrastructure/pdf/scan_image.py": "b8c46a6bca908837346b93360e914c0b9ce173336c516419a7695c2241a0b429",
+    "src/ocr/infrastructure/table/hidden_text_layer.py": "3f3e35305c2be3b05ed42fc713dd99b78f60260ef3eaff039d1b8af37ed3f75b",
+    "src/ocr/runtime/document_pool.py": "62300f2c0edea6b85cd303644f293ca3fe7561167fa69d3c63909b73421ae366",
+    "src/ocr/runtime/run_manifest.py": "808aabec909f5539785643362da86cd0f5d9f19f9762555bdc2d28d959ee2861",
+    "tests/unit/test_v6_compact_output.py": "0b19c4731e8735f21ca3d6c5cd02ef6090ea5837420a7391bcebfbf968046f8b",
+    "tests/unit/test_v6_scan_image.py": "93129d4f29f1b513d47cb3e08a74f33059708aed03b809b29b2bc3c278d645a5",
+    "tests/unit/test_v6_scan_table_experiment.py": "ce0002a8f2325a6db174670b1a6914c75cb9fde386221f40ed9d7b5c444b127d",
+    "tests/unit/test_v6_runtime.py": "984a05334ee760ac57b1ae40c1c7fd47256ab0298ab90a841d7cd58e7b76ba95",
+    "tests/unit/test_docling_structures.py": "51641db0fb226478c138b7c0d58135a0c046e5d80e50f5e1558cee324f16128e"
+  },
+  "hardware": {
+    "platform": "Windows-10-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 141 Stepping 1, GenuineIntel",
+    "cpu_count_physical": 6,
+    "cpu_count_logical": 12,
+    "total_ram_gb": 15.73,
+    "python_version": "3.11.16",
+    "python_executable": "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+    "cuda_available": false,
+    "torch_cuda_version": null
+  },
+  "packages": {
+    "pymupdf": "1.28.2",
+    "torch": "2.12.1",
+    "torchvision": "0.27.1",
+    "vietocr": "0.3.13",
+    "rapidocr-onnxruntime": "1.4.4",
+    "onnxruntime": "1.29.0",
+    "onnxruntime-gpu": null,
+    "numpy": "2.4.6",
+    "opencv-python-headless": "5.0.0.93",
+    "pydantic": "2.13.5",
+    "PyYAML": "6.0.3"
+  },
+  "gt_and_split": {
+    "ground_truth": null,
+    "splits": null,
+    "b0": null,
+    "thresholds": null
+  },
+  "overall_quality_acceptance": "NOT_EVALUATED",
+  "validation": {
+    "baseline": {
+      "passed": 575,
+      "skipped": 3,
+      "log": "20261015_continuation/pytest_baseline.txt"
+    },
+    "final": {
+      "passed": 601,
+      "skipped": 3,
+      "warnings": 1,
+      "seconds": 55.14,
+      "log": "20261015_continuation/pytest_final.txt",
+      "invocation": "pytest.main(['tests', '-q', '-o', 'cache_dir=scratch/pytest-cache-current', '--basetemp=scratch/pytest-v6-word-boundaries-final'])",
+      "environment_workaround": "os.mkdir temporarily replaced in test process to use mode 0777 because Windows sandbox token cannot access mode-0700 test dirs"
+    },
+    "diff_check": {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  },
+  "records": [
+    {
+      "kp_id": "KP-04",
+      "requirement_ids": [
+        "H20",
+        "C3.7",
+        "D3",
+        "ENV-10",
+        "PERF-09"
+      ],
+      "status": "VERIFIED",
+      "verification_scope": "fixture/consumer/CLI/pool/resume, not GT acceptance",
+      "counterexamples": [
+        "duplicate/traversing/wrong/missing page references",
+        "unknown index schema",
+        "mode mismatch",
+        "cached output with a different requested mode"
+      ],
+      "evidence": "20261015_continuation/compact_verification.json",
+      "verification_source_fingerprint": "8e24c8c9ce7d4450",
+      "decision": "Opt-in compact result-index-v1, default legacy. Same V6 contracts and Markdown. Payload savings 37.88% on 3 synthetic native PDFs/6 pages only; not a corpus PERF claim. Smoke predates final hidden-word-only fix; final unit suite covers final code."
+    },
+    {
+      "kp_id": "KP-08",
+      "requirement_ids": [
+        "R-08",
+        "C2.2(2)(3)"
+      ],
+      "status": "VERIFIED",
+      "verification_scope": "embedded acquisition safety counterexamples; full OCR affine chain still partial",
+      "counterexamples": [
+        "visible text over full-page image",
+        "NaN/Infinity DPI scale",
+        "decode failure"
+      ],
+      "evidence": "20261015_continuation/pytest_final.txt",
+      "decision": "Embedded/DPI options remain off by default; render fallback preserves overlay text/reason."
+    },
+    {
+      "kp_id": "KP-11",
+      "requirement_ids": [
+        "R-10",
+        "C3.5(a)",
+        "H7"
+      ],
+      "status": "IMPLEMENTED_PARTIAL",
+      "verification_scope": "5 real scan-table pages; same retained OCR evidence; A replay at new fingerprint",
+      "counterexamples": [
+        "B consumes all OCR blocks, leaving A no table words",
+        "MuPDF joins adjacent word operators without explicit spaces",
+        "malformed line bbox aborts experiment",
+        "empty OCR evidence wrongly treated as valid A input"
+      ],
+      "evidence": "20261015_continuation/scan_table_replay.json",
+      "initial_failed_roundtrip_evidence": "20261015_continuation/scan_table_initial.json",
+      "B_source_fingerprint": "8e24c8c9ce7d4450",
+      "A_source_fingerprint": "16040a5acf23be25",
+      "pdf_sha256": "ea746ff8b8bbd069b45dd5420dd1ef960ce5c1767abb52b720c1a00d2f3e6ac6",
+      "font": {
+        "path": "C:\\Windows\\Fonts\\NotoSans-Regular.ttf",
+        "name": "Noto Sans Regular",
+        "sha256": "2ddeaed07f6483f7831b23faa32cf85a04c3406eb4bb2925530894805a05d4fb",
+        "covers_vietnamese": true,
+        "license": "verify the font's own license file (proposal suggests Noto Sans, OFL-1.1)"
+      },
+      "models": {
+        "vietocr/base.yml": "42511ad7fc72b4e69c8583e78046c6e41c83f3c2ad8eb85a942532acfca9d94a",
+        "vietocr/vgg-seq2seq.yml": "1aaae4bbd7601ce465ffb7894c0f570cbf687d2d97979e054e2cbb40edd97a9a",
+        "vietocr/vgg_seq2seq.pth": "0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db",
+        "rapidocr/ch_PP-OCRv4_det_infer.onnx": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+        "rapidocr/ch_PP-OCRv4_rec_infer.onnx": "48fc40f24f6d2a207a2b1091d3437eb3cc3eb6b676dc3ef9c37384005483683b",
+        "rapidocr/ch_ppocr_mobile_v2.0_cls_infer.onnx": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+        "docling/easyocr/model/craft_mlt_25k.pth": "4a5efbfb48b4081100544e75e1e2b57f8de3d84f213004b14b85fd4b3748db17",
+        "docling/easyocr/model/latin_g2.pth": "aaa95be1c4a9cb3496879bed7c520886ce1164f89e026f0c54488394e74e8c55",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/refs/main": "b08c95847202b4734e6da618a5a559b06eff263d93bd47117f18478e6e59b6b5",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/added_tokens.json": "002686b2efb9535c359458cd1121de8e1b58e67426a46e2bd4425843766a3a5e",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/chat_template.json": "c9d21553af689882ac89ad8e8412164662d1605f6595119664e85626df7be421",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/config.json": "98f55cfe07dd168f9fab1f1eec35f754b23631ea1a9a7c9759b1b7cb41ab76b1",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/generation_config.json": "b17f1890b2b2baf172761c9c4d6eb956482ffa05964f357e67544ec998c9851f",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/model.safetensors": "4b04e77af34c4e682a7ab1617628340d658f3c3dcd12456dd2a7fff805cf79d2",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/preprocessor_config.json": "6cb6e36d6fcb88ca1502c4a26750715dc3e7dedddc9a8f17b27d8d167d1457e7",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/processor_config.json": "e7bff42da73ae9eec9042ef20e066e11f1ee20f025358ff79131e3c0fb549b46",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/special_tokens_map.json": "1b17e900a73384d256db6f1a7591fd0d95c09e6aede680022b047386b97afcba",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/tokenizer.json": "5ec5d3780a2e01b140cf34f023eb600263855a99aacdc3eb0f2600d7b1b4ac96",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/tokenizer_config.json": "37a0e94be9c9ab5197b2188e61cf764bbc015f45261013881fe37bd2fe8599e6",
+        "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/vocab.json": "8922f7e91084b9862d270c16ce1027071214aa252a1567a4b410f952101005fc",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/refs/main": "8084bbc31e333903f4bd839da812667ebd7dca0e27f6a193e372828ae11aabe5",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/config.json": "fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/model.safetensors": "00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c",
+        "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/preprocessor_config.json": "cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1",
+        "docling/huggingface/hub/models--docling-project--docling-models/refs/v2.3.0": "7eb53216902c7f3103528631e03d9f64f235d52b4ba8e59f662617ccd5cba0c4",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/config.json": "9c34024dc28ff47b75818f415e769809798c29bf9bde6f2ccc63a4acb62396d9",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors": "2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tm_config.json": "984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/fast/tableformer_fast.safetensors": "3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718",
+        "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/fast/tm_config.json": "dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a",
+        "docling/model_manifest.json": "cd1ee09b49ed3059b054ac9020e3383f832fbed19701e7eeb5697d512ed682ed"
+      },
+      "config": {
+        "path": "scratch\\v6-scan-table-paired-final\\experiment_profiles.yaml",
+        "sha256": "2dbc93d97bf93d61f72ede3449837d404a2ea8f45b817141ef2f82829c93c0f0",
+        "resolved_sha256": "f14084b64a7ce014"
+      },
+      "words_roundtripped_exactly": 2935,
+      "decision": "A/B each detect 2 tables on each sampled BSI page. All A pages still need cell review. Counter checks are OCR consistency diagnostics, not L5 accuracy. No GT; C unavailable; do not select A or enable hidden layers by default."
+    },
+    {
+      "kp_id": "KP-13",
+      "requirement_ids": [
+        "R-11",
+        "ENV-09"
+      ],
+      "status": "IMPLEMENTED",
+      "verification_scope": "CI dependency inspection only",
+      "decision": "Install .[test] rather than --no-deps so scipy/beautifulsoup4/pycocotools are present. GitHub Actions/Linux/Docker/Colab/GPU not executed in this turn."
+    }
+  ],
+  "remaining": [
+    "human-verified company metadata, splits and L1-L7 GT",
+    "clean B0 and locked thresholds/ADJ/DBI",
+    "full rotated/cropped/deskew OCR coordinates",
+    "orientation/D1 weights, licenses and gating recall",
+    "direct TableFormer token control C and GT A/B/C method selection",
+    "actual multipage table merging",
+    "classification/KIE/API and staged refactor",
+    "GPU/Colab/Docker/lab/CI execution"
+  ],
+  "artifact_hashes": {
+    "20261015_continuation/compact_perf.json": "84a5bde4edfb5f6530ceba71f260848a0202d928dabf6a85df5335b5fc1af089",
+    "20261015_continuation/compact_verification.json": "ae1ba487c9a0dba6d19253d6d783bcc605e2906fafc9fabb4c3fd29eddffc05e",
+    "20261015_continuation/pytest_baseline.txt": "9b868e8ea90f2a022fbb9910de778cfee189df4e8e529e343d966066f9ca56c2",
+    "20261015_continuation/pytest_final.txt": "214c0fe2e0d3c0d8b905b7464f279def89b09467762e456af3c1439fecab57ae",
+    "20261015_continuation/scan_table_initial.json": "5de62100acc417f8f7e97393cf42ab5884ae3253f52abcd33fafbc8e0e5eb2a5",
+    "20261015_continuation/scan_table_initial.log": "471a2c1f00621c01023f9e0d405c37feddba5b35d891f7a0f345372e5e0a816e",
+    "20261015_continuation/scan_table_replay.json": "78e490f570add1ccad647ffac48b8dbf88ad37869c0311896516bcf6fbd29a06",
+    "20261015_continuation/scan_table_replay.log": "63b2a31073b140fc57cd911d3bff63c1f2305fe787da4527b9709c4c5ff6ae17",
+    "20261015_continuation/scan_tables/page-0070.json": "f245f737cccd43aa2d12ab842366e771b9550d9b62ca6693d2e5acc6bdb7b8e0",
+    "20261015_continuation/scan_tables/page-0071.json": "0f9075567956abaf737f80f433d7a0c50efa212faa677fad829cb6cf141574f3",
+    "20261015_continuation/scan_tables/page-0072.json": "3cd05d6382be36edfd7d534e975f66e4deab8dfe2eabf4f81528132d5896cadd",
+    "20261015_continuation/scan_tables/page-0073.json": "903687290a3306efa48eff97e274145d9d23382b0bba43750a9fc5b527d56a89",
+    "20261015_continuation/scan_tables/page-0075.json": "6958a66bdbf3ec72141d1edf54748e3d9b45dd986f91a6a3a9388d77ebf13065"
+  }
+}

@@ -13,12 +13,16 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 def setup_rapidocr():
     print("[1/2] Initializing RapidOCR ONNX Runtime engine...")
     t0 = time.time()
     try:
         from rapidocr_onnxruntime import RapidOCR
-        engine = RapidOCR()
+        engine = RapidOCR(intra_op_num_threads=2, inter_op_num_threads=1)
         # Test inference on a tiny dummy white image
         dummy = np.full((100, 300, 3), 255, dtype=np.uint8)
         engine(dummy)
@@ -32,12 +36,11 @@ def setup_vietocr():
     print("[2/2] Initializing VietOCR Seq2Seq recognition model (vgg_seq2seq)...")
     t0 = time.time()
     try:
-        from vietocr.tool.config import Cfg
-        from vietocr.tool.predictor import Predictor
-
-        cfg = Cfg.load_config_from_name("vgg_seq2seq")
-        cfg["device"] = "cpu"
-        predictor = Predictor(cfg)
+        import torch
+        from src.ocr.infrastructure.ocr.vietnamese_seq2seq_engine import VietnameseSeq2SeqEngine
+        torch.set_num_threads(2)
+        # Reuse persistent OCR_MODELS_DIR/VIETOCR_MODEL_DIR weights on Colab.
+        predictor = VietnameseSeq2SeqEngine(batch_size=4, device="cpu", num_threads=2)._recognizer
 
         # Test inference on a small PIL crop
         dummy_crop = Image.fromarray(np.full((32, 100, 3), 255, dtype=np.uint8))

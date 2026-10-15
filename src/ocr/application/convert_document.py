@@ -1,5 +1,6 @@
 import copy
 import json
+import logging
 import time
 import gc
 from pathlib import Path
@@ -18,6 +19,9 @@ from src.ocr.infrastructure.export.manifest_exporter import ManifestExporter
 from src.ocr.runtime.atomic_io import atomic_write_json
 from src.ocr.runtime.config import get_profile, load_profiles
 from src.ocr.runtime.device import resolve_device
+from src.ocr.runtime.structured_logging import log_context
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -70,14 +74,59 @@ class ConvertDocumentUseCase:
     """
     Main orchestration use case to convert a PDF document using the Hybrid OCR v3.1 Pipeline.
     """
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: Optional[str] = None, *, reuse_docling: bool = False,
+                 thread_budget: Optional[int] = None, batch_size: Optional[int] = None):
         # Single config source; a missing file is an error (ENV-13).
         self.config_path, self.profiles = load_profiles(config_path)
+        if thread_budget is not None and (type(thread_budget) is not int or thread_budget < 1):
+            raise ValueError("thread_budget must be a positive integer")
+        if batch_size is not None and (type(batch_size) is not int or batch_size < 1):
+            raise ValueError("batch_size must be a positive integer")
+        self.thread_budget = thread_budget
+        # Hardware profile (ENV-01) override of the recognizer line batch.
+        self.batch_size = batch_size
+        self.reuse_docling = reuse_docling
+        self._shared_docling = None
+        self._shared_docling_key = None
+
+    def close(self):
+        if self._shared_docling is not None:
+            self._shared_docling.close()
+            self._shared_docling = None
+            self._shared_docling_key = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+    def _docling_client(self, config):
+        if not self.reuse_docling or not config.get("docling", {}).get("enabled"):
+            self.close()
+            return None
+        import os
+        from src.ocr.runtime.models import model_fingerprint
+        from src.ocr.runtime.fingerprint import source_fingerprint
+        from src.ocr.infrastructure.layout.docling_structure import DoclingStructureExtractor
+        key = (json.dumps(config["docling"], sort_keys=True), model_fingerprint(config), source_fingerprint(),
+               os.getenv("OCR_DOCLING_PYTHON"), os.getenv("OCR_MODELS_DIR"))
+        if key != self._shared_docling_key:
+            self.close()
+            self._shared_docling = DoclingStructureExtractor(config["docling"])
+            self._shared_docling_key = key
+        return self._shared_docling
 
     def resolve_profile(self, profile_name: str, device: Optional[str] = None) -> Dict[str, Any]:
         """Profile with the device resolved to `cpu` or `cuda` and passed to
         Docling too, so the resolved device is part of every cache key."""
         config = copy.deepcopy(get_profile(self.profiles, profile_name))
+        if self.batch_size is not None:
+            config["batch_size"] = self.batch_size
+        if self.thread_budget is not None:
+            config["num_threads"] = self.thread_budget
+            if config.get("docling", {}).get("enabled"):
+                config["docling"]["num_threads"] = self.thread_budget
         requested_device = device or config.get("device")
         config["device"] = resolve_device(requested_device)
         if config.get("primary_engine", "vietocr") == "rapidocr" and config["device"] == "cuda":
@@ -109,7 +158,19 @@ class ConvertDocumentUseCase:
         assets_mode: str = "png",
         warmup: bool = False,
         cache_dir: Optional[str] = None,
+        output_mode: str = "legacy",
     ) -> ExtractedDocument:
+        # ENV-11: logs of this document carry its ID (the PDF stem, as below).
+        with log_context(doc_id=Path(file_path).stem):
+            return self._execute_document(file_path, profile_name, pages, output_dir, resume, benchmark,
+                                          accuracy_report, ground_truth_dir, device, assets_mode, warmup,
+                                          cache_dir, output_mode)
+
+    def _execute_document(self, file_path, profile_name, pages, output_dir, resume, benchmark, accuracy_report,
+                          ground_truth_dir, device, assets_mode, warmup, cache_dir, output_mode) -> ExtractedDocument:
+        from src.ocr.infrastructure.export.output_contract import OUTPUT_MODES
+        if output_mode not in OUTPUT_MODES:
+            raise ValueError(f"Unknown output_mode {output_mode!r}")
         t0 = time.perf_counter()
         pdf_path = resolve_input_path(file_path)
         if not pdf_path.exists():
@@ -148,7 +209,9 @@ class ConvertDocumentUseCase:
             # Model loading happens here (and in the optional Docling warm-up), so
             # start-up is reported separately from page latency (PERF-05).
             t_startup = time.perf_counter()
-            page_processor = ProcessPageUseCase(doc, config, file_hash, cache)
+            shared = self._docling_client(config)
+            page_processor = (ProcessPageUseCase(doc, config, file_hash, cache, structure_extractor=shared)
+                              if shared is not None else ProcessPageUseCase(doc, config, file_hash, cache))
             timing: Dict[str, Any] = {"model_init_seconds": round(time.perf_counter() - t_startup, 3)}
             if warmup and page_processor.structure_extractor.enabled:
                 timing.update(self._warm_up_docling(page_processor, config))
@@ -174,7 +237,9 @@ class ConvertDocumentUseCase:
                     router=router, resume=resume)
                 extracted_pages.append(p_result)
                 pt_str = p_result.page_type.value if hasattr(p_result.page_type, "value") else str(p_result.page_type)
-                if pt_str in ("NATIVE_TEXT", "PRODUCT_SHOWCASE_COLLAGE"):
+                if p_result.metadata.get("routing_override") == "native_first_disabled":
+                    pages_ocr += 1  # counted by the route actually taken (ablation A1)
+                elif pt_str in ("NATIVE_TEXT", "PRODUCT_SHOWCASE_COLLAGE"):
                     pages_native += 1
                 elif pt_str == "MIXED":
                     pages_mixed += 1
@@ -197,7 +262,7 @@ class ConvertDocumentUseCase:
         if scored:
             mean_qual_score = sum(scored) / len(scored)
         else:
-            mean_qual_score = None if extracted_pages else 1.0
+            mean_qual_score = None
         pages_from_cache = sum(1 for p in extracted_pages if p.quality.from_cache)
 
         total_primary_lines = sum(p.quality.total_blocks for p in extracted_pages)
@@ -209,6 +274,8 @@ class ConvertDocumentUseCase:
             total_pages=total_pages,
             mean_native_score=round(mean_native_score, 4),
             mean_ocr_confidence=mean_ocr_conf,
+            ocr_confidence_scored_pages=len(ocr_confidences),
+            quality_scored_pages=len(scored),
             mean_quality_score=round(mean_qual_score, 4) if mean_qual_score is not None else None,
             pages_processed_native=pages_native,
             pages_processed_ocr=pages_ocr,
@@ -265,7 +332,8 @@ class ConvertDocumentUseCase:
         # Export all artifacts to disk
         out_path = Path(output_dir)
         t_export = time.perf_counter()
-        doc_dir = ExportDocumentUseCase.execute(extracted_doc, out_path, benchmark_data, assets_mode=assets_mode)
+        doc_dir = ExportDocumentUseCase.execute(extracted_doc, out_path, benchmark_data,
+                                               assets_mode=assets_mode, output_mode=output_mode)
         timing["export_seconds"] = round(time.perf_counter() - t_export, 3)
         # Open to validation.json written, export included (6.1 document latency).
         timing["document_latency_seconds"] = round(time.perf_counter() - t0, 3)
@@ -300,7 +368,7 @@ class ConvertDocumentUseCase:
                     extracted_doc.quality.metrics.wer = acc_report.mean_wer
                     atomic_write_json(doc_dir / "quality.json", extracted_doc.quality.model_dump(mode="json"))
                 except Exception as e:
-                    print(f"[WARN] Accuracy evaluation failed: {e}")
+                    logger.warning("Accuracy evaluation failed: %s", e, exc_info=True)
 
         from src.ocr.infrastructure.export.json_exporter import JSONExporter
         atomic_write_json(doc_dir / "result.json", JSONExporter.export_document_json(extracted_doc))

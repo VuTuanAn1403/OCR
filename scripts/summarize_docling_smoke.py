@@ -6,11 +6,15 @@ from pathlib import Path
 import platform
 import re
 import shutil
+import sys
 import xml.etree.ElementTree as ET
 
 import psutil
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from src.ocr.infrastructure.export.result_reader import load_document_json
 
 
 def main():
@@ -22,7 +26,7 @@ def main():
     evidence = ROOT / args.evidence_dir
     evidence.mkdir(parents=True, exist_ok=True)
     doc = run / "hybrid_final/table_formula_fixture"
-    result = json.loads((doc / "result.json").read_text(encoding="utf-8"))
+    result = load_document_json(doc / "result.json")
     backend = json.loads((run / "backend_smoke.json").read_text(encoding="utf-8"))
     expected_cells = {(0, 0): ("Sample measurements", 1, 3),
         (1, 0): ("Sample", 1, 1), (1, 1): ("x", 1, 1), (1, 2): ("Squared value", 1, 1),

@@ -11,6 +11,7 @@ class RapidOCREngine(BaseOCREngine):
     """
     _instance: Optional["RapidOCREngine"] = None
     _engine: Optional[RapidOCR] = None
+    _threads: Optional[int] = None
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -18,9 +19,15 @@ class RapidOCREngine(BaseOCREngine):
         return cls._instance
 
     def __init__(self, **kwargs):
-        if self._engine is None:
+        threads = kwargs.get("num_threads")
+        if self._engine is None or threads != self._threads:
             # Initialize ONNXRuntime RapidOCR
-            self._engine = RapidOCR()
+            self._engine = self._make_engine(threads)
+            self._threads = threads
+
+    @staticmethod
+    def _make_engine(threads):
+        return RapidOCR(intra_op_num_threads=threads, inter_op_num_threads=1) if threads else RapidOCR()
 
     def predict_image(self, img_bgr: np.ndarray) -> List[Dict[str, Any]]:
         """
@@ -39,7 +46,7 @@ class RapidOCREngine(BaseOCREngine):
             import logging
             logging.getLogger(__name__).warning("RapidOCR prediction failed: %s. Re-initializing engine for retry.", exc)
             try:
-                self._engine = RapidOCR()
+                self._engine = self._make_engine(self._threads)
                 raw_results, _ = self._engine(img_bgr)
             except Exception as retry_exc:
                 logging.getLogger(__name__).error("RapidOCR retry also failed: %s", retry_exc)

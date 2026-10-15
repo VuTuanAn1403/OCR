@@ -31,8 +31,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8.0.0,<=9.1.1", "apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0"]
-research = ["apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0"]
+test = ["pytest>=8.0.0,<=9.1.1", "apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0", "pycocotools>=2.0.7,<3"]
+research = ["apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0", "pycocotools>=2.0.7,<3"]
 
 # Install editable (`pip install -e .`): the code resolves config/, models/
 # and the Docling worker relative to the repository checkout.
@@ -40,6 +40,7 @@ research = ["apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0"]
 ocrpdf = "src.ocr.cli.run_ocr:main"
 ocrpdf-batch = "src.ocr.cli.batch_runner:main"
 ocrpdf-perf = "benchmark.perf.run_perf:main"
+ocrpdf-collect = "src.ocr.cli.collect:main"
 
 [tool.setuptools.dynamic]
 version = { attr = "src.ocr.infrastructure.export.manifest_exporter.PIPELINE_VERSION" }

@@ -306,6 +306,7 @@ def test_batch_resume_rejects_same_filename_with_changed_pdf_or_model(tmp_path, 
     source.write_bytes(b"original")
     runner = BatchOCRRunner.__new__(BatchOCRRunner)
     runner.profile, runner.assets_mode = "fast", "none"
+    runner.output_mode = "legacy"
     runner.profile_config = {"profile": "fast"}
     monkeypatch.setattr("src.ocr.cli.batch_runner.model_fingerprint", lambda config: "model1")
     output = tmp_path / "doc"
@@ -385,7 +386,8 @@ def test_batch_timing_excludes_document_and_page_cache_history(tmp_path):
     assert [entry["mean_confidence"] for entry in report["files"]] == [None, 0.0]
 
 
-def test_excel_reports_leave_unavailable_confidence_blank_and_keep_measured_zero(tmp_path, monkeypatch):
+@pytest.mark.parametrize("output_mode", ["legacy", "compact"])
+def test_excel_reports_leave_unavailable_confidence_blank_and_keep_measured_zero(tmp_path, monkeypatch, output_mode):
     from openpyxl import load_workbook
     from scripts import export_7_files_excel, export_batch_excel
 
@@ -397,7 +399,14 @@ def test_excel_reports_leave_unavailable_confidence_blank_and_keep_measured_zero
          "quality_score": .99, "total_blocks": 1}
         for p, confidence in ((1, None), (2, 0.0))]})
     atomic_write_json(document / "benchmark.json", {"pages_benchmarked": [1, 2], "mean_confidence": None})
-    atomic_write_json(document / "result.json", {"pages": [{"page_num": 1}, {"page_num": 2}]})
+    if output_mode == "compact":
+        (document / "pages").mkdir()
+        for number in (1, 2):
+            atomic_write_json(document / f"pages/page-{number:04d}.json", {"page_num": number})
+        atomic_write_json(document / "result.json", {"schema_version": "result-index-v1", "selected_pages": [1, 2],
+                          "page_refs": [{"page_num": n, "path": f"pages/page-{n:04d}.json"} for n in (1, 2)]})
+    else:
+        atomic_write_json(document / "result.json", {"pages": [{"page_num": 1}, {"page_num": 2}]})
     atomic_write_json(output / "batch_report.json", {"files": [
         {"document_id": "fixture", "file_name": "fixture.pdf", "status": "COMPLETED", "mean_confidence": None}]})
     monkeypatch.setattr(export_7_files_excel, "PROJECT_ROOT", tmp_path)
@@ -422,6 +431,7 @@ def test_batch_retries_layout_model_failure_when_docling_is_disabled(tmp_path, m
     runner = BatchOCRRunner.__new__(BatchOCRRunner)
     runner.force, runner.output_dir, runner.profile = False, tmp_path, "fast"
     runner.assets_mode = "none"
+    runner.output_mode = "legacy"
     runner.profile_config = {"profile": "fast", "docling": {"enabled": False}}
     monkeypatch.setattr("src.ocr.cli.batch_runner.model_fingerprint", lambda config: "actual-model")
     doc_dir = tmp_path / "annual"

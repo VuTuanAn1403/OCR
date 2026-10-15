@@ -19,6 +19,38 @@ profiles:
       reliable_threshold: 0.90
       review_threshold: 0.70
 
+  # Personal workstation: retain the v4.3 balanced Vietnamese recognition path.
+  # Use CUDA for VietOCR when available, otherwise CPU; --device cpu forces CPU.
+  # Heuristic/vector tables remain available; Docling structure models are opt-in
+  # through balanced/accuracy for machines with more resources.
+  local:
+    profile: local
+    device: auto
+    native_first: true
+    render_dpi: 180
+    primary_engine: vietocr
+    num_threads: 2
+    batch_size: 4
+    layout: standard
+    docling:
+      enabled: false
+    fallback_enabled: false
+    fallback_only_on_review: true
+    max_fallback_region_ratio: 0.15
+    max_fallback_regions_per_page: 5
+    fallback_upscale_dpi: 250
+    min_confidence: 0.80
+    numeric_retry_threshold: 0.85
+    orientation_fallback_enabled: true
+    vector_table_min_native_score: 0.90
+    skip_vector_tables_on_restricted_pdf: true
+    two_up_detection_enabled: true
+    multi_region_detection_enabled: true
+    page_timeout_seconds: 120
+    native_quality:
+      reliable_threshold: 0.90
+      review_threshold: 0.70
+
   balanced:
     profile: balanced
     native_first: true

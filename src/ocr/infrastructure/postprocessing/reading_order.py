@@ -1,14 +1,24 @@
 from typing import List
 from src.ocr.domain.models.text_block import TextBlock
+from src.ocr.infrastructure.postprocessing.xy_cut import xy_cut_order
+
+# `heuristic` is the established sorter; `xycut` is the C3.4 candidate.
+READING_ORDER_METHODS = ("heuristic", "xycut")
+
 
 class ReadingOrderSorter:
     """
     Sorts text blocks into natural human reading order based on geometric layout,
     multi-column detection, and header/footer separation.
     """
-    def __init__(self, page_width: float = 595.0, page_height: float = 842.0):
+    def __init__(self, page_width: float = 595.0, page_height: float = 842.0,
+                 method: str = "heuristic", min_gap: float = 3.0):
+        if method not in READING_ORDER_METHODS:
+            raise ValueError(f"reading_order.method must be one of {', '.join(READING_ORDER_METHODS)}")
         self.page_width = page_width
         self.page_height = page_height
+        self.method = method
+        self.min_gap = min_gap
 
     def sort_blocks(self, blocks: List[TextBlock]) -> List[TextBlock]:
         if not blocks:
@@ -67,7 +77,10 @@ class ReadingOrderSorter:
         sorted_footers = self._sort_column(footers + page_numbers)
 
         # 2. Analyze Body for multi-column structure
-        sorted_body = self._sort_body_blocks(body)
+        if self.method == "xycut":
+            sorted_body = xy_cut_order(body, self._sort_column, self.min_gap)
+        else:
+            sorted_body = self._sort_body_blocks(body)
 
         # 3. Combine in reading sequence: Header -> Body -> Footer
         result = sorted_headers + sorted_body + sorted_footers

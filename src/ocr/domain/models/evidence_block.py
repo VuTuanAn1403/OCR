@@ -1,9 +1,10 @@
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
+from src.ocr.domain.models.confidence import ConfidenceModel
 from src.ocr.domain.models.region import ContentType
 
 
-class EvidenceBlock(BaseModel):
+class EvidenceBlock(ConfidenceModel):
     """
     V3.1.2 Evidence-Preserving intermediate representation (spec §3).
 
@@ -20,8 +21,6 @@ class EvidenceBlock(BaseModel):
     text: str = ""
     content_type: ContentType = ContentType.TEXT
     source: Literal["native", "ocr", "vector", "image"] = "native"
-    confidence: Optional[float] = 1.0
-    confidence_source: Optional[str] = None
     orientation: Optional[float] = None
     rotation: float = 0.0
     column_id: Optional[int] = None
@@ -30,9 +29,9 @@ class EvidenceBlock(BaseModel):
     reading_order: int = -1
     parent_region: Optional[str] = None
     transform_matrix: List[float] = Field(default_factory=list)
-    status: str = "VALIDATED"
+    status: str = "UNRESOLVED"
     failure_reason: Optional[str] = None
-    quality_score: Optional[float] = 1.0
+    quality_score: Optional[float] = None
     block_type: str = "paragraph"
     is_bold: Optional[bool] = None
     font_size: Optional[float] = None

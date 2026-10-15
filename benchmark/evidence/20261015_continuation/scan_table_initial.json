@@ -1,0 +1,337 @@
+{
+  "schema": "scan-table-experiment-v1",
+  "pdf": "inputs\\BSI_Baocaothuongnien_2025.pdf",
+  "pdf_sha256": "ea746ff8b8bbd069b45dd5420dd1ef960ce5c1767abb52b720c1a00d2f3e6ac6",
+  "document_id": "BSI_Baocaothuongnien_2025",
+  "pages": [
+    70,
+    71,
+    72,
+    73,
+    75
+  ],
+  "profile": "balanced",
+  "docling_options": {
+    "enabled": true,
+    "formula_max_tokens": 256,
+    "formulas": true,
+    "num_threads": 6,
+    "ocr": false,
+    "ocr_languages": [
+      "vi",
+      "en"
+    ],
+    "on_error": "fallback",
+    "page_selection": "auto",
+    "startup_timeout_seconds": 900,
+    "table_mode": "fast",
+    "tables": true,
+    "timeout_seconds": 90,
+    "device": "cpu"
+  },
+  "font": {
+    "path": "C:\\Windows\\Fonts\\NotoSans-Regular.ttf",
+    "name": "Noto Sans Regular",
+    "sha256": "2ddeaed07f6483f7831b23faa32cf85a04c3406eb4bb2925530894805a05d4fb",
+    "covers_vietnamese": true,
+    "license": "verify the font's own license file (proposal suggests Noto Sans, OFL-1.1)"
+  },
+  "git": {
+    "commit": "ee35d969a978c1a3a1f906f636deaf66a39e7b65",
+    "dirty": true,
+    "uncommitted_diff_sha256": "209d718a8e4078f438f2389039488529117aa17d88519625ab9dd4141a34e645",
+    "untracked_files_sha256": {
+      ".dockerignore": "e6bfcd48d2f6f8e7e8be4d85c8c28fb6c47a20072db10629d5988319a3075f08",
+      ".github/workflows/tests.yml": "de4052b97fcc8a4b50d32bf57c83ac5d8432b4696e54d48aa1b1b5d474e4d4a3",
+      "MANIFEST.in": "c2e3f0e9ce6d4fe6db01dc55d0dc4143fe8e017fb749b498310e8b0f300f2cb4",
+      "benchmark/evidence/20261014/docling_lifetime_verification.json": "0ebda6fe958223b94aa0400b748c47ffa93b7933b2e9ebf199745163831c40d0",
+      "benchmark/evidence/20261014/parallel_resume_run_manifest.json": "63b9612e6274dc63c226ad592f1c3c80d51735d264b0aff7bf28a6dc172fdcd4",
+      "benchmark/evidence/20261014/pytest.txt": "74412f5f807081459015597b6d6ae2323174fca299c10fe21110ec9f5314b5b8",
+      "benchmark/evidence/20261014/runtime_verification.json": "1355740b5c157900483bb8821a86a8fd4c5a3c1ab763d0c6b2404df24d6a406b",
+      "benchmark/evidence/20261014/sequential_run_manifest.json": "40de27646ded77d6fe764f4974fb57bc2ad3f760e4fe59620757862245b47713",
+      "benchmark/evidence/20261014/source_inventory.json": "cc5d5d52ae199c18807a819cce429ffca6c342cfb68f80776794f74fd670d365",
+      "benchmark/evidence/20261014/wheel_verification.json": "da8490248a177a8ef338c9469b2e77cd6ec18b8894037b8048d87a73cdef75db",
+      "benchmark/evidence/20261015/financial_checks_real_probe.json": "a01b8cdc871e70b1cd95de90a8cc85d0b8e5cdd4c53315bd500e3fbd9e5b3d92",
+      "benchmark/evidence/20261015/matrix_exploratory_summary.json": "501ee2a63e989736d816a000abb3a80b3d2e0311c23ed2f7551aed9be31c63cc",
+      "benchmark/evidence/20261015/pytest.txt": "00248d6cbfeebab3c390c13877197592af33b469661ac22b9a106c842d98492b",
+      "benchmark/evidence/README.md": "b2544a838c82da2aab36bfd8261117bd5664552a59e08556858a05e33b625d82",
+      "benchmark/evidence/references.json": "740c256932083108619b15644ffb88cc45098595e110bbc63decb0038e94078e",
+      "benchmark/evidence/remediation_20261014.json": "2953aac1ecdee149fe8e654a8aaf8aa576d52a891c12a8135bbb39a14554c55e",
+      "benchmark/evidence/remediation_20261015_addendum.json": "19348b8b442526458dcc021d784e9d3f53052701df87425cc3c657b4909348f3",
+      "benchmark/ground_truth_tools/ANNOTATION_V6.md": "83e4e7adce10f52f5cd258576c3da55f56c74695da6cb1cb529c7ba7ee78cd7a",
+      "benchmark/ground_truth_tools/sources.initial.catalog.json": "cc5d5d52ae199c18807a819cce429ffca6c342cfb68f80776794f74fd670d365",
+      "benchmark/ground_truth_tools/sources.initial.csv": "34dc727a06adfe490c787b31677a65b1a790edc6adb7068854d4abaa8d12efd9",
+      "benchmark/scientific_evaluation/cluster_statistics.py": "88375420948c4b09f57119b727561771a9d730cf112b05361e6b3bf3a47af2b2",
+      "benchmark/scientific_evaluation/coco_layout.py": "166982cfffef40de4536193fd243356faf863d95a3f707ffcb2c673a69ead226",
+      "benchmark/scientific_evaluation/matrix_runner.py": "1fdfb946250a91a678734459a287630ee752232057948f60624efed4700d6322",
+      "benchmark/scientific_evaluation/matrix_statistics.py": "523615d5d87befd7da46ce3777a6733e3855cdbab2cd7e91c8e508619e4c5a82",
+      "benchmark/scientific_evaluation/scan_table_experiment.py": "0ea598e57e8572e50331db7dec3f65e499e2eb19f360de26503d9ac125859c5c",
+      "config/hardware/colab_gpu.yaml": "47e530af9decbc7037f6a741694a3462b7a38d7b8c10f327088a6c66628fb642",
+      "config/hardware/cpu_local.yaml": "c2e3416be18bdadf3f01afc62195208a88509ddf47d6d15ea66c38a3ede01d99",
+      "docker/Dockerfile": "95f73f5e4f3429c2db966faebfa8766446a883073acd50a7b3bb2303b19176c0",
+      "notebooks/colab_v6.ipynb": "9db367ed82d35c64985be46d548f81d79c6906b3e0d43b935d3841d874346f32",
+      "setup.py": "cdb46a2975d53cd5ca84533954d9ea65d0ba347276193c0b23cd3fd66d04b272",
+      "src/ocr/cli/collect.py": "eee96257f4f018013ecb68182dc94cbc8a85ea6549f92b6d6d1df26e0bcfb194",
+      "src/ocr/collect/__init__.py": "8b08b092742883c982a20ef9ee9393a901dfa3c5468359a0d6d5295b24d52f4a",
+      "src/ocr/collect/catalog.py": "dfa9d0ead3fc0da0eaa05e766229cff75f7edf152f5c45682e1928c35c7e997d",
+      "src/ocr/domain/models/confidence.py": "4251503a14c3d60bcbe2715277a6097afcf9cfd1d14cad1933007a8b0753dcf4",
+      "src/ocr/infrastructure/export/output_contract.py": "c3074a7426eb42bfa5176a012adfdc478f3a8f7eec9716bf80c3ff5236d52bbe",
+      "src/ocr/infrastructure/export/result_reader.py": "2ec3b40ab4a264f0994cfee583ad82c294f8eeb41b05f59e896b5e03943f5473",
+      "src/ocr/infrastructure/pdf/coordinate_transform.py": "9c0934469ae5aa525ea97af0a9dcb181a29ed9ceedd4638827d88a98bc9b79d8",
+      "src/ocr/infrastructure/pdf/scan_image.py": "b8c46a6bca908837346b93360e914c0b9ce173336c516419a7695c2241a0b429",
+      "src/ocr/infrastructure/postprocessing/xy_cut.py": "91ce6f469060460c64ceaa021a7f6f178eff1165b72e6997fe3ca71df467e3c3",
+      "src/ocr/infrastructure/quality/ocr_layer_agreement.py": "54fb4bf97ae6d8647e1b3a451efbb0639afc56ebe1975d9cb7a7307cd47a1349",
+      "src/ocr/infrastructure/structure/figures.py": "863976184924356d10d41db34e807d2b7eb49626fde09ed23d4114c630eec897",
+      "src/ocr/infrastructure/table/__init__.py": "e0e6a70e368c892e01cd7c532863a2f35bd0172ece393d0964c2e1ed168bf9ba",
+      "src/ocr/infrastructure/table/financial_checks.py": "625d7b88c9d8479fba71eda94d5dccb8d20d18206f8841325ffdefb75583a22a",
+      "src/ocr/infrastructure/table/hidden_text_layer.py": "a38fb96c0f3d5b7d507129af3f8f9a629a0074006f816f1b82f641d6b9f7e522",
+      "src/ocr/resources/__init__.py": "4b82a6998e9d5112b120bf233d40510ee80225c0196caecef831d107b68fb5a0",
+      "src/ocr/runtime/document_pool.py": "62300f2c0edea6b85cd303644f293ca3fe7561167fa69d3c63909b73421ae366",
+      "src/ocr/runtime/hardware.py": "0892e3529d710bfa97b6a233537609ae78d5e4d2d8fc36395cda4fe800fae4ad",
+      "src/ocr/runtime/structured_logging.py": "9425c773cba5e03cb0b2053ee2ffd8000ab49ab50d9cd991497b064bc40ae382",
+      "tests/scientific/test_v6_cluster_and_coco.py": "dfb133ffd9e8db4f3d7f014678ebd870130193cc64a1b93b66a7dd418a68cc1c",
+      "tests/scientific/test_v6_matrix_statistics.py": "e6b21eb29e631d9e2beafebde09b0dfab94d742af097d617987ad4b9f446a374",
+      "tests/unit/test_v6_collect.py": "cfd0b9523fe1dc664abe7a7866b6736ef673381b70235538dfb172605adc36d5",
+      "tests/unit/test_v6_compact_output.py": "0b19c4731e8735f21ca3d6c5cd02ef6090ea5837420a7391bcebfbf968046f8b",
+      "tests/unit/test_v6_figures.py": "08dae4bab1edd4cf11a2b1ad1524134edf49a319222c27eb7df91a1212d3c3c0",
+      "tests/unit/test_v6_financial_checks.py": "61f1c46e71ad0346f72816c7a3a5763c14b37d0a2e7fdc44d41ea565de46601c",
+      "tests/unit/test_v6_hardware.py": "d2b32fef92531ee57f78d5571ab7ca0ca101ee3ac29696ab353a7c317681757c",
+      "tests/unit/test_v6_language_evidence.py": "a09bc82184a4c5d1ff12ca8004aadcb8c96a7e0b6f037d11a97d7ce2efc00d27",
+      "tests/unit/test_v6_matrix_runner.py": "bca2a380fc185beabfa595e94eb302b93f819f9233bb93dfe18364f097bb4815",
+      "tests/unit/test_v6_ocr_layer_agreement.py": "8b6d095f8539c0e4dcdc114ab74b639d519d2db95564aaeeb080bdd2abd4138f",
+      "tests/unit/test_v6_reading_order_xycut.py": "79a5dbf37b989f8b2128bcacd911516a87d2fc94876a604dafbd279b324c3fcb",
+      "tests/unit/test_v6_remediation.py": "5de06925f71584668c13fda21d2bdc930b32c17068df2f8497abc1e51f34c936",
+      "tests/unit/test_v6_review_followups.py": "6ae893a0379ed82a50b36198511c87c35bcd97b0e88a1166c743cb1fc0878bbd",
+      "tests/unit/test_v6_scan_image.py": "93129d4f29f1b513d47cb3e08a74f33059708aed03b809b29b2bc3c278d645a5",
+      "tests/unit/test_v6_scan_table_experiment.py": "8c79df22255ad32afb8809a0008928939d4a12fda52e427e935119877f831dda",
+      "tests/unit/test_v6_structured_logging.py": "ee10a0855786af81a7b9ef1ffca7decd84aa7ee6f16e0ac7c4cba7b9ae3b7ea3",
+      "tests/unit/test_v6_visibility_and_coordinates.py": "9d142bc6a05219c4cd86393627f86c8dce0d0b0f1e3b88f70878fca0ce831fe4",
+      "tests/unit/test_v6_worker_lifetime.py": "dbb5ae415706c0f426b14b2e8d8dca8f496b0602ba28865775870be81d5e3f74"
+    }
+  },
+  "source_fingerprint": "8e24c8c9ce7d4450",
+  "config": {
+    "path": "scratch\\v6-scan-table-paired-final\\experiment_profiles.yaml",
+    "sha256": "2dbc93d97bf93d61f72ede3449837d404a2ea8f45b817141ef2f82829c93c0f0",
+    "resolved_sha256": "f14084b64a7ce014"
+  },
+  "models": {
+    "vietocr/base.yml": "42511ad7fc72b4e69c8583e78046c6e41c83f3c2ad8eb85a942532acfca9d94a",
+    "vietocr/vgg-seq2seq.yml": "1aaae4bbd7601ce465ffb7894c0f570cbf687d2d97979e054e2cbb40edd97a9a",
+    "vietocr/vgg_seq2seq.pth": "0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db",
+    "rapidocr/ch_PP-OCRv4_det_infer.onnx": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+    "rapidocr/ch_PP-OCRv4_rec_infer.onnx": "48fc40f24f6d2a207a2b1091d3437eb3cc3eb6b676dc3ef9c37384005483683b",
+    "rapidocr/ch_ppocr_mobile_v2.0_cls_infer.onnx": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+    "docling/easyocr/model/craft_mlt_25k.pth": "4a5efbfb48b4081100544e75e1e2b57f8de3d84f213004b14b85fd4b3748db17",
+    "docling/easyocr/model/latin_g2.pth": "aaa95be1c4a9cb3496879bed7c520886ce1164f89e026f0c54488394e74e8c55",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/refs/main": "b08c95847202b4734e6da618a5a559b06eff263d93bd47117f18478e6e59b6b5",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/added_tokens.json": "002686b2efb9535c359458cd1121de8e1b58e67426a46e2bd4425843766a3a5e",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/chat_template.json": "c9d21553af689882ac89ad8e8412164662d1605f6595119664e85626df7be421",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/config.json": "98f55cfe07dd168f9fab1f1eec35f754b23631ea1a9a7c9759b1b7cb41ab76b1",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/generation_config.json": "b17f1890b2b2baf172761c9c4d6eb956482ffa05964f357e67544ec998c9851f",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/model.safetensors": "4b04e77af34c4e682a7ab1617628340d658f3c3dcd12456dd2a7fff805cf79d2",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/preprocessor_config.json": "6cb6e36d6fcb88ca1502c4a26750715dc3e7dedddc9a8f17b27d8d167d1457e7",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/processor_config.json": "e7bff42da73ae9eec9042ef20e066e11f1ee20f025358ff79131e3c0fb549b46",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/special_tokens_map.json": "1b17e900a73384d256db6f1a7591fd0d95c09e6aede680022b047386b97afcba",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/tokenizer.json": "5ec5d3780a2e01b140cf34f023eb600263855a99aacdc3eb0f2600d7b1b4ac96",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/tokenizer_config.json": "37a0e94be9c9ab5197b2188e61cf764bbc015f45261013881fe37bd2fe8599e6",
+    "docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/vocab.json": "8922f7e91084b9862d270c16ce1027071214aa252a1567a4b410f952101005fc",
+    "docling/huggingface/hub/models--docling-project--docling-layout-heron/refs/main": "8084bbc31e333903f4bd839da812667ebd7dca0e27f6a193e372828ae11aabe5",
+    "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/config.json": "fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d",
+    "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/model.safetensors": "00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c",
+    "docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/preprocessor_config.json": "cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1",
+    "docling/huggingface/hub/models--docling-project--docling-models/refs/v2.3.0": "7eb53216902c7f3103528631e03d9f64f235d52b4ba8e59f662617ccd5cba0c4",
+    "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/config.json": "9c34024dc28ff47b75818f415e769809798c29bf9bde6f2ccc63a4acb62396d9",
+    "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors": "2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9",
+    "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tm_config.json": "984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd",
+    "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/fast/tableformer_fast.safetensors": "3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718",
+    "docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/fast/tm_config.json": "dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a",
+    "docling/model_manifest.json": "cd1ee09b49ed3059b054ac9020e3383f832fbed19701e7eeb5697d512ed682ed"
+  },
+  "b_pipeline_seconds_including_ocr": 156.917,
+  "records": [
+    {
+      "page": 70,
+      "page_type": "SCANNED_IMAGE",
+      "B": {
+        "status": "RUN",
+        "tables": 2,
+        "engines": [
+          "heuristic"
+        ],
+        "cells": 221,
+        "filled_cells": 221,
+        "numeric_cells": 161,
+        "docling": "success",
+        "quality": {
+          "status": "NOT_EVALUATED",
+          "reason": "no L5 ground truth for this page"
+        }
+      },
+      "C": {
+        "status": "NOT_IMPLEMENTED",
+        "reason": "bridge passes no OCR tokens to TableFormer; direct API unverified (C3.5f)"
+      },
+      "A": {
+        "status": "FAILED_WORD_ROUND_TRIP",
+        "layer": {
+          "method": "hidden-word-layer-v1",
+          "word_box_estimate": "line_split_font_advance",
+          "lines": 217,
+          "words": 492,
+          "existing_text_chars": 0,
+          "reextracted_words_matched": 421,
+          "reextraction_exact": false,
+          "reextracted_word_match": 0.8557
+        }
+      }
+    },
+    {
+      "page": 71,
+      "page_type": "SCANNED_IMAGE",
+      "B": {
+        "status": "RUN",
+        "tables": 2,
+        "engines": [
+          "heuristic"
+        ],
+        "cells": 264,
+        "filled_cells": 264,
+        "numeric_cells": 183,
+        "docling": "success",
+        "quality": {
+          "status": "NOT_EVALUATED",
+          "reason": "no L5 ground truth for this page"
+        }
+      },
+      "C": {
+        "status": "NOT_IMPLEMENTED",
+        "reason": "bridge passes no OCR tokens to TableFormer; direct API unverified (C3.5f)"
+      },
+      "A": {
+        "status": "FAILED_WORD_ROUND_TRIP",
+        "layer": {
+          "method": "hidden-word-layer-v1",
+          "word_box_estimate": "line_split_font_advance",
+          "lines": 264,
+          "words": 739,
+          "existing_text_chars": 0,
+          "reextracted_words_matched": 615,
+          "reextraction_exact": false,
+          "reextracted_word_match": 0.8322
+        }
+      }
+    },
+    {
+      "page": 72,
+      "page_type": "SCANNED_IMAGE",
+      "B": {
+        "status": "RUN",
+        "tables": 2,
+        "engines": [
+          "heuristic"
+        ],
+        "cells": 84,
+        "filled_cells": 84,
+        "numeric_cells": 57,
+        "docling": "success",
+        "quality": {
+          "status": "NOT_EVALUATED",
+          "reason": "no L5 ground truth for this page"
+        }
+      },
+      "C": {
+        "status": "NOT_IMPLEMENTED",
+        "reason": "bridge passes no OCR tokens to TableFormer; direct API unverified (C3.5f)"
+      },
+      "A": {
+        "status": "FAILED_WORD_ROUND_TRIP",
+        "layer": {
+          "method": "hidden-word-layer-v1",
+          "word_box_estimate": "line_split_font_advance",
+          "lines": 188,
+          "words": 596,
+          "existing_text_chars": 0,
+          "reextracted_words_matched": 508,
+          "reextraction_exact": false,
+          "reextracted_word_match": 0.8523
+        }
+      }
+    },
+    {
+      "page": 73,
+      "page_type": "SCANNED_IMAGE",
+      "B": {
+        "status": "RUN",
+        "tables": 2,
+        "engines": [
+          "heuristic"
+        ],
+        "cells": 139,
+        "filled_cells": 139,
+        "numeric_cells": 96,
+        "docling": "success",
+        "quality": {
+          "status": "NOT_EVALUATED",
+          "reason": "no L5 ground truth for this page"
+        }
+      },
+      "C": {
+        "status": "NOT_IMPLEMENTED",
+        "reason": "bridge passes no OCR tokens to TableFormer; direct API unverified (C3.5f)"
+      },
+      "A": {
+        "status": "FAILED_WORD_ROUND_TRIP",
+        "layer": {
+          "method": "hidden-word-layer-v1",
+          "word_box_estimate": "line_split_font_advance",
+          "lines": 231,
+          "words": 617,
+          "existing_text_chars": 0,
+          "reextracted_words_matched": 519,
+          "reextraction_exact": false,
+          "reextracted_word_match": 0.8412
+        }
+      }
+    },
+    {
+      "page": 75,
+      "page_type": "SCANNED_IMAGE",
+      "B": {
+        "status": "RUN",
+        "tables": 2,
+        "engines": [
+          "heuristic"
+        ],
+        "cells": 49,
+        "filled_cells": 49,
+        "numeric_cells": 30,
+        "docling": "success",
+        "quality": {
+          "status": "NOT_EVALUATED",
+          "reason": "no L5 ground truth for this page"
+        }
+      },
+      "C": {
+        "status": "NOT_IMPLEMENTED",
+        "reason": "bridge passes no OCR tokens to TableFormer; direct API unverified (C3.5f)"
+      },
+      "A": {
+        "status": "FAILED_WORD_ROUND_TRIP",
+        "layer": {
+          "method": "hidden-word-layer-v1",
+          "word_box_estimate": "line_split_font_advance",
+          "lines": 145,
+          "words": 491,
+          "existing_text_chars": 0,
+          "reextracted_words_matched": 433,
+          "reextraction_exact": false,
+          "reextracted_word_match": 0.8819
+        }
+      }
+    }
+  ],
+  "pages_with_gt": 0,
+  "conclusion": "NOT_EVALUATED",
+  "conclusion_rule": "Proposal C3.5(a): >=5 GT scan-table pages; keep A only if it beats B and C on TEDS, TEDS-S, cell F1 and duplicated/misplaced words; C missing means the comparison lacks a control and A cannot be declared best."
+}

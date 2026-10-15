@@ -19,8 +19,11 @@ class PageQualityReport(BaseModel):
     native_text_score: float = 0.0
     # None when no recognizer supplied a measured confidence; zero is a real score.
     ocr_confidence: Optional[float] = None
+    ocr_confidence_samples: Optional[int] = None
+    quality_scored_blocks: Optional[int] = None
+    quality_scored_characters: Optional[int] = None
     # None when no block or table on the page carries a measurable score.
-    quality_score: Optional[float] = 0.0
+    quality_score: Optional[float] = None
     total_blocks: int = 0
     recognized_lines: int = 0
     fallback_count: int = 0
@@ -52,7 +55,10 @@ class DocumentQualityReport(BaseModel):
     total_pages: int
     mean_native_score: float = 0.0
     mean_ocr_confidence: Optional[float] = None
-    mean_quality_score: Optional[float] = 0.0
+    ocr_confidence_scored_pages: int = 0
+    quality_scored_pages: int = 0
+    score_aggregation: str = "mean_of_available_page_scores"
+    mean_quality_score: Optional[float] = None
     pages_processed_native: int = 0
     pages_processed_ocr: int = 0
     pages_processed_mixed: int = 0

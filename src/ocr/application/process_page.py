@@ -7,7 +7,7 @@ import hashlib
 import json
 import logging
 from typing import Dict, Any, Optional, List, Tuple
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError, wait as wait_for_futures
 import numpy as np
 import pymupdf
 import cv2
@@ -37,7 +37,12 @@ from src.ocr.infrastructure.ocr.fallback_engine import FallbackEngine
 from src.ocr.infrastructure.quality.ocr_quality import OCRQualityEvaluator
 from src.ocr.infrastructure.layout.document_layout_engine import DocumentLayoutEngine
 from src.ocr.infrastructure.layout.page_content_analyzer import PageContentAnalyzer
-from src.ocr.infrastructure.postprocessing.reading_order import ReadingOrderSorter
+from src.ocr.infrastructure.postprocessing.reading_order import READING_ORDER_METHODS, ReadingOrderSorter
+from src.ocr.infrastructure.postprocessing.xy_cut import METHOD as XY_CUT_METHOD
+from src.ocr.infrastructure.pdf.scan_image import (
+    acquire_page_image, full_page_image_info, validate_settings as validate_scan_image_settings)
+from src.ocr.infrastructure.quality.ocr_layer_agreement import (
+    METHOD as OCR_LAYER_METHOD, measure_agreement as measure_ocr_layer_agreement)
 from src.ocr.infrastructure.postprocessing.unicode_normalizer import UnicodeNormalizer
 from src.ocr.infrastructure.postprocessing.text_cleaner import TextCleaner
 from src.ocr.infrastructure.quality.vietnamese_quality import VietnameseQualityEvaluator
@@ -50,9 +55,10 @@ from src.ocr.infrastructure.layout.docling_structure import (
 )
 from src.ocr.infrastructure.export.manifest_exporter import PIPELINE_VERSION
 from src.ocr.domain.models.schema import PAGE_SCHEMA_VERSION
-from src.ocr.runtime.config import config_hash
+from src.ocr.runtime.config import ConfigError, config_hash
 from src.ocr.runtime.fingerprint import source_fingerprint
 from src.ocr.runtime.models import model_fingerprint
+from src.ocr.runtime.structured_logging import log_context, progress
 from src.ocr.infrastructure.layout.dla_engine import DLAEngine
 
 def _known(values) -> List[float]:
@@ -84,7 +90,8 @@ class ProcessPageUseCase:
         doc: pymupdf.Document,
         config: Dict[str, Any],
         doc_hash: str,
-        cache: Optional[ArtifactCache] = None
+        cache: Optional[ArtifactCache] = None,
+        structure_extractor: Optional[DoclingStructureExtractor] = None,
     ):
         self.doc = doc
         self.config = config
@@ -95,16 +102,23 @@ class ProcessPageUseCase:
         self.renderer = PDFRenderer(doc)
         self.native_extractor = NativeTextExtractor(doc)
         primary_engine = config.get("primary_engine", "vietocr")
+        threads = config.get("num_threads")
+        if threads is not None:
+            import torch
+            torch.set_num_threads(threads)
+            cv2.setNumThreads(threads)
         if primary_engine == "rapidocr":
-            self.ocr_engine = RapidOCREngine()
+            self.ocr_engine = RapidOCREngine(num_threads=threads) if threads else RapidOCREngine()
         elif primary_engine == "vietocr":
             self.ocr_engine = VietnameseSeq2SeqEngine(
-                batch_size=config.get("batch_size", 16), device=config.get("device"))
+                batch_size=config.get("batch_size", 16), device=config.get("device"),
+                **({"num_threads": threads} if threads is not None else {}))
         else:
             raise ValueError(f"Unsupported primary_engine: {primary_engine}")
         self.ocr_quality = OCRQualityEvaluator(min_confidence=config.get("min_confidence", 0.80))
         self.layout_engine = DocumentLayoutEngine()
-        self.structure_extractor = DoclingStructureExtractor(config.get("docling", {}))
+        self._owns_structure_extractor = structure_extractor is None
+        self.structure_extractor = structure_extractor or DoclingStructureExtractor(config.get("docling", {}))
         layout_config = config.get("layout_model", {})
         self.content_analyzer = PageContentAnalyzer(DLAEngine(
             model_path=layout_config.get("model_path"),
@@ -117,6 +131,29 @@ class ProcessPageUseCase:
             ocr_engine=self.ocr_engine,
         )
         self.reocr_use_case = ReocrRegionUseCase(self.renderer, self.fallback_engine)
+        native_first = config.get("native_first", True)
+        if not isinstance(native_first, bool):
+            # A YAML string such as "false" would otherwise be truthy.
+            raise ConfigError(f"native_first must be true or false, got {native_first!r}")
+        self.native_first = native_first
+        if not isinstance(config.get("retain_table_ocr_lines", False), bool):
+            raise ConfigError("retain_table_ocr_lines must be true or false")
+        if "native_review_threshold" in config:
+            # Never read; keeping it would suggest a second native gate.
+            raise ConfigError("native_review_threshold is not supported; set native_quality.review_threshold")
+        reading_order = config.get("reading_order", {})
+        if not isinstance(reading_order, dict) or set(reading_order) - {"method", "min_gap"} \
+                or reading_order.get("method", "heuristic") not in READING_ORDER_METHODS:
+            raise ConfigError(f"reading_order accepts method ({', '.join(READING_ORDER_METHODS)}) and min_gap")
+        if "scan_image" in config:
+            try:
+                validate_scan_image_settings(config["scan_image"])
+            except ValueError as exc:
+                raise ConfigError(str(exc)) from exc
+        agreement = config.get("ocr_layer_agreement", {})
+        if not isinstance(agreement, dict) or set(agreement) - {"sample_lines"} \
+                or type(agreement.get("sample_lines", 5)) is not int or not 3 <= agreement.get("sample_lines", 5) <= 5:
+            raise ConfigError("ocr_layer_agreement accepts sample_lines 3-5 (proposal C2.1)")
         self._current_page_ocr_calls = 0
         self._page_errors = 0
         self._crop_cache: Dict[str, Any] = {}
@@ -138,7 +175,12 @@ class ProcessPageUseCase:
         return f"{self.config.get('profile', 'balanced')}-{digest}"
 
     def close(self) -> None:
-        self.structure_extractor.close()
+        executor = getattr(self, "_ocr_executor", None)
+        if executor is not None:
+            executor.shutdown(wait=True)
+            self._ocr_executor = None
+        if getattr(self, "_owns_structure_extractor", True):
+            self.structure_extractor.close()
 
     def _apply_layout_model(self, doc_page, page_num, blocks, regions, meta, image=None):
         """Run optional D1 in-process, retaining geometric regions on failure.
@@ -166,6 +208,9 @@ class ProcessPageUseCase:
         try:
             if image is None:
                 image = self.renderer.render_page(page_num, dpi=self.config.get("layout_model", {}).get("render_dpi", 144))
+            if isinstance(doc_page, pymupdf.Page):
+                from src.ocr.infrastructure.pdf.coordinate_transform import render_coordinate_chain
+                meta["layout_model"]["render_transform"] = render_coordinate_chain(doc_page, image.shape).to_dict()
             predicted = engine._run_onnx_dla(image, doc_page, page_num)
             text_labels = {"title", "section_header", "text", "header", "footer", "page_number", "caption", "list", "document_index"}
             for block in blocks:
@@ -175,7 +220,7 @@ class ProcessPageUseCase:
                 matches = [r for r in predicted if r.label in text_labels and r.bbox.overlap_ratio(bb) >= .7
                            and r.bbox.contains_point((bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2)]
                 if matches:
-                    region = max(matches, key=lambda r: (r.dla_score, -r.bbox.area))
+                    region = max(matches, key=lambda r: (_score_or(r.dla_score, 0.0), -r.bbox.area))
                     block.block_type = region.label
             regions.extend(predicted)
             meta["layout_model"].update(status="MODEL_OUTPUT", regions=len(predicted),
@@ -265,23 +310,73 @@ class ProcessPageUseCase:
                     region_id=region_id))
         return blocks, tables, formulas
 
+    @staticmethod
+    def _full_page_image(doc_page) -> Optional[Dict[str, Any]]:
+        if not isinstance(doc_page, pymupdf.Page):
+            return None
+        try:
+            return full_page_image_info(doc_page)
+        except Exception as exc:  # provenance only; never fails the page
+            logger.warning("Full-page image inspection failed: %s", exc)
+            return {"status": "UNAVAILABLE", "error": f"{type(exc).__name__}: {exc}"}
+
+    def _ocr_layer_agreement(self, doc_page, blocks, meta) -> Dict[str, Any]:
+        # "orientation_uncertain" keeps the original image; only rotate_* labels
+        # (also per region, "<id>:rotate_90_cw") move OCR boxes.
+        if ("rotate" in str(meta.get("orientation_fallback") or "") or meta.get("is_1up_landscape")
+                or meta.get("is_180_rotated") or getattr(doc_page, "rotation", 0)):
+            # OCR boxes are then in an upright space, not the layer's PDF space.
+            return {"method": OCR_LAYER_METHOD, "status": "SKIPPED_COORDINATE_TRANSFORM_REQUIRED"}
+        try:
+            return measure_ocr_layer_agreement(
+                doc_page, blocks, self.config.get("ocr_layer_agreement", {}).get("sample_lines", 5))
+        except Exception as exc:
+            logger.warning("OCR-layer agreement check failed: %s", exc, exc_info=True)
+            return {"method": OCR_LAYER_METHOD, "status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}
+
+    def _is_native_eligible(self, page_type: PageType, native_score: float, meta: Dict[str, Any]) -> bool:
+        if meta.get("native_extraction_failed", False):
+            return False
+        if page_type in (PageType.NATIVE_TEXT, PageType.MIXED):
+            # Same key RoutingPolicy uses (one threshold source, ENV-13).
+            return native_score >= self.config.get("native_quality", {}).get("review_threshold", 0.70)
+        return (page_type == PageType.PRODUCT_SHOWCASE_COLLAGE and meta.get("char_count", 0) >= 30
+                and not meta.get("unicode_corruption_detected", False))
+
+    def _record_ocr_failure(self, message: str) -> None:
+        self._page_errors = getattr(self, "_page_errors", 0) + 1
+        if not hasattr(self, "_ocr_failures"):
+            self._ocr_failures = []
+        self._ocr_failures.append(message)
+
     def _predict_image_counted(
         self, img_bgr: np.ndarray, timeout_seconds: Optional[float] = None
     ) -> List[Dict[str, Any]]:
         self._current_page_ocr_calls = getattr(self, "_current_page_ocr_calls", 0) + 1
         timeout = timeout_seconds or getattr(self, "_active_page_deadline", None)
         if timeout is not None and timeout > 0:
-            with ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(self.ocr_engine.predict_image, img_bgr)
-                try:
-                    return future.result(timeout=timeout)
-                except FutureTimeoutError:
-                    logger.error("OCR execution timed out after %.2fs", timeout)
-                    self._page_errors = getattr(self, "_page_errors", 0) + 1
-                    return []
-                except Exception as e:
-                    logger.error("OCR execution failed: %s", e)
-                    return []
+            # Reuse the inference thread for the whole document. Native CPU
+            # runtimes may allocate thread-local pools on each calling thread;
+            # a fresh executor for every page/retry causes resource churn.
+            if getattr(self, "_ocr_executor", None) is None:
+                self._ocr_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ocr-inference")
+            future = self._ocr_executor.submit(self.ocr_engine.predict_image, img_bgr)
+            try:
+                return future.result(timeout=timeout)
+            except FutureTimeoutError:
+                logger.error("OCR exceeded %.2fs; waiting for in-flight inference to finish", timeout)
+                self._record_ocr_failure(f"OCR timed out after {timeout:.2f}s")
+                # This remains a soft timeout: threads cannot stop native
+                # inference. Drain it before fallback touches the shared model,
+                # matching the previous executor context's shutdown(wait=True).
+                wait_for_futures([future])
+                return []
+            except Exception as e:
+                logger.exception("OCR execution failed")
+                # Reported as a page error so an OCR crash is never
+                # mistaken for a page that simply has no text.
+                self._record_ocr_failure(f"OCR failed: {type(e).__name__}: {e}")
+                return []
         return self.ocr_engine.predict_image(img_bgr)
 
     def execute(
@@ -291,9 +386,15 @@ class ProcessPageUseCase:
         router: RoutePageUseCase,
         resume: bool = False
     ) -> ExtractedPage:
+        with log_context(page=page_num):  # ENV-11: every page log names its page
+            return self._execute_page(page_num, total_pages, router, resume)
+
+    def _execute_page(self, page_num: int, total_pages: int, router: RoutePageUseCase,
+                      resume: bool) -> ExtractedPage:
         t0 = time.perf_counter()
         self._current_page_ocr_calls = 0
         self._page_errors = 0
+        self._ocr_failures: List[str] = []
         cache_profile = self.cache_key
         render_dpi = self.config.get("render_dpi", 180)
         page_timeout_seconds = float(self.config.get("page_timeout_seconds", 120))
@@ -304,7 +405,7 @@ class ProcessPageUseCase:
             cached = self.cache.get_cached_page(self.doc_hash, page_num, cache_profile, render_dpi)
             if cached is not None:
                 cached.quality.from_cache = True
-                print(f"[{page_num}/{total_pages}] page={page_num} [CACHED] restored from cache")
+                progress(f"[{page_num}/{total_pages}] page={page_num} [CACHED] restored from cache", stage="cache")
                 return cached
 
         # 2. Inspect page metadata
@@ -331,7 +432,8 @@ class ProcessPageUseCase:
         from collections import Counter
         region_type_counts = dict(Counter(r.content_type.value for r in regions))
 
-        print(f"[{page_num}/{total_pages}] page={page_num} type={page_type.value} dpi={render_dpi} regions={len(regions)} {region_type_counts}")
+        progress(f"[{page_num}/{total_pages}] page={page_num} type={page_type.value} dpi={render_dpi} regions={len(regions)} {region_type_counts}",
+                 stage="route", page_type=page_type.value, regions=region_type_counts)
 
         blocks: List[TextBlock] = []
         self._current_page_diagrams: List[Any] = []
@@ -343,18 +445,13 @@ class ProcessPageUseCase:
         actual_dpi = None
         page_timeout_seconds = float(self.config.get("page_timeout_seconds", 120))
 
-        char_count = meta.get("char_count", 0)
-        is_native_eligible = (
-            (
-                page_type in (PageType.NATIVE_TEXT, PageType.MIXED)
-                and native_score >= self.config.get("native_review_threshold", 0.70)
-            )
-            or (
-                page_type == PageType.PRODUCT_SHOWCASE_COLLAGE
-                and char_count >= 30
-                and not meta.get("unicode_corruption_detected", False)
-            )
-        ) and not meta.get("native_extraction_failed", False)
+        is_native_eligible = self._is_native_eligible(page_type, native_score, meta)
+        # Ablation A1 (proposal 9.4): `native_first: false` OCRs every page and
+        # also disables the defensive native recovery and vector tables below.
+        native_first = getattr(self, "native_first", True)
+        if not native_first:
+            is_native_eligible = False
+            meta["routing_override"] = "native_first_disabled"
 
         if is_native_eligible:
             t_nat_start = time.perf_counter()
@@ -433,17 +530,24 @@ class ProcessPageUseCase:
                     recognizer_confidences.extend(_known(b.confidence for b in image_ocr_blocks))
 
             if page_type == PageType.MIXED:
-                print(f"[{page_num}/{total_pages}] mixed composition: native={len(blocks) - len(image_ocr_blocks)} image_ocr={len(image_ocr_blocks)} lines")
+                progress(f"[{page_num}/{total_pages}] mixed composition: native={len(blocks) - len(image_ocr_blocks)} image_ocr={len(image_ocr_blocks)} lines", stage="native")
             elif image_ocr_blocks:
-                print(f"[{page_num}/{total_pages}] native+image_table: native={len(blocks) - len(image_ocr_blocks)} image_ocr={len(image_ocr_blocks)} lines")
+                progress(f"[{page_num}/{total_pages}] native+image_table: native={len(blocks) - len(image_ocr_blocks)} image_ocr={len(image_ocr_blocks)} lines", stage="native")
             else:
-                print(f"[{page_num}/{total_pages}] native={len(blocks)} lines (native text gate passed: {native_score:.2f})")
+                progress(f"[{page_num}/{total_pages}] native={len(blocks)} lines (native text gate passed: {native_score:.2f})", stage="native")
 
         else:
             # Route to full-page OCR (scanned pages, corrupted native text, low-quality OCR layers)
             actual_dpi = render_dpi
             t_render_start = time.perf_counter()
-            img_bgr = self.renderer.render_page(page_num, dpi=render_dpi)
+            # Source DPI of the page image (C2.2): metadata for DPI-group reports.
+            meta["full_page_image"] = self._full_page_image(doc_page)
+            if self.config.get("scan_image"):  # opt-in embedded image / DPI policy (R-08)
+                img_bgr, meta["scan_image"] = acquire_page_image(
+                    self.doc, page_num, self.renderer, render_dpi, self.config["scan_image"])
+                actual_dpi = meta["scan_image"]["processing_dpi"]
+            else:
+                img_bgr = self.renderer.render_page(page_num, dpi=render_dpi)
             refined_regions = regions
             if self.config.get("two_up_detection_enabled", True) or self.config.get("multi_region_detection_enabled", True):
                 refined_regions = self.content_analyzer.refine_with_rendered_image(
@@ -470,11 +574,12 @@ class ProcessPageUseCase:
                 )
             if orientation_fallback:
                 meta["orientation_fallback"] = orientation_fallback
-                print(f"[{page_num}/{total_pages}] orientation_fallback={orientation_fallback}")
+                progress(f"[{page_num}/{total_pages}] orientation_fallback={orientation_fallback}", stage="ocr")
             ocr_duration = time.perf_counter() - t_ocr_start
             recognized_lines = len(ocr_results)
-            recognizer_confidences = [float(result.get("confidence", 0.0)) for result in ocr_results]
-            print(f"[{page_num}/{total_pages}] primary={len(ocr_results)} lines time={ocr_duration:.2f}s")
+            recognizer_confidences = _known(result.get("confidence") for result in ocr_results)
+            progress(f"[{page_num}/{total_pages}] primary={len(ocr_results)} lines time={ocr_duration:.2f}s", stage="ocr",
+                     lines=len(ocr_results), seconds=round(ocr_duration, 3))
 
             # Check if this is a 1-Up landscape scan (full-page scan rotated 90 deg) or 180 deg scan
             is_1up_rotated_90 = (
@@ -518,7 +623,7 @@ class ProcessPageUseCase:
                     round(raw_bbox[3] * scale_y, 2)
                 ]
                 text = UnicodeNormalizer.normalize(res["text"])
-                conf = float(res.get("confidence", 0.0))
+                conf = res.get("confidence")
 
                 # Filter hallucination / low confidence (A1)
                 is_valid, reject_reason = self.classify_ocr_hallucination(text, conf)
@@ -557,20 +662,20 @@ class ProcessPageUseCase:
                         font_size=None,
                         reading_order=0,
                         status=reject_reason,
-                        failure_reason=f"Rejected: {reject_reason} (conf={conf:.2f})",
+                        failure_reason=f"Rejected: {reject_reason} (conf={conf})",
                     ))
                     continue
 
                 q_score, needs_fb, reasons = self.ocr_quality.evaluate_ocr_result(text, conf)
                 if res.get("needs_review"):
                     needs_fb = True
-                    q_score = min(q_score, .74)
+                    q_score = min(q_score, .74) if q_score is not None else None
                     reasons.append(res.get("review_reason", "OCR backend requested review"))
 
                 # A4: Numeric Verification Retry for profile balanced/accuracy
                 num_threshold = float(self.config.get("numeric_retry_threshold", 0.85))
                 contains_digit = bool(re.search(r"\d", text))
-                if contains_digit and conf < num_threshold:
+                if contains_digit and conf is not None and conf < num_threshold:
                     needs_fb = True
                     reasons.append(f"Numeric token with confidence {conf:.2f} < {num_threshold:.2f} (A4 check)")
 
@@ -614,6 +719,10 @@ class ProcessPageUseCase:
                     candidates_for_fallback.append(block)
                     suspicious_lines.append(f"{text} (reasons: {', '.join(reasons)})")
 
+            if page_type == PageType.SCANNED_WITH_OCR_LAYER:
+                # Before re-OCR changes any line: layer vs primary OCR (C2.1).
+                meta["ocr_layer_agreement"] = self._ocr_layer_agreement(doc_page, blocks, meta)
+
             # 4. Adaptive Regional Fallback (if enabled)
             fallback_enabled = self.config.get("fallback_enabled", True) or self.config.get("fallback_only_on_review", False)
             if fallback_enabled and candidates_for_fallback:
@@ -653,7 +762,9 @@ class ProcessPageUseCase:
         # Defensive Native Text Recovery: If OCR produced 0 blocks but the underlying PDF page
         # contains clean digital native text, recover native text to prevent accidental empty pages
         # and IMAGE_PRESERVED_NO_TEXT degeneration.
-        if not blocks and meta.get("char_count", 0) >= 20 and not meta.get("unicode_corruption_detected", False):
+        if (native_first and not blocks and meta.get("char_count", 0) >= 20
+                and not meta.get("unicode_corruption_detected", False)
+                and not meta.get("has_hidden_ocr_layer") and not meta.get("hidden_text_only")):
             logger.info("Page %d: OCR returned 0 blocks but native text exists (%d chars). Applying defensive native recovery.", page_num, meta.get("char_count", 0))
             blocks = self.native_extractor.extract_blocks(page_num)
             for b in blocks:
@@ -682,10 +793,19 @@ class ProcessPageUseCase:
         # 5. Extract tables (doc_page already obtained during content analysis)
         self._apply_layout_model(doc_page, page_num, blocks, regions, meta,
                                  None if is_native_eligible else img_bgr)
+        # Opt-in evidence for C3.5(a) experiments. Table extraction removes
+        # covered blocks later; A and B must still receive the same OCR lines.
+        if self.config.get("retain_table_ocr_lines", False):
+            meta["table_ocr_evidence"] = {
+                "method": "post-fallback-pre-table-v1",
+                "lines": [b.to_dict() for b in blocks
+                          if b.source in ("primary_ocr", "fallback_ocr", "image_ocr")],
+            }
         layout_model_duration = meta.get("layout_model", {}).get("seconds", 0.0)
         t_table_start = time.perf_counter()
         allow_vector_tables = (
-            page_type in (PageType.NATIVE_TEXT, PageType.MIXED)
+            native_first  # vector tables read native words; off in ablation A1
+            and page_type in (PageType.NATIVE_TEXT, PageType.MIXED)
             and native_score >= self.config.get("vector_table_min_native_score", 0.90)
             and not meta.get("native_extraction_failed", False)
             and not (
@@ -693,13 +813,18 @@ class ProcessPageUseCase:
                 and meta.get("copy_restricted", False)
             )
         )
+        table_rejections: List[Dict[str, Any]] = []
         tables = self.layout_engine.extract_tables(
             doc_page,
             blocks,
             page_num,
             allow_vector_tables=allow_vector_tables,
             regions=regions,
+            rejections=table_rejections,
         )
+        if table_rejections:
+            # Kept as text, not dropped: the review trail of C3.5(g).
+            meta["table_rejections"] = table_rejections
 
         t_docling_start = time.perf_counter()
         blocks, tables, formulas = self._enrich_structures(
@@ -709,6 +834,7 @@ class ProcessPageUseCase:
             page_errors.append(meta["docling_structure"]["error"])
         elif meta["docling_structure"].get("errors"):
             page_errors.extend(str(error) for error in meta["docling_structure"]["errors"])
+        page_errors.extend(self._ocr_failures)
 
         # Filter out text blocks that fall inside legitimate tables to prevent duplication
         if tables:
@@ -721,8 +847,14 @@ class ProcessPageUseCase:
 
         # 6. Sort Reading Order
         t_ro_start = time.perf_counter()
-        order_sorter = ReadingOrderSorter(page_width=page_w, page_height=page_h)
+        reading_order = self.config.get("reading_order", {})
+        order_sorter = ReadingOrderSorter(page_width=page_w, page_height=page_h,
+                                          method=reading_order.get("method", "heuristic"),
+                                          min_gap=reading_order.get("min_gap", 3.0))
         sorted_blocks = order_sorter.sort_blocks(blocks)
+        if reading_order:  # explicit choice (C3.4 experiment) is recorded; the default stays unchanged
+            meta["reading_order"] = {"method": order_sorter.method, "min_gap": order_sorter.min_gap,
+                                     **({"version": XY_CUT_METHOD} if order_sorter.method == "xycut" else {})}
         reading_order_duration = time.perf_counter() - t_ro_start
 
         block_regions = self._link_blocks_to_regions(sorted_blocks, regions, page_num)
@@ -803,6 +935,9 @@ class ProcessPageUseCase:
             page_type=page_type.value,
             native_text_score=round(native_score, 4),
             ocr_confidence=round(mean_conf, 4) if mean_conf is not None else None,
+            ocr_confidence_samples=len(recognizer_confidences),
+            quality_scored_blocks=len(scored_blocks),
+            quality_scored_characters=total_chars,
             quality_score=round(calibrated_q, 4) if calibrated_q is not None else None,
             native_quality=round(native_q, 4) if native_q is not None else None,
             ocr_quality=round(ocr_q, 4) if ocr_q is not None else None,
@@ -907,8 +1042,8 @@ class ProcessPageUseCase:
                 self.cache.save_cached_page(self.doc_hash, extracted_page, cache_profile, render_dpi)
 
         quality_text = f"{calibrated_q:.2f}" if calibrated_q is not None else "n/a"
-        print(f"[{page_num}/{total_pages}] quality={quality_text} fallback={fallback_count}/{len(sorted_blocks)}")
-        print(f"[{page_num}/{total_pages}] completed time={total_time:.2f}s")
+        progress(f"[{page_num}/{total_pages}] quality={quality_text} fallback={fallback_count}/{len(sorted_blocks)}", stage="quality")
+        progress(f"[{page_num}/{total_pages}] completed time={total_time:.2f}s", stage="complete", seconds=round(total_time, 3))
 
         return extracted_page
 
@@ -972,7 +1107,7 @@ class ProcessPageUseCase:
     }
 
     @classmethod
-    def classify_ocr_hallucination(cls, text: str, conf: float) -> Tuple[bool, Optional[str]]:
+    def classify_ocr_hallucination(cls, text: str, conf: Optional[float]) -> Tuple[bool, Optional[str]]:
         """
         Evaluates whether an OCR text line is genuine content or hallucination/garbage noise (A1).
         Returns:
@@ -981,7 +1116,7 @@ class ProcessPageUseCase:
                 - 'REJECTED_LOW_CONFIDENCE' if conf < 0.60
                 - 'REJECTED_HALLUCINATION' if non-lexical noise or repeated artifacts
         """
-        if conf < 0.60:
+        if conf is not None and conf < 0.60:
             return False, "REJECTED_LOW_CONFIDENCE"
 
         stripped = text.strip()
@@ -995,7 +1130,7 @@ class ProcessPageUseCase:
         if not alnum_chars:
             return False, "REJECTED_HALLUCINATION"
 
-        if conf < 0.80:
+        if conf is None or conf < 0.80:
             has_digit = any(c.isdigit() for c in stripped)
             if has_digit:
                 digits_count = sum(1 for c in stripped if c.isdigit())
@@ -1148,7 +1283,7 @@ class ProcessPageUseCase:
             return False
         texts = [str(item.get("text", "")).strip() for item in results]
         meaningful = sum(len(text) >= 12 for text in texts)
-        mean_conf = sum(float(item.get("confidence", 0.0)) for item in results) / len(results)
+        mean_conf = sum(_score_or(item.get("confidence"), 0.0) for item in results) / len(results)
         return meaningful / len(results) >= 0.55 and mean_conf >= 0.90
 
     @staticmethod
@@ -1197,7 +1332,7 @@ class ProcessPageUseCase:
         meaningful = sum(1 for text in texts if len(text) >= 3)
         long_words = sum(1 for text in texts if len(text) >= 5)
         single_glyphs = sum(1 for text in texts if len(text) <= 2)
-        confidence = sum(float(item.get("confidence", 0.0)) for item in results) / total_lines
+        confidence = sum(_score_or(item.get("confidence"), 0.0) for item in results) / total_lines
 
         # Common Vietnamese lexicon bonus (strongly prefers upright text over upside-down text)
         vn_keywords = {
@@ -1431,7 +1566,7 @@ class ProcessPageUseCase:
                     _crop_cache[crop_hash] = (ocr_results, orientation_label)
 
                 mean_confidence = (
-                    sum(float(item.get("confidence", 0.0)) for item in ocr_results) / len(ocr_results)
+                    sum(_score_or(item.get("confidence"), 0.0) for item in ocr_results) / len(ocr_results)
                     if ocr_results else 0.0
                 )
                 retry_risk = (
@@ -1440,7 +1575,7 @@ class ProcessPageUseCase:
                 )
                 num_threshold = float(self.config.get("numeric_retry_threshold", 0.85))
                 has_low_conf_number = any(
-                    bool(re.search(r"\d", item.get("text", ""))) and float(item.get("confidence", 0.0)) < num_threshold
+                    bool(re.search(r"\d", item.get("text", ""))) and _score_or(item.get("confidence"), 0.0) < num_threshold
                     for item in ocr_results
                 ) if ocr_results else False
                 should_retry_region = (
@@ -1491,14 +1626,14 @@ class ProcessPageUseCase:
                     else:
                         region.orientation_status = "CONFIDENT"
                         region.orientation_confidence = 0.80
-                    print(f"[{page_num}] region {region.region_id} rotation={region.rotation}° ({orientation_label}, {len(ocr_results)} lines)")
+                    progress(f"[{page_num}] region {region.region_id} rotation={region.rotation}° ({orientation_label}, {len(ocr_results)} lines)", stage="image_region_ocr")
                 elif evaluate_all_orientations:
                     region.orientation_status = "CONFIDENT"
                     region.orientation_confidence = 0.70
             except Exception as e:
-                import traceback
-                print(f"[WARN] Region OCR failed for region {region.region_id}: {e}")
-                traceback.print_exc()
+                # Recorded as a page error, not only printed: the region text is lost.
+                logger.exception("Page %d: region OCR failed for %s", page_num, region.region_id)
+                self._record_ocr_failure(f"Region OCR failed for {region.region_id}: {e}")
                 continue
             if not ocr_results:
                 continue
@@ -1514,7 +1649,7 @@ class ProcessPageUseCase:
                 if diagram:
                     self._current_page_diagrams.append(diagram)
                     try:
-                        print(f"[{page_num}] Reconstructed diagram: {diagram.title} ({len(diagram.nodes)} nodes, {len(diagram.edges)} edges)")
+                        progress(f"[{page_num}] Reconstructed diagram: {diagram.title} ({len(diagram.nodes)} nodes, {len(diagram.edges)} edges)", stage="diagram")
                     except Exception:
                         pass
 
@@ -1524,7 +1659,7 @@ class ProcessPageUseCase:
                     continue
 
                 text = UnicodeNormalizer.normalize(res.get("text", ""))
-                conf = float(res.get("confidence", 0.85))
+                conf = res.get("confidence")
 
                 # Check hallucination / low confidence filter (A1)
                 is_valid, reject_reason = self.classify_ocr_hallucination(text, conf)
@@ -1553,7 +1688,7 @@ class ProcessPageUseCase:
                         font_size=None,
                         reading_order=0,
                         status=reject_reason,
-                        failure_reason=f"Rejected: {reject_reason} (conf={conf:.2f})"
+                        failure_reason=f"Rejected: {reject_reason} (conf={conf})"
                     ))
                     continue
 
@@ -1573,7 +1708,7 @@ class ProcessPageUseCase:
 
                 q_score, _, _ = self.ocr_quality.evaluate_ocr_result(text, conf)
                 if res.get("needs_review"):
-                    q_score = min(q_score, .74)
+                    q_score = min(q_score, .74) if q_score is not None else None
                     region.needs_fallback = True
                     region.failure_reason = res.get("review_reason", "OCR backend requested review")
 

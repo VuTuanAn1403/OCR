@@ -135,12 +135,12 @@ def test_unknown_assets_mode_is_rejected(tmp_path):
         ExportDocumentUseCase.execute(_doc([_page_with_regions()]), tmp_path, assets_mode="gif")
 
 
-def test_missing_structured_document_requires_review(tmp_path):
+def test_missing_structured_document_fails_v6_inventory(tmp_path):
     out = ExportDocumentUseCase.execute(_doc([_page_with_regions()]), tmp_path, assets_mode="none")
     (out / "document.json").unlink()
     report = validate_document_artifacts(out)
-    assert report["status"] == "NEEDS_REVIEW", report["errors"]
-    assert any("structure is incomplete" in message for message in report["warnings"])
+    assert report["status"] == "FAIL"
+    assert any("document.json is missing" in message for message in report["errors"])
 
 
 def test_invalid_extraction_fails_even_when_document_is_missing(tmp_path):
@@ -149,7 +149,7 @@ def test_invalid_extraction_fails_even_when_document_is_missing(tmp_path):
     (out / "extraction.json").write_text('{"schema": "extraction-v1"}', encoding="utf-8")
     report = validate_document_artifacts(out)
     assert report["status"] == "FAIL"
-    assert any("extraction.json is invalid" in message for message in report["errors"])
+    assert any("extraction.json" in message for message in report["errors"])
 
 
 def test_letter_spaced_running_header_is_still_detected():

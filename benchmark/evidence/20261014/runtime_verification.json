@@ -1,0 +1,42 @@
+{
+  "sequential": {
+    "exit_code": 0,
+    "wall_seconds": 8.186498700000811,
+    "documents": 3,
+    "pages": 6,
+    "statuses": [
+      "COMPLETED",
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "log": "C:\\kk_2\\OCR_pdf\\scratch\\kp13-native-pool\\sequential.log"
+  },
+  "parallel": {
+    "exit_code": 0,
+    "wall_seconds": 10.837649299995974,
+    "documents": 3,
+    "pages": 6,
+    "statuses": [
+      "COMPLETED",
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "log": "C:\\kk_2\\OCR_pdf\\scratch\\kp13-native-pool\\parallel.log"
+  },
+  "resume": {
+    "exit_code": 0,
+    "wall_seconds": 5.065802600001916,
+    "documents": 3,
+    "pages": 6,
+    "statuses": [
+      "CACHED",
+      "CACHED",
+      "CACHED"
+    ],
+    "log": "C:\\kk_2\\OCR_pdf\\scratch\\kp13-native-pool\\resume.log"
+  },
+  "source_fingerprint": "5059de9edd5c7b44",
+  "identical_artifacts": 15,
+  "fixture_scope": "synthetic_native_runtime_only",
+  "eligible_for_quality_acceptance": false
+}

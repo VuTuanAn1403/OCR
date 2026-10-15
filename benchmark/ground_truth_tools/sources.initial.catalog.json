@@ -1,0 +1,10 @@
+{
+  "schema_version": "sources-v1",
+  "source_root": "C:\\kk_2\\OCR_pdf\\inputs",
+  "sources_sha256": "34dc727a06adfe490c787b31677a65b1a790edc6adb7068854d4abaa8d12efd9",
+  "generated_at": "2026-10-14T04:02:16.803467+00:00",
+  "documents": 10,
+  "unknown_company_documents": 10,
+  "status": "METADATA_INCOMPLETE",
+  "annotation_status": "NOT_EVALUATED"
+}

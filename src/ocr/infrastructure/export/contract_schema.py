@@ -111,6 +111,34 @@ class Chunk(TextProvenance):
     lang: Literal["vi", "en", "unknown"]
     spans: Annotated[List[Span], Field(min_length=1)]
     needs_review: bool
+    # C3.6 figure links; absent in documents written before them.
+    role: Optional[Literal["figure_text", "caption"]] = None
+    figure_id: Optional[ElementId] = None
+
+
+CheckStatus = Literal["CONSISTENT", "VIOLATION", "INCONCLUSIVE"]
+
+
+class ConsistencyCheck(ContractModel):
+    """One flag-only C3.5(b) result; values are never corrected."""
+    check: Literal["total_row", "amount_cell", "single_value_cell", "balance_identity"]
+    status: CheckStatus
+
+
+class ContinuationCandidate(ContractModel):
+    """C3.5(c) candidate; tables are never merged in this schema version."""
+    status: Literal["CANDIDATE"]
+    merged: Literal[False]
+    previous_table_id: ElementId
+    table_id: ElementId
+    signals: Annotated[List[str], Field(min_length=1)]
+
+
+class ConsistencyChecks(ContractModel):
+    method: str
+    status: Literal["COMPLETED", "FAILED"]
+    balance_identity: Optional[List[ConsistencyCheck]] = None
+    continuation_candidates: Optional[List[ContinuationCandidate]] = None
 
 
 class DocumentTable(ContractModel):
@@ -124,6 +152,10 @@ class DocumentTable(ContractModel):
     engine: str
     html_path: Optional[str]
     cells: List[Cell]
+    # Optional so documents written before the C3.5 checks stay valid.
+    needs_review: Optional[bool] = None
+    arithmetic_checks: Optional[List[ConsistencyCheck]] = None
+    continuation: Optional[ContinuationCandidate] = None
 
 
 class DocumentFormula(ContractModel):
@@ -132,11 +164,24 @@ class DocumentFormula(ContractModel):
     section_id: SectionId
 
 
+class ImageCaption(ContractModel):
+    chunk_id: ElementId
+    position: Literal["above", "below"]
+    gap_pt: Annotated[float, Field(ge=0, allow_inf_nan=False)]
+
+
 class DocumentImage(ContractModel):
     image_id: ElementId
     chunk_id: ElementId
     section_id: SectionId
     asset: Optional[str]
+    caption: Optional[ImageCaption] = None
+    figure_text_chunk_ids: Optional[List[ElementId]] = None
+
+
+class FigureLinks(ContractModel):
+    method: str
+    status: Literal["COMPLETED", "FAILED"]
 
 
 class DocumentContract(ContractModel):
@@ -150,12 +195,44 @@ class DocumentContract(ContractModel):
     tables: List[DocumentTable]
     formulas: List[DocumentFormula]
     images: List[DocumentImage]
+    consistency_checks: Optional[ConsistencyChecks] = None
+    figure_links: Optional[FigureLinks] = None
+
+
+class StructureSection(ContractModel):
+    section_id: SectionId
+    level: Annotated[int, Field(ge=1, le=4)]
+    title: str
+    title_en: Optional[str]
+    parent_id: Optional[SectionId]
+    page_start: PageNumber
+    page_end: PageNumber
+    heading_item_ids: Annotated[List[ElementId], Field(min_length=1)]
+    spans: Annotated[List[Span], Field(min_length=1)]
+    needs_review: bool
+
+
+class DroppedItem(ContractModel):
+    item_id: ElementId
+    reason: Annotated[str, Field(min_length=1)]
+
+
+class StructureContract(ContractModel):
+    schema_version: Literal["structure-v1"]
+    doc_sha16: str
+    method: Annotated[str, Field(min_length=1)]
+    params: Dict[str, Any]
+    body_font_size: Optional[Coordinate]
+    toc: Optional[Dict[str, Any]]
+    sections: List[StructureSection]
+    dropped: List[DroppedItem]
 
 
 def contract_json_schemas() -> Dict[str, Dict[str, Any]]:
     """Return portable JSON Schemas with explicit dialect and version IDs."""
     result = {}
-    for name, model in (("extraction-v1", ExtractionContract), ("doc-v1", DocumentContract)):
+    for name, model in (("extraction-v1", ExtractionContract), ("doc-v1", DocumentContract),
+                        ("structure-v1", StructureContract)):
         schema = model.model_json_schema()
         schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
         schema["$id"] = f"urn:ocr-pdf:{name}"
@@ -163,9 +240,90 @@ def contract_json_schemas() -> Dict[str, Dict[str, Any]]:
     return result
 
 
+def validate_extraction(extraction: Dict[str, Any]) -> List[str]:
+    """Check extraction semantics even when the other contracts are absent."""
+    try:
+        source = ExtractionContract.model_validate(extraction)
+    except ValidationError as exc:
+        return [f"extraction.json {'.'.join(map(str, e['loc']))}: {e['msg']}"
+                for e in exc.errors(include_url=False, include_input=False)]
+    errors = []
+    known = {}
+    pages = set()
+    for page in source.pages:
+        if page.page in pages:
+            errors.append(f"extraction.json duplicate page {page.page}")
+        pages.add(page.page)
+        if page.page > source.total_pages:
+            errors.append(f"extraction.json page {page.page} exceeds total_pages")
+        for item in page.items:
+            if item.id in known:
+                errors.append(f"extraction.json duplicate element id {item.id}")
+            known[item.id] = (page.page, item)
+            if not item.id.startswith(f"{source.doc_sha16}:p{page.page:04d}:{item.kind}"):
+                errors.append(f"extraction.json {item.id} does not belong to its document/page/kind")
+            if item.cells and item.kind != "t":
+                errors.append(f"extraction.json {item.id} has cells but is not a table")
+            coordinates = set()
+            for cell in item.cells:
+                if (cell.row, cell.col) in coordinates:
+                    errors.append(f"extraction.json table {item.id} has duplicate cell coordinates")
+                coordinates.add((cell.row, cell.col))
+                for span in cell.spans:
+                    if span.page != page.page or any(ref != item.id for ref in span.block_ids):
+                        errors.append(f"extraction.json table {item.id} cell does not reference its owning table/page")
+                if cell.bbox_source == "table_fallback" and cell.bbox != item.bbox:
+                    errors.append(f"extraction.json table {item.id} fallback cell bbox differs from table bbox")
+    return errors
+
+
+def validate_contract_set(extraction: Dict[str, Any], document: Dict[str, Any],
+                          structure: Dict[str, Any]) -> List[str]:
+    errors = validate_contract_pair(extraction, document)
+    try:
+        tree = StructureContract.model_validate(structure)
+    except ValidationError as exc:
+        return errors + [f"structure.json {'.'.join(map(str, e['loc']))}: {e['msg']}"
+                         for e in exc.errors(include_url=False, include_input=False)]
+    if errors:
+        return errors
+    doc = DocumentContract.model_validate(document)
+    source = ExtractionContract.model_validate(extraction)
+    if tree.doc_sha16 != source.doc_sha16:
+        errors.append("structure.json belongs to a different document")
+    headings = {s.section_id: s for s in doc.sections if s.level > 0}
+    if len({s.section_id for s in tree.sections}) != len(tree.sections):
+        errors.append("structure.json duplicate section ids")
+    if set(headings) != {s.section_id for s in tree.sections}:
+        errors.append("structure.json sections differ from document.json")
+    fields = ("level", "title", "title_en", "parent_id", "page_start", "page_end", "heading_item_ids", "spans")
+    for section in tree.sections:
+        peer = headings.get(section.section_id)
+        if peer and any(getattr(section, field) != getattr(peer, field) for field in fields):
+            errors.append(f"structure.json section {section.section_id} differs from document.json")
+    known = {item.id for page in source.pages for item in page.items}
+    consumed = {ref for section in doc.sections for span in section.spans for ref in span.block_ids}
+    consumed.update(ref for chunk in doc.chunks for span in chunk.spans for ref in span.block_ids)
+    dropped = {item.item_id for item in tree.dropped}
+    if len(dropped) != len(tree.dropped):
+        errors.append("structure.json duplicate dropped item ids")
+    for item in tree.dropped:
+        if item.item_id not in known or item.item_id in consumed:
+            errors.append(f"structure.json dropped item {item.item_id} has an invalid source or is also consumed")
+    for ref in sorted(known - consumed - dropped):
+        errors.append(f"document.json loses extraction item {ref} without a recorded reason")
+    # Cells copied to the document must preserve their source table contents.
+    tables = {item.id: item for page in source.pages for item in page.items if item.kind == "t"}
+    for table in doc.tables:
+        peer = tables.get(table.table_id)
+        if peer and table.cells != peer.cells:
+            errors.append(f"document.json table {table.table_id} cells differ from extraction.json")
+    return errors
+
+
 def validate_contract_pair(extraction: Dict[str, Any], document: Dict[str, Any]) -> List[str]:
     """Return structural/schema/source errors, suitable for the artifact validator."""
-    errors: List[str] = []
+    errors: List[str] = validate_extraction(extraction)
     parsed = []
     for name, model, payload in (("extraction.json", ExtractionContract, extraction),
                                  ("document.json", DocumentContract, document)):
@@ -254,6 +412,29 @@ def validate_contract_pair(extraction: Dict[str, Any], document: Dict[str, Any])
             expected_type = {"table_id": "table", "formula_id": "formula", "image_id": "image"}[field]
             if chunk and chunk.type != expected_type:
                 errors.append(f"document.json {field} {ref} references a chunk of the wrong type")
+    images = {image.image_id: image for image in doc.images}
+    for image in doc.images:
+        linked = [(ref, "figure_text") for ref in image.figure_text_chunk_ids or []]
+        if image.caption is not None:
+            linked.append((image.caption.chunk_id, "caption"))
+        for ref, role in linked:
+            chunk = chunks.get(ref)
+            if chunk is None or chunk.role != role or chunk.figure_id != image.image_id:
+                errors.append(f"document.json image {image.image_id} {role} link {ref} is not mirrored by its chunk")
+    for chunk in doc.chunks:
+        if (chunk.role is None) != (chunk.figure_id is None):
+            errors.append(f"document.json chunk {chunk.chunk_id} has role and figure_id out of step")
+        elif chunk.figure_id is not None:
+            image = images.get(chunk.figure_id)
+            if image is None:
+                listed = []
+            elif chunk.role == "figure_text":
+                listed = image.figure_text_chunk_ids or []
+            else:
+                listed = [image.caption.chunk_id] if image.caption else []
+            if not listed or chunk.chunk_id not in listed:
+                errors.append(f"document.json chunk {chunk.chunk_id} references figure {chunk.figure_id} "
+                              "that does not list it")
     for table in doc.tables:
         chunk = chunks.get(table.chunk_id)
         owning_sources = ({ref for span in chunk.spans for ref in span.block_ids}

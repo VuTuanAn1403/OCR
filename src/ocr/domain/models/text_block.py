@@ -1,7 +1,8 @@
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
+from src.ocr.domain.models.confidence import ConfidenceModel
 
-class TextBlock(BaseModel):
+class TextBlock(ConfidenceModel):
     text: str
     text_raw: Optional[str] = None
     correction_source: Optional[str] = None
@@ -9,9 +10,7 @@ class TextBlock(BaseModel):
     page: int
     bbox: List[float] = Field(default_factory=list)  # [x0, y0, x1, y1]
     # None = the producing model gives no calibrated confidence (see confidence_source).
-    confidence: Optional[float] = 1.0
-    quality_score: Optional[float] = 1.0
-    confidence_source: Optional[str] = None  # e.g. recognizer, native_text_score, unavailable
+    quality_score: Optional[float] = None
     reviewed: bool = False
     block_type: str = "paragraph"  # paragraph, title, section_header, header, footer, page_number, list_item, table_cell, caption, formula
     line_index: int = 0
@@ -36,7 +35,7 @@ class TextBlock(BaseModel):
             "bbox": self.bbox,
             "confidence": None if self.confidence is None else round(self.confidence, 4),
             "quality_score": None if self.quality_score is None else round(self.quality_score, 4),
-            "confidence_source": self.confidence_source,
+            "confidence_source": self._confidence_source(),
             "reviewed": self.reviewed,
             "fallback": self.fallback,
             "fallback_reason": self.fallback_reason,

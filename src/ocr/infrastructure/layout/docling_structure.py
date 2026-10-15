@@ -22,7 +22,7 @@ import pymupdf
 import psutil
 from src.ocr.domain.models.formula import Formula
 from src.ocr.domain.models.table import TableCell, TableStructure
-from src.ocr.runtime.paths import cache_dir, models_dir
+from src.ocr.runtime.paths import cache_dir, models_dir, docling_worker_path
 
 ROOT = Path(__file__).resolve().parents[4]
 SCHEMA_VERSION = "docling-structure-v1"
@@ -112,7 +112,7 @@ class DoclingStructureExtractor:
         digest = hashlib.sha256(json.dumps(self.options, sort_keys=True).encode())
         digest.update(SCHEMA_VERSION.encode())
         digest.update(str(self.python.resolve()).encode())
-        for path in (Path(__file__), ROOT / "scripts/docling_structure_worker.py",
+        for path in (Path(__file__), docling_worker_path(),
                      ROOT / "requirements-docling.lock.txt", models_dir() / "docling/model_manifest.json"):
             if path.is_file():
                 digest.update(path.read_bytes())
@@ -133,7 +133,7 @@ class DoclingStructureExtractor:
                    TOKENIZERS_PARALLELISM="false", PYTHONIOENCODING="utf-8")
         self._responses = queue.Queue()
         self._process = subprocess.Popen(
-            [str(self.python), "-u", str(ROOT / "scripts/docling_structure_worker.py"), "--serve"],
+            [str(self.python), "-u", str(docling_worker_path()), "--serve"],
             cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._log,
             text=True, encoding="utf-8", env=env,
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,

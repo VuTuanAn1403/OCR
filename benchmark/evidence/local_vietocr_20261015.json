@@ -1,0 +1,190 @@
+{
+  "purpose": "Local CPU VietOCR smoke on three identical scanned copies, not accuracy acceptance",
+  "source_fingerprint": "3d8aa2afc8ba1983",
+  "source": "scratch\\v6-scan-table-word-boundaries\\A\\page-0070.pdf",
+  "source_sha256": "8749162c5e87b9492dc412a22d47154935bf7489b6f1e507738647a1abd5243b",
+  "fixture": "scratch\\local-vietocr-grouped-smoke\\inputs\\BSI_scan_page70_repeated.pdf",
+  "fixture_sha256": "04dd9dfc2abb6b3f21a9db9e8ba3b373c0b177cb7f4f5dd81b19e3279a56db08",
+  "elapsed_seconds": 69.393,
+  "initial_threads": 15,
+  "pages": [
+    {
+      "page": 1,
+      "threads": 34,
+      "rss_mb": 662.57,
+      "vms_mb": 1339.41,
+      "page_seconds": 22.57,
+      "stage_seconds": {
+        "inspect": 0.092,
+        "native_extract": 0.0,
+        "image_region_ocr": 0.0,
+        "render_and_refine": 0.103,
+        "primary_ocr": 15.763,
+        "fallback": 6.584,
+        "table": 0.007,
+        "docling_structure": 0.0,
+        "layout_model": 0.0,
+        "reading_order": 0.0,
+        "postprocess": 0.021
+      },
+      "ocr_lines": 239,
+      "ocr_calls": 2,
+      "tables": 2,
+      "review_required_count": 67,
+      "docling": "DISABLED"
+    },
+    {
+      "page": 2,
+      "threads": 36,
+      "rss_mb": 668.8,
+      "vms_mb": 1339.49,
+      "page_seconds": 20.99,
+      "stage_seconds": {
+        "inspect": 0.068,
+        "native_extract": 0.0,
+        "image_region_ocr": 0.0,
+        "render_and_refine": 0.095,
+        "primary_ocr": 15.589,
+        "fallback": 5.213,
+        "table": 0.007,
+        "docling_structure": 0.0,
+        "layout_model": 0.0,
+        "reading_order": 0.0,
+        "postprocess": 0.019
+      },
+      "ocr_lines": 239,
+      "ocr_calls": 2,
+      "tables": 2,
+      "review_required_count": 67,
+      "docling": "DISABLED"
+    },
+    {
+      "page": 3,
+      "threads": 33,
+      "rss_mb": 672.51,
+      "vms_mb": 1339.95,
+      "page_seconds": 20.68,
+      "stage_seconds": {
+        "inspect": 0.071,
+        "native_extract": 0.0,
+        "image_region_ocr": 0.0,
+        "render_and_refine": 0.104,
+        "primary_ocr": 15.426,
+        "fallback": 5.049,
+        "table": 0.007,
+        "docling_structure": 0.0,
+        "layout_model": 0.0,
+        "reading_order": 0.0,
+        "postprocess": 0.024
+      },
+      "ocr_lines": 239,
+      "ocr_calls": 2,
+      "tables": 2,
+      "review_required_count": 67,
+      "docling": "DISABLED"
+    }
+  ],
+  "batch_calls": 213,
+  "max_batch_size": 4,
+  "repeated_page_extracted_text_equal": true,
+  "vietnamese_accented_text": true,
+  "sample_lines": [
+    "CÔNG TY CỔ PHẦN CHỨNG KHOÁN BIDV",
+    "BÁO CÁO TÌNH HÌNH TÀI CHÍNH",
+    "BO1-CTCK",
+    "Tại ngày 31 tháng 12 năm",
+    "2025",
+    "Đơn vị tính: VND",
+    "Mã số",
+    "CHÍ TIỂU",
+    "Thuyet",
+    "Số cuối năm",
+    "Số đầu năm",
+    "minh"
+  ],
+  "result_path": "scratch\\local-vietocr-grouped-smoke\\output\\BSI_scan_page70_repeated\\result.json",
+  "smoke_status": "PASSED",
+  "acceptance_status": "NOT_EVALUATED",
+  "resolved_configuration": {
+    "profile": "local",
+    "device": "cpu",
+    "native_first": true,
+    "render_dpi": 180,
+    "primary_engine": "vietocr",
+    "num_threads": 2,
+    "batch_size": 4,
+    "layout": "standard",
+    "docling": {
+      "enabled": false,
+      "device": "cpu"
+    },
+    "fallback_enabled": false,
+    "fallback_only_on_review": true,
+    "max_fallback_region_ratio": 0.15,
+    "max_fallback_regions_per_page": 5,
+    "fallback_upscale_dpi": 250,
+    "min_confidence": 0.8,
+    "numeric_retry_threshold": 0.85,
+    "orientation_fallback_enabled": true,
+    "vector_table_min_native_score": 0.9,
+    "skip_vector_tables_on_restricted_pdf": true,
+    "two_up_detection_enabled": true,
+    "multi_region_detection_enabled": true,
+    "page_timeout_seconds": 120,
+    "native_quality": {
+      "reliable_threshold": 0.9,
+      "review_threshold": 0.7
+    },
+    "backend_devices": {
+      "ocr_detection": "cpu",
+      "ocr_recognition": "cpu",
+      "layout": "cpu",
+      "docling": null
+    }
+  },
+  "models_fingerprint": "3444e0244105e000",
+  "system_monitor_summary": {
+    "total_duration_seconds": 69.13,
+    "total_samples": 69,
+    "sampling_interval_seconds": 1.0,
+    "cpu_physical_cores": 6,
+    "cpu_logical_cores": 12,
+    "system_ram_total_gb": 15.73,
+    "system_cpu_min_percent": 0.0,
+    "system_cpu_avg_percent": 25.6,
+    "system_cpu_peak_percent": 44.3,
+    "system_cpu_p95_percent": 40.0,
+    "process_cpu_avg_percent": 200.1,
+    "process_cpu_peak_percent": 396.9,
+    "system_ram_used_avg_mb": 10941.1,
+    "system_ram_used_peak_mb": 11491.6,
+    "process_ram_rss_avg_mb": 767.0,
+    "process_ram_rss_peak_mb": 1357.0,
+    "per_file_metrics": [
+      {
+        "file_name": "BSI_scan_page70_repeated.pdf",
+        "sample_count": 68,
+        "duration_seconds": 68.0,
+        "avg_cpu_percent": 26.0,
+        "peak_cpu_percent": 44.3,
+        "avg_proc_ram_mb": 773.1,
+        "peak_proc_ram_mb": 1357.0
+      }
+    ]
+  },
+  "validation_status": "NEEDS_REVIEW",
+  "tests": {
+    "passed": 617,
+    "skipped": 3,
+    "warnings": 1,
+    "seconds": 43.55,
+    "log": "scratch/local-profile-final-tests.log"
+  },
+  "limitations": [
+    "Three copies of one dense scanned table page; not a representative corpus",
+    "No ground truth accuracy comparison against v4.3",
+    "Local heuristic tables retain review requirements",
+    "OCR timeout remains soft",
+    "No long multi-document resource stability test"
+  ]
+}

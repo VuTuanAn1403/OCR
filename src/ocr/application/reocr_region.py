@@ -52,6 +52,7 @@ class ReocrRegionUseCase:
                 block.correction_source = "regional_reocr"
                 block.text = res["text"]
                 block.confidence = res["confidence"]
+                block.confidence_source = "recognizer" if block.confidence is not None else "unavailable"
                 block.quality_score = res.get("quality_score", block.quality_score)
                 block.source = "fallback_ocr"
                 block.engine = "vietnamese_seq2seq_fallback"
@@ -62,6 +63,7 @@ class ReocrRegionUseCase:
                 improved_count += 1
 
             if res.get("needs_review"):
-                block.quality_score = min(block.quality_score, 0.74)
+                if block.quality_score is not None:
+                    block.quality_score = min(block.quality_score, 0.74)
 
         return blocks_to_retry, improved_count

@@ -11,6 +11,7 @@ from typing import Mapping, Sequence
 import cv2
 import numpy as np
 import pymupdf
+from src.ocr.infrastructure.pdf.coordinate_transform import render_coordinate_chain
 
 
 @dataclass(frozen=True)
@@ -44,11 +45,7 @@ media box. This matches native text and does not add the crop offset twice.
     height, width = image_shape[:2]
     if min(width, height) <= 0:
         raise ValueError("Image dimensions must be positive")
-    x0, y0, x1, y1 = box
-    rect = pymupdf.Rect(x0 * page.rect.width / width, y0 * page.rect.height / height,
-                        x1 * page.rect.width / width, y1 * page.rect.height / height)
-    rect = rect * page.derotation_matrix
-    return [round(v, 4) for v in rect]
+    return [round(v, 4) for v in render_coordinate_chain(page, image_shape).inverse().bbox(box)]
 
 
 class YoloLayoutAdapter:

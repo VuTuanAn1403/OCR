@@ -1,0 +1,6 @@
+# Keep executable scripts and notebook sources portable to Linux/Colab.
+*.sh text eol=lf
+*.ipynb text eol=lf
+
+# Captured evidence retains its original bytes; console logs may pad lines.
+benchmark/evidence/** -text -whitespace

@@ -170,7 +170,7 @@ class HeuristicLayoutClassifier:
                     x0=bb[0], y0=bb[1], x1=bb[2], y1=bb[3]),
                 region_type=label, content_type=c_type, label=label,
                 category_id=detection.class_id, dla_score=detection.score,
-                confidence=detection.score, quality_score=None, source="ocr",
+                confidence=detection.score, confidence_source="layout_model", quality_score=None, source="ocr",
                 reading_order=index,
             ))
         return regions
@@ -272,6 +272,7 @@ class HeuristicLayoutClassifier:
                         category_id=6,
                         dla_score=0.95,
                         confidence=0.95,
+                            confidence_source="heuristic",
                         source="vector",
                         reading_order=region_counter,
                     ))
@@ -296,6 +297,7 @@ class HeuristicLayoutClassifier:
                                 category_id=7,
                                 dla_score=0.90,
                                 confidence=0.90,
+                            confidence_source="heuristic",
                                 source="image",
                                 reading_order=region_counter,
                             ))
@@ -352,6 +354,7 @@ class HeuristicLayoutClassifier:
                 category_id=cid,
                 dla_score=0.88,
                 confidence=0.90,
+                            confidence_source="heuristic",
                 source="native",
                 reading_order=region_counter,
             ))

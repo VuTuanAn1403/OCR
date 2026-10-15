@@ -1,0 +1,4 @@
+include config/profiles.yaml
+include config/hardware/*.yaml
+include scripts/docling_structure_worker.py
+include setup.py

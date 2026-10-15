@@ -276,15 +276,17 @@ def test_export_writes_contracts_and_validator_catches_dangling_ids(tmp_path):
     assert any("unknown id" in e for e in validate_document_artifacts(out)["errors"])
 
 
-def test_structure_failure_keeps_export_and_records_error(tmp_path, monkeypatch):
+def test_structure_failure_preserves_evidence_but_fails_complete_v6_export(tmp_path, monkeypatch):
     def broken(_items):
         raise RuntimeError("boom")
 
     monkeypatch.setattr("src.ocr.infrastructure.export.document_contracts.build_structure", broken)
-    out = ExportDocumentUseCase.execute(Builder().body().doc(), tmp_path)
+    with pytest.raises(ValueError, match="Artifact validation failed"):
+        ExportDocumentUseCase.execute(Builder().body().doc(), tmp_path)
+    out = tmp_path / "doc"
     assert json.loads((out / "structure.json").read_text(encoding="utf-8"))["error"] == "RuntimeError: boom"
     assert (out / "extraction.json").is_file() and not (out / "document.json").exists()
-    assert validate_document_artifacts(out)["status"] != "FAIL"
+    assert validate_document_artifacts(out)["status"] == "FAIL"
 
 
 def test_normalized_toc_titles_strip_roman_and_letter_numbering_before_casefold():
@@ -471,7 +473,7 @@ def test_missing_cell_bbox_declares_table_fallback_and_merged_cells_are_engine_i
 
 def test_contract_json_schemas_publish_required_fields_and_nullable_confidence():
     schemas = contract_json_schemas()
-    assert set(schemas) == {"extraction-v1", "doc-v1"}
+    assert set(schemas) == {"extraction-v1", "doc-v1", "structure-v1"}
     assert all(schema["$schema"].endswith("2020-12/schema") for schema in schemas.values())
     chunk = schemas["doc-v1"]["$defs"]["Chunk"]
     assert {"text_raw", "text_corrected", "spans", "confidence", "confidence_source"} <= set(chunk["required"])

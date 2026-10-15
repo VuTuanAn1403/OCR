@@ -1,3 +1,5 @@
+import contextvars
+import logging
 import os
 import sys
 import time
@@ -22,16 +24,59 @@ from src.ocr.infrastructure.export.manifest_exporter import PIPELINE_VERSION
 from src.ocr.infrastructure.export.markdown_exporter import ASSET_MODES
 from src.ocr.runtime.atomic_io import atomic_write_json, atomic_write_text
 from src.ocr.runtime.config import ConfigError, config_hash
+from src.ocr.infrastructure.export.output_contract import OUTPUT_MODES
+from src.ocr.infrastructure.export.result_reader import load_document_json
 from src.ocr.runtime.device import VALID_DEVICES
 from src.ocr.runtime.fingerprint import source_fingerprint
+from src.ocr.runtime.hardware import preparse_hardware
 from src.ocr.runtime.models import model_fingerprint
 from src.ocr.runtime.paths import cache_dir, data_dir, output_dir
 from src.ocr.runtime.run_manifest import RunRecorder
+from src.ocr.runtime.structured_logging import LOG_FORMATS, bind_context, configure_logging, progress
 
 if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
+
+
+def consistency_review_items(doc_dir: Path, file_name: str) -> List[Dict[str, Any]]:
+    """Review-queue items for the flag-only financial checks in document.json:
+    arithmetic violations, continuation candidates and a failed check run."""
+    path = doc_dir / "document.json"
+    if not path.is_file():
+        return []
+
+    def item(priority: str, page: Optional[int], reason: str, snippet: Optional[str] = None) -> Dict[str, Any]:
+        return {"priority": priority, "file": file_name, "page": page, "region_id": None, "reason": reason,
+                "affected_lines": 0, "snippet": snippet}
+
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        return [item("CRITICAL", None, f"document.json unreadable: {error}")]
+    checks = document.get("consistency_checks") or {}
+    items = []
+    if checks.get("status") == "FAILED":
+        items.append(item("REVIEW", None, f"financial_checks_failed: {checks.get('error')}"))
+    for table in document.get("tables", []):
+        page = (table.get("pages") or [None])[0]
+        for check in table.get("arithmetic_checks") or []:
+            if check.get("status") == "VIOLATION":
+                detail = (f"expected {check['expected']}, found {check['found']}" if "expected" in check
+                          else check.get("reason"))
+                items.append(item("REVIEW", page, f"financial_{check['check']}:{table['table_id']}:"
+                                                  f"{check.get('row')}:{check.get('col')}",
+                                  f"{check.get('label', '')} {detail}".strip()))
+        if table.get("continuation"):
+            items.append(item("REVIEW", page, f"table_continuation_candidate:{table['table_id']}",
+                              ", ".join(table["continuation"].get("signals", []))))
+    for check in checks.get("balance_identity") or []:
+        if check.get("status") == "VIOLATION":
+            items.append(item("REVIEW", None, f"financial_balance_identity:{check['assets']['table_id']}"
+                                              f"={check['equity']['table_id']}"))
+    return items
+
 
 class BatchOCRRunner:
     """
@@ -54,6 +99,11 @@ class BatchOCRRunner:
         cache_dir: Optional[str] = None,
         shard: Optional[tuple] = None,
         config_path: Optional[str] = None,
+        workers: int = 1,
+        threads_per_worker: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        hardware_profile: Optional[Dict[str, Any]] = None,
+        output_mode: str = "legacy",
     ):
         self.input_dir = Path(input_dir).resolve()
         self.output_dir = Path(output_dir).resolve()
@@ -64,9 +114,20 @@ class BatchOCRRunner:
         self.force = force
         self.file_list = file_list
         self.assets_mode = assets_mode
+        if output_mode not in OUTPUT_MODES:
+            raise ValueError(f"Unknown output_mode {output_mode!r}")
+        self.output_mode = output_mode
         self.cache_dir = cache_dir
         # (index, count): this worker takes every count-th file (ENV-08).
         self.shard = shard
+        if type(workers) is not int or workers < 1:
+            raise ValueError("workers must be a positive integer")
+        if threads_per_worker is not None and (type(threads_per_worker) is not int or threads_per_worker < 1):
+            raise ValueError("threads_per_worker must be a positive integer")
+        self.workers = workers
+        self.worker_threads = threads_per_worker or (max(1, min(6, (os.cpu_count() or 1)//workers)) if workers > 1 else None)
+        self._executor = None
+        self._futures = {}
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         # Parallel shards share document outputs but must never replace each
@@ -82,7 +143,10 @@ class BatchOCRRunner:
         if self.shard and self.excel_path:
             self.excel_path = self.report_dir / self.excel_path.name
 
-        self.converter = ConvertDocumentUseCase(config_path=config_path)
+        self.hardware_profile = hardware_profile
+        self.converter = ConvertDocumentUseCase(config_path=config_path, batch_size=batch_size)
+        self.converter.reuse_docling = True
+        self.converter.thread_budget = self.worker_threads
         self.profile_config = self.converter.resolve_profile(profile, device)
         self.device = self.profile_config["device"]
         self.run_manifest_path = self.report_dir / "run_manifest.json"
@@ -217,7 +281,7 @@ class BatchOCRRunner:
         # Load benchmark and quality
         try:
             current_docling = self.profile_config.get("docling", {})
-            result_data = json.loads((doc_dir / "result.json").read_text(encoding="utf-8"))
+            result_data = load_document_json(doc_dir / "result.json")
             if len(result_data.get("pages", [])) != expected_pages:
                 return None
             for page_data in result_data.get("pages", []):
@@ -273,6 +337,7 @@ class BatchOCRRunner:
             and manifest.get("page_schema_version") == PAGE_SCHEMA_VERSION
             and manifest.get("source_fingerprint") == source_fingerprint()
             and manifest.get("assets_mode", "png") == self.assets_mode
+            and manifest.get("output_mode", "legacy") == self.output_mode
             and config_hash(manifest.get("configuration") or {}) == config_hash(self.profile_config)
             and manifest.get("models_fingerprint") == model_fingerprint(self.profile_config)
         )
@@ -317,6 +382,18 @@ class BatchOCRRunner:
         return classes
 
     def execute_batch(self, limit: Optional[int] = None) -> None:
+        try:
+            # Log context bound for this run stays inside the copied context.
+            contextvars.copy_context().run(self._execute_batch, limit)
+        finally:
+            if self._executor is not None:
+                self._executor.shutdown(wait=True, cancel_futures=True)
+                self._executor = None
+            close = getattr(self.converter, "close", None)
+            if callable(close):
+                close()
+
+    def _execute_batch(self, limit: Optional[int] = None) -> None:
         """Executes full batch over all discovered files."""
         files_manifest = self.discover_files()
         total_files = len(files_manifest)
@@ -339,11 +416,26 @@ class BatchOCRRunner:
             profile_config=self.profile_config, device=self.device,
             cache_dir=Path(self.cache_dir) if self.cache_dir else cache_dir(),
             resume=not self.force, assets_mode=self.assets_mode,
+            output_mode=self.output_mode,
+            hardware_profile=self.hardware_profile,
         )
         recorder.data["shard"] = list(self.shard) if self.shard else None
+        self._run_id = recorder.run_id
+        bind_context(run_id=recorder.run_id)  # ENV-11; scoped by execute_batch
+        self._batch_source_fingerprint = recorder.data["source_fingerprint"]
+        recorder.data["scheduler"] = {"workers": self.workers, "threads_per_worker": self.worker_threads,
+                                       "unit": "document", "docling_lifetime": "worker"}
         recorder.write(self.run_manifest_path, final=False)
 
         batch_t0 = time.time()
+        if self.workers > 1:
+            from concurrent.futures import ProcessPoolExecutor
+            from src.ocr.runtime.document_pool import initialize_worker
+            self._executor = ProcessPoolExecutor(max_workers=self.workers, initializer=initialize_worker,
+                                                 initargs=(self.worker_threads,))
+            for entry in files_manifest:
+                if entry["status"] not in ("CACHED", "FAILED_INPUT"):
+                    self._submit_document(entry)
 
         for idx, entry in enumerate(files_manifest):
             file_num = idx + 1
@@ -355,7 +447,8 @@ class BatchOCRRunner:
                 recorder.add_document({"document_id": doc_id, "status": "FAILED_INPUT",
                                        "error": entry["error"]})
                 recorder.write(self.run_manifest_path, final=False)
-                print(f"\n[FILE {file_num:03d}/{total_files:03d}] {f_name} [FAILED_INPUT]: {entry['error']}")
+                progress(f"\n[FILE {file_num:03d}/{total_files:03d}] {f_name} [FAILED_INPUT]: {entry['error']}",
+                         stage="batch", level=logging.ERROR, doc_id=doc_id, status="FAILED_INPUT")
                 continue
 
             if entry["status"] == "CACHED":
@@ -364,8 +457,9 @@ class BatchOCRRunner:
                                        "pages_from_cache": list(range(1, tot_pages + 1)),
                                        "timing_origin": "previous_run"})
                 recorder.write(self.run_manifest_path, final=False)
-                print(f"\n[FILE {file_num:03d}/{total_files:03d}] {f_name} [CACHED]")
-                print(f"Pages: {tot_pages} | Sec/Page: {entry['seconds_per_page']}s | Status: CACHED/SKIPPED")
+                progress(f"\n[FILE {file_num:03d}/{total_files:03d}] {f_name} [CACHED]\n"
+                         f"Pages: {tot_pages} | Sec/Page: {entry['seconds_per_page']}s | Status: CACHED/SKIPPED",
+                         stage="batch", doc_id=doc_id, status="CACHED")
                 continue
 
             # Check cache
@@ -404,17 +498,18 @@ class BatchOCRRunner:
                 atomic_write_json(self.manifest_path, files_manifest)
                 recorder.write(self.run_manifest_path, final=False)
 
-                print(f"\n[FILE {file_num:03d}/{total_files:03d}] {f_name} [CACHED]")
-                print(f"Pages: {tot_pages} | Sec/Page: {entry['seconds_per_page']}s | Status: CACHED/SKIPPED")
+                progress(f"\n[FILE {file_num:03d}/{total_files:03d}] {f_name} [CACHED]\n"
+                         f"Pages: {tot_pages} | Sec/Page: {entry['seconds_per_page']}s | Status: CACHED/SKIPPED",
+                         stage="batch", doc_id=doc_id, status="CACHED")
                 continue
 
             # Check Ground Truth
-            has_gt = len(list(self.ground_truth_dir.glob(f"{doc_id.lower()[:3]}*.txt"))) > 0
+            from benchmark.evaluate import ground_truth_pages
+            has_gt = bool(ground_truth_pages(self.ground_truth_dir, doc_id))
 
             # Real-time Start Output
-            print(f"\n[FILE {file_num:03d}/{total_files:03d}] {f_name}")
-            print(f"Pages: {tot_pages}")
-            print(f"Status: PROCESSING")
+            progress(f"\n[FILE {file_num:03d}/{total_files:03d}] {f_name}\nPages: {tot_pages}\nStatus: PROCESSING",
+                     stage="batch", doc_id=doc_id, status="PROCESSING", pages=tot_pages)
 
             success = False
             attempts = 0
@@ -424,7 +519,15 @@ class BatchOCRRunner:
             while attempts < self.max_retries and not success:
                 attempts += 1
                 try:
-                    doc = self.converter.execute(
+                    if self._executor is not None:
+                        from src.ocr.runtime.document_pool import load_exported_document
+                        future = self._futures.get(doc_id) or self._submit_document(entry)
+                        result = future.result()
+                        doc = load_exported_document(Path(result["document_dir"]))
+                        entry["rss_at_completion_mb"] = result["rss_at_completion_mb"]
+                        entry["memory_scope"] = result["memory_scope"]
+                    else:
+                        doc = self.converter.execute(
                         file_path=entry["absolute_path"],
                         profile_name=self.profile,
                         output_dir=str(self.output_dir),
@@ -434,23 +537,28 @@ class BatchOCRRunner:
                         ground_truth_dir=str(self.ground_truth_dir),
                         device=self.device,
                         assets_mode=self.assets_mode,
+                        output_mode=self.output_mode,
                         cache_dir=self.cache_dir,
                     )
                     recorder.add_document(doc)
 
-                    file_dur = time.time() - file_t0
+                    file_dur = (result["wall_clock_seconds"] if self._executor is not None
+                                else time.time() - file_t0)
+                    entry["timing_scope"] = "worker_job_including_export" if self._executor is not None else "document_including_export"
                     sec_p = file_dur / max(1, tot_pages)
                     ppm = (tot_pages / max(0.01, file_dur)) * 60
 
-                    proc = psutil.Process()
-                    peak_mem = round(proc.memory_info().rss / (1024 * 1024), 1)
+                    if self._executor is None:
+                        entry["rss_at_completion_mb"] = round(psutil.Process().memory_info().rss / (1024 * 1024), 1)
+                        entry["memory_scope"] = "parent_process_snapshot"
+                    entry["memory_measurement"] = "RSS snapshot, not sampled peak"
 
                     entry["status"] = "COMPLETED"
                     entry["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
                     entry["wall_clock_seconds"] = round(file_dur, 2)
                     entry["seconds_per_page"] = round(sec_p, 2)
                     entry["pages_per_minute"] = round(ppm, 2)
-                    entry["peak_memory_mb"] = peak_mem
+                    entry["peak_memory_mb"] = None
                     entry["pages_native"] = doc.quality.pages_processed_native
                     entry["pages_ocr"] = doc.quality.pages_processed_ocr
                     entry["pages_mixed"] = doc.quality.pages_processed_mixed
@@ -472,11 +580,23 @@ class BatchOCRRunner:
                     success = True
 
                     # Real-time Done Output
-                    print(f"[DONE {file_num:03d}/{total_files:03d}] {f_name}")
-                    print(f"Total: {file_dur:.2f}s | Pages: {tot_pages} | Avg: {sec_p:.2f}s/page | Fallback: {entry['fallback_ratio']:.2%}")
+                    progress(f"[DONE {file_num:03d}/{total_files:03d}] {f_name}\n"
+                             f"Total: {file_dur:.2f}s | Pages: {tot_pages} | Avg: {sec_p:.2f}s/page | "
+                             f"Fallback: {entry['fallback_ratio']:.2%}",
+                             stage="batch", doc_id=doc_id, status="COMPLETED", seconds=round(file_dur, 3))
 
                 except Exception as ex:
-                    print(f"[ATTEMPT {attempts}/{self.max_retries} FAILED] {f_name}: {ex}", file=sys.stderr)
+                    self._futures.pop(doc_id, None)
+                    progress(f"[ATTEMPT {attempts}/{self.max_retries} FAILED] {f_name}: {ex}", file=sys.stderr,
+                             stage="batch", level=logging.WARNING, doc_id=doc_id, status="ATTEMPT_FAILED")
+                    is_oom = any(kw in str(ex).lower() for kw in ("paging file", "malloc", "outofmemory", "unable to allocate", "insufficient memory"))
+                    if is_oom and hasattr(self.converter, "close"):
+                        try:
+                            self.converter.close()
+                        except Exception:
+                            pass
+                        import gc
+                        gc.collect()
                     if attempts >= self.max_retries:
                         entry["status"] = "FAILED_PROCESSING"
                         entry["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -484,7 +604,9 @@ class BatchOCRRunner:
                         entry["traceback"] = traceback.format_exc()
                         recorder.add_document({"document_id": doc_id, "status": "FAILED_PROCESSING",
                                                "error": str(ex)})
-                        print(f"[FAILED {file_num:03d}/{total_files:03d}] {f_name} after {self.max_retries} attempts.")
+                        progress(f"[FAILED {file_num:03d}/{total_files:03d}] {f_name} after {self.max_retries} attempts.",
+                                 stage="batch", level=logging.ERROR, doc_id=doc_id, status="FAILED_PROCESSING",
+                                 error=str(ex))
 
             # Flush manifests after each file for resilient checkpointing
             atomic_write_json(self.manifest_path, files_manifest)
@@ -499,6 +621,13 @@ class BatchOCRRunner:
             # Explicit garbage collection to keep memory bounded
             import gc
             gc.collect()
+            try:
+                proc_rss = psutil.Process().memory_info().rss
+                if proc_rss > 2500 * 1024 * 1024 and hasattr(self.converter, "close"):
+                    self.converter.close()
+                    gc.collect()
+            except Exception:
+                pass
 
         batch_duration = time.time() - batch_t0
         print("\n" + "=" * 70)
@@ -507,6 +636,23 @@ class BatchOCRRunner:
 
         self.generate_reports(files_manifest, batch_duration)
         recorder.write(self.run_manifest_path)
+
+    def _submit_document(self, entry):
+        from benchmark.evaluate import ground_truth_pages
+        from src.ocr.runtime.document_pool import convert_job
+        job = {"file_path": entry["absolute_path"], "config_path": str(self.converter.config_path),
+               "thread_budget": self.worker_threads, "batch_size": self.converter.batch_size,
+               "run_id": self._run_id,
+               "profile": self.profile, "device": self.device,
+               "output_dir": str(self.output_dir), "cache_dir": self.cache_dir, "resume": not self.force,
+               "assets_mode": self.assets_mode, "ground_truth_dir": str(self.ground_truth_dir),
+               "output_mode": self.output_mode,
+               "accuracy_report": bool(ground_truth_pages(self.ground_truth_dir, entry["document_id"])),
+               "source_fingerprint": self._batch_source_fingerprint, "config_hash": config_hash(self.profile_config),
+               "pdf_sha16": ArtifactCache.compute_file_hash(entry["absolute_path"])}
+        future = self._executor.submit(convert_job, job)
+        self._futures[entry["document_id"]] = future
+        return future
 
     def generate_reports(self, manifest: List[Dict[str, Any]], batch_duration: float) -> None:
         """Generates all batch reports, CSV, Markdown summary, and review queue."""
@@ -577,7 +723,7 @@ class BatchOCRRunner:
                             pass
                 elif (doc_dir / "result.json").is_file():
                     try:
-                        r_data = json.loads((doc_dir / "result.json").read_text(encoding="utf-8"))
+                        r_data = load_document_json(doc_dir / "result.json")
                         pages_data = r_data.get("pages", [])
                     except Exception:
                         pass
@@ -711,6 +857,14 @@ class BatchOCRRunner:
                                 review_queue.append(item)
                 except Exception:
                     pass
+
+            # 2. Flag-only financial consistency checks from document.json (C3.5b/c)
+            if doc_dir and doc_dir.is_dir():
+                for item in consistency_review_items(doc_dir, file_name):
+                    q_key = (file_name, item["page"], item["region_id"], item["reason"])
+                    if q_key not in seen_queue_keys:
+                        seen_queue_keys.add(q_key)
+                        review_queue.append(item)
 
             # Update manifest entry review_required_count
             e["review_required_count"] = sum(1 for item in review_queue if item["file"] == file_name)
@@ -924,14 +1078,26 @@ class BatchOCRRunner:
 
 def main():
     import argparse
+    try:
+        # Before the parser, so its path defaults see the profile's paths.
+        hardware = preparse_hardware()
+    except ConfigError as exc:
+        raise SystemExit(f"[ERROR] {exc}")
     parser = argparse.ArgumentParser(description=f"Batch OCR Runner v{PIPELINE_VERSION}")
+    parser.add_argument("--hardware", default=None,
+                        help="Hardware profile name in config/hardware/ or YAML path (device, workers, threads, paths)")
     parser.add_argument("--input", default=str(data_dir()), help="Input directory (default: $OCR_DATA_DIR or 'inputs')")
     parser.add_argument("--output", default=str(output_dir()), help="Output directory (default: $OCR_OUTPUT_DIR or 'output')")
     parser.add_argument("--cache-dir", default=None, help="Page cache directory (default: $OCR_CACHE_DIR or '.cache')")
     parser.add_argument("--config", default=None, help="Profile YAML path (default: $OCR_CONFIG_PATH or repository config/profiles.yaml)")
     parser.add_argument("--profile", default="balanced", help="Profile from the config file (default: balanced)")
+    parser.add_argument("--workers", type=int, default=None,
+                        help="Process workers, scheduled by document (default: hardware profile, else 1)")
+    parser.add_argument("--threads-per-worker", type=int, help="Thread budget for torch/ONNX/Docling")
     parser.add_argument("--device", choices=VALID_DEVICES, default=None, help="Inference device; overrides the profile")
     parser.add_argument("--assets", choices=ASSET_MODES, default="png", help="Image crops: png, jpeg, or none")
+    parser.add_argument("--output-mode", choices=OUTPUT_MODES, default="legacy",
+                        help="legacy embeds pages in result.json; compact references complete per-page files")
     parser.add_argument("--shard", default=None, metavar="I/N",
                         help="Process only shard I of N (0-based), e.g. 0/4, splitting the sorted file list")
     parser.add_argument("--merge-shards", type=int, default=None, metavar="N",
@@ -940,7 +1106,10 @@ def main():
     parser.add_argument("--excel", default=None, help="Excel output path (default: OCR_BENCHMARK_5_FILES.xlsx in --output)")
     parser.add_argument("--force", action="store_true", help="Force rerun without cache")
     parser.add_argument("--files", nargs="+", default=None, help="Filter specific files to run in batch")
+    parser.add_argument("--log-format", choices=LOG_FORMATS, default="text",
+                        help="text keeps console progress; json writes JSON lines with run/doc/page/stage/worker")
     args = parser.parse_args()
+    configure_logging(args.log_format)
 
     if args.merge_shards is not None:
         if args.shard is not None:
@@ -961,11 +1130,18 @@ def main():
             excel_path=args.excel or str(Path(args.output) / "OCR_BENCHMARK_5_FILES.xlsx"),
             force=args.force,
             file_list=args.files,
-            device=args.device,
+            device=args.device or (hardware and hardware.device),
             assets_mode=args.assets,
+            output_mode=args.output_mode,
             cache_dir=args.cache_dir,
             shard=parse_shard(args.shard) if args.shard else None,
             config_path=args.config,
+            # Explicit flags win even when invalid (0 is rejected, not replaced).
+            workers=args.workers if args.workers is not None else ((hardware and hardware.workers) or 1),
+            threads_per_worker=(args.threads_per_worker if args.threads_per_worker is not None
+                                else hardware and hardware.threads_per_worker),
+            batch_size=hardware.batch_size if hardware else None,
+            hardware_profile=hardware.record() if hardware else None,
         )
     except (ConfigError, ValueError, RuntimeError) as exc:
         parser.error(str(exc))
@@ -1013,6 +1189,7 @@ def merge_shard_manifests(output: Path, count: int) -> List[Dict[str, Any]]:
         if run.get("shard") != [index, count] or not run.get("finished_at_utc") or run.get("status") != "COMPLETED":
             raise ValueError(f"Shard {index}/{count} is not complete")
         identity = {key: run.get(key) for key in ("source_fingerprint", "page_schema_version", "device", "assets_mode")}
+        identity["output_mode"] = run.get("output_mode", "legacy")
         identity["configuration"] = run.get("config", {}).get("resolved")
         identity["models"] = run.get("models_at_finish", run.get("models"))
         if expected_identity is not None and identity != expected_identity:

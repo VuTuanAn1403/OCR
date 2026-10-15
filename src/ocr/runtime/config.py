@@ -14,9 +14,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
-from src.ocr.runtime.paths import PROJECT_ROOT
+from src.ocr.runtime.paths import default_profile_path
 
-DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "profiles.yaml"
+DEFAULT_CONFIG_PATH = default_profile_path()
 
 
 class ConfigError(ValueError):

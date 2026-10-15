@@ -72,6 +72,21 @@ class PDFInspector:
         except Exception:
             pass
 
+        hidden_chars = visible_chars = 0
+        visibility_status = "INSPECTED"
+        try:
+            for span in page.get_texttrace():
+                count = len(span.get("chars", []))
+                if span.get("type") == 3:
+                    hidden_chars += count
+                else:
+                    visible_chars += count
+        except Exception:
+            visibility_status = "UNAVAILABLE"
+        hidden_text_only = hidden_chars > 0 and visible_chars == 0
+        hidden_layer = (is_full_page_image and hidden_chars >= 10
+                        and hidden_chars >= .8 * max(1, hidden_chars + visible_chars))
+
         encrypted = False
         permissions = None
         copy_restricted = False
@@ -118,5 +133,13 @@ class PDFInspector:
             "is_encrypted": encrypted,
             "permissions": permissions,
             "copy_restricted": copy_restricted,
-            "column_count": column_count
+            "column_count": column_count,
+            "hidden_char_count": hidden_chars,
+            "visible_char_count": visible_chars,
+            "text_visibility_status": visibility_status,
+            "hidden_text_only": hidden_text_only,
+            "has_hidden_ocr_layer": hidden_layer,
+            "hidden_layer_policy": "OCR_UNVERIFIED" if hidden_layer else None,
+            "pdf_rotation": getattr(page, "rotation", 0),
+            "cropbox": list(getattr(page, "cropbox", rect)),
         }

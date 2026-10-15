@@ -1,0 +1,194 @@
+sss..........................................................................................................[1/1] page=1 type=NATIVE_TEXT dpi=180 regions=1 {'TEXT': 1}
+[1/1] native=1 lines (native text gate passed: 0.98)
+[1/1] quality=0.98 fallback=0/1
+[1/1] completed time=0.00s
+......................
+=======================================================
+      OCR BENCHMARK REGRESSION RUNNER (PROPOSAL A3)    
+=======================================================
+Ground Truth Dir: C:\kk_2\OCR_pdf\scratch\pytest-current\test_run_regression_suite_synt0\gt
+Predictions Dir : C:\kk_2\OCR_pdf\scratch\pytest-current\test_run_regression_suite_synt0\pred
+Alert Threshold : 2.00%
+
++------------------------------+-----------+-----------+-----------+--------------+
+| Item / Doc ID                | CER (↓)   | WER (↓)   | DER (↓)   | NumAcc (↑)   |
++==============================+===========+===========+===========+==============+
+| doc1                         | 0.00%     | 0.00%     | 0.00%     | 100.00%      |
++------------------------------+-----------+-----------+-----------+--------------+
+| --- AGGREGATE (WEIGHTED) --- | 0.00%     | 0.00%     | 0.00%     | 100.00%      |
++------------------------------+-----------+-----------+-----------+--------------+
+
+[INFO] No previous baseline found. Current run will serve as initial baseline if set.
+[INFO] Saved run as regression baseline: C:\kk_2\OCR_pdf\scratch\pytest-current\test_run_regression_suite_synt0\regression_baseline.json
+Saved run record to: C:\kk_2\OCR_pdf\scratch\pytest-current\test_run_regression_suite_synt0\history.json
+.
+=======================================================
+      OCR BENCHMARK REGRESSION RUNNER (PROPOSAL A3)    
+=======================================================
+Ground Truth Dir: C:\kk_2\OCR_pdf\scratch\pytest-current\test_run_regression_suite_no_g0\empty_gt
+Predictions Dir : C:\kk_2\OCR_pdf\scratch\pytest-current\test_run_regression_suite_no_g0\pred
+Alert Threshold : 0.50%
+
+[WARN] No ground truth files found. Status: NO_GROUND_TRUTH / NOT_MEASURED.
+...
+=======================================================
+      OCR BENCHMARK REGRESSION RUNNER (PROPOSAL A3)    
+=======================================================
+Ground Truth Dir: C:\kk_2\OCR_pdf\scratch\pytest-current\test_baseline_isolated_from_re0\gt
+Predictions Dir : C:\kk_2\OCR_pdf\scratch\pytest-current\test_baseline_isolated_from_re0\pred
+Alert Threshold : 0.50%
+
++------------------------------+-----------+-----------+-----------+--------------+
+| Item / Doc ID                | CER (↓)   | WER (↓)   | DER (↓)   | NumAcc (↑)   |
++==============================+===========+===========+===========+==============+
+| doc1                         | 0.00%     | 0.00%     | 0.00%     | 100.00%      |
++------------------------------+-----------+-----------+-----------+--------------+
+| --- AGGREGATE (WEIGHTED) --- | 0.00%     | 0.00%     | 0.00%     | 100.00%      |
++------------------------------+-----------+-----------+-----------+--------------+
+
+[INFO] No previous baseline found. Current run will serve as initial baseline if set.
+[INFO] Saved run as regression baseline: C:\kk_2\OCR_pdf\scratch\pytest-current\test_baseline_isolated_from_re0\baseline.json
+Saved run record to: C:\kk_2\OCR_pdf\scratch\pytest-current\test_baseline_isolated_from_re0\history.json
+
+=======================================================
+      OCR BENCHMARK REGRESSION RUNNER (PROPOSAL A3)    
+=======================================================
+Ground Truth Dir: C:\kk_2\OCR_pdf\scratch\pytest-current\test_baseline_isolated_from_re0\gt
+Predictions Dir : C:\kk_2\OCR_pdf\scratch\pytest-current\test_baseline_isolated_from_re0\pred
+Alert Threshold : 0.50%
+
++------------------------------+-----------+-----------+-----------+--------------+
+| Item / Doc ID                | CER (↓)   | WER (↓)   | DER (↓)   | NumAcc (↑)   |
++==============================+===========+===========+===========+==============+
+| doc1                         | 112.50%   | 100.00%   | 0.00%     | 0.00%        |
++------------------------------+-----------+-----------+-----------+--------------+
+| --- AGGREGATE (WEIGHTED) --- | 112.50%   | 100.00%   | 0.00%     | 0.00%        |
++------------------------------+-----------+-----------+-----------+--------------+
+
+--- BASELINE COMPARISON ---
+CER: 0.00% -> 112.50% (Δ +112.50%)
+WER: 0.00% -> 100.00% (Δ +100.00%)
+DER: 0.00% -> 0.00% (Δ +0.00%)
+NumAcc: 100.00% -> 0.00% (Δ -100.00%)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[ALERT] METRIC REGRESSION DETECTED!
+  - Aggregate CER degraded by 112.50% (threshold 0.50%)
+  - Aggregate WER degraded by 100.00% (threshold 0.50%)
+  - Aggregate Numeric Accuracy dropped by 100.00% (threshold 0.50%)
+  - Document 'doc1' CER degraded by 112.50% (threshold 0.50%)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Saved run record to: C:\kk_2\OCR_pdf\scratch\pytest-current\test_baseline_isolated_from_re0\history.json
+
+=======================================================
+      OCR BENCHMARK REGRESSION RUNNER (PROPOSAL A3)    
+=======================================================
+Ground Truth Dir: C:\kk_2\OCR_pdf\scratch\pytest-current\test_baseline_isolated_from_re0\gt
+Predictions Dir : C:\kk_2\OCR_pdf\scratch\pytest-current\test_baseline_isolated_from_re0\pred
+Alert Threshold : 0.50%
+
++------------------------------+-----------+-----------+-----------+--------------+
+| Item / Doc ID                | CER (↓)   | WER (↓)   | DER (↓)   | NumAcc (↑)   |
++==============================+===========+===========+===========+==============+
+| doc1                         | 112.50%   | 100.00%   | 0.00%     | 0.00%        |
++------------------------------+-----------+-----------+-----------+--------------+
+| --- AGGREGATE (WEIGHTED) --- | 112.50%   | 100.00%   | 0.00%     | 0.00%        |
++------------------------------+-----------+-----------+-----------+--------------+
+
+--- BASELINE COMPARISON ---
+CER: 0.00% -> 112.50% (Δ +112.50%)
+WER: 0.00% -> 100.00% (Δ +100.00%)
+DER: 0.00% -> 0.00% (Δ +0.00%)
+NumAcc: 100.00% -> 0.00% (Δ -100.00%)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[ALERT] METRIC REGRESSION DETECTED!
+  - Aggregate CER degraded by 112.50% (threshold 0.50%)
+  - Aggregate WER degraded by 100.00% (threshold 0.50%)
+  - Aggregate Numeric Accuracy dropped by 100.00% (threshold 0.50%)
+  - Document 'doc1' CER degraded by 112.50% (threshold 0.50%)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Saved run record to: C:\kk_2\OCR_pdf\scratch\pytest-current\test_baseline_isolated_from_re0\history.json
+.Validation report đã tạo: C:\kk_2\OCR_pdf\scratch\pytest-current\test_review_queue_captures_reg0\output\final_validation.json
+Báo cáo Excel đã tạo: C:\kk_2\OCR_pdf\scratch\pytest-current\test_review_queue_captures_reg0\output\test.xlsx
+Báo cáo Markdown đã tạo: C:\kk_2\OCR_pdf\scratch\pytest-current\test_review_queue_captures_reg0\output\BATCH_OCR_REPORT.md
+Báo cáo JSON đã tạo: C:\kk_2\OCR_pdf\scratch\pytest-current\test_review_queue_captures_reg0\output\batch_report.json
+Báo cáo CSV đã tạo: C:\kk_2\OCR_pdf\scratch\pytest-current\test_review_queue_captures_reg0\output\batch_report.csv
+....................................................................................................[1/1] page=1 type=NATIVE_TEXT dpi=180 regions=1 {'TEXT': 1}
+[1/1] native=1 lines (native text gate passed: 0.99)
+[1/1] quality=0.99 fallback=0/1
+[1/1] completed time=0.00s
+.[1/1] page=1 type=NATIVE_TEXT dpi=180 regions=1 {'TEXT': 1}
+[1/1] native+image_table: native=1 image_ocr=1 lines
+[1/1] quality=0.99 fallback=0/2
+[1/1] completed time=0.00s
+.[1/1] page=1 type=NATIVE_TEXT dpi=180 regions=1 {'TEXT': 1}
+[1/1] native+image_table: native=1 image_ocr=1 lines
+[1/1] quality=0.65 fallback=0/2
+[1/1] completed time=0.00s
+.[1/1] page=1 type=NATIVE_TEXT dpi=180 regions=1 {'TEXT': 1}
+[1/1] native+image_table: native=1 image_ocr=1 lines
+[1/1] quality=0.92 fallback=0/2
+[1/1] completed time=0.00s
+..................................[1/1] page=1 type=NATIVE_TEXT dpi=150 regions=4 {'TEXT': 3, 'IMAGE_TABLE': 1}
+[1/1] native+image_table: native=3 image_ocr=1 lines
+[1/1] quality=1.00 fallback=0/4
+[1/1] completed time=0.51s
+......................................................................................[1/1] page=1 type=NATIVE_TEXT dpi=150 regions=2 {'TEXT': 2}
+[1/1] native=2 lines (native text gate passed: 1.00)
+[1/1] quality=1.00 fallback=0/2
+[1/1] completed time=0.00s
+[1/1] page=1 type=NATIVE_TEXT dpi=150 regions=2 {'TEXT': 2}
+[1/1] primary=2 lines time=1.20s
+[1/1] quality=1.00 fallback=0/2
+[1/1] completed time=1.21s
+.[F] MAT_report FAILED: FileNotFoundError: PDF file not found: 'C:\kk_2\OCR_pdf\scratch\pytest-current\test_failed_document_contribut0\MAT_report_absent\MAT_report.pdf'
+Checked candidate paths:
+  - C:\kk_2\OCR_pdf\scratch\pytest-current\test_failed_document_contribut0\MAT_report_absent\MAT_report.pdf
+  - C:\kk_2\OCR_pdf\examples\MAT_report.pdf
+  - C:\kk_2\OCR_pdf\inputs\MAT_report.pdf
+..[1/1] page=1 type=NATIVE_TEXT dpi=150 regions=2 {'TEXT': 2}
+[1/1] native=2 lines (native text gate passed: 1.00)
+[1/1] quality=1.00 fallback=0/2
+[1/1] completed time=0.00s
+[1/1] page=1 type=NATIVE_TEXT dpi=150 regions=2 {'TEXT': 2}
+[1/1] native=2 lines (native text gate passed: 1.00)
+[1/1] quality=1.00 fallback=0/2
+[1/1] completed time=0.00s
+..............[1/1] page=1 type=SCANNED_IMAGE dpi=72 regions=1 {'UNKNOWN': 1}
+[1/1] primary=1 lines time=0.00s
+[1/1] quality=0.74 fallback=0/1
+[1/1] completed time=0.00s
+...[1/1] page=1 type=SCANNED_WITH_OCR_LAYER dpi=150 regions=7 {'IMAGE': 1, 'TEXT': 6}
+[1/1] orientation_fallback=orientation_uncertain
+[1/1] primary=6 lines time=4.61s
+[1/1] quality=0.94 fallback=0/6
+[1/1] completed time=4.68s
+...............................................................................Validation report đã tạo: C:\kk_2\OCR_pdf\scratch\pytest-current\test_batch_timing_excludes_doc0\output\final_validation.json
+Báo cáo Markdown đã tạo: C:\kk_2\OCR_pdf\scratch\pytest-current\test_batch_timing_excludes_doc0\output\BATCH_OCR_REPORT.md
+Báo cáo JSON đã tạo: C:\kk_2\OCR_pdf\scratch\pytest-current\test_batch_timing_excludes_doc0\output\batch_report.json
+Báo cáo CSV đã tạo: C:\kk_2\OCR_pdf\scratch\pytest-current\test_batch_timing_excludes_doc0\output\batch_report.csv
+.[OK] Excel report generated successfully: C:\kk_2\OCR_pdf\scratch\pytest-current\test_excel_reports_leave_unava0\seven.xlsx
+[OK] Mirrored copy saved to: C:\kk_2\OCR_pdf\scratch\pytest-current\test_excel_reports_leave_unava0\output\seven.xlsx
+....................[1/1] page=1 type=SCANNED_IMAGE dpi=150 regions=1 {'IMAGE': 1}
+[1/1] primary=3 lines time=0.85s
+[1/1] quality=0.99 fallback=0/3
+[1/1] completed time=0.91s
+[1/1] page=1 type=SCANNED_IMAGE dpi=150 regions=1 {'IMAGE': 1}
+[1/1] primary=3 lines time=0.70s
+[1/1] quality=0.99 fallback=0/3
+[1/1] completed time=0.77s
+......[1/1] page=1 type=SCANNED_IMAGE dpi=150 regions=1 {'IMAGE': 1}
+[1/1] primary=0 lines time=2.33s
+[1/1] quality=0.00 fallback=0/0
+[1/1] completed time=2.38s
+.............................................................................................
+============================== warnings summary ===============================
+.venv\Lib\site-packages\gdown\__init__.py:3
+  C:\kk_2\OCR_pdf\.venv\Lib\site-packages\gdown\__init__.py:3: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+    import pkg_resources
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+575 passed, 3 skipped, 1 warning in 33.36s

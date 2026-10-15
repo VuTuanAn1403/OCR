@@ -18,10 +18,13 @@ if sys_root not in sys.path:
 from src.ocr.application.convert_document import ConvertDocumentUseCase
 from src.ocr.infrastructure.export.manifest_exporter import PIPELINE_VERSION
 from src.ocr.infrastructure.export.markdown_exporter import ASSET_MODES
+from src.ocr.infrastructure.export.output_contract import OUTPUT_MODES
 from src.ocr.runtime.config import ConfigError
 from src.ocr.runtime.device import VALID_DEVICES
+from src.ocr.runtime.hardware import preparse_hardware
 from src.ocr.runtime.paths import cache_dir, data_dir, output_dir
 from src.ocr.runtime.run_manifest import RunRecorder
+from src.ocr.runtime.structured_logging import LOG_FORMATS, bind_context, configure_logging, reset_context
 
 def parse_pages_arg(pages_str: Optional[str]) -> Optional[List[int]]:
     if pages_str is None:
@@ -101,10 +104,18 @@ def resolve_input_path(input_str: str) -> Path:
     raise FileNotFoundError("\n".join(error_lines))
 
 def main():
+    try:
+        # Before the parser, so its path defaults see the profile's paths.
+        hardware = preparse_hardware()
+    except ConfigError as exc:
+        print(f"\n[ERROR] {exc}", file=sys.stderr)
+        sys.exit(1)
     parser = argparse.ArgumentParser(
         description=f"PDF-to-Markdown extraction pipeline v{PIPELINE_VERSION}"
     )
     parser.add_argument("input", help="Path to input PDF document")
+    parser.add_argument("--hardware", default=None,
+                        help="Hardware profile name in config/hardware/ or YAML path (device, threads, batch, paths)")
     # Profile names come from the config file (ENV-13), not a hard-coded list.
     parser.add_argument("--config", default=None,
                         help="Profile YAML path (default: $OCR_CONFIG_PATH or repository config/profiles.yaml)")
@@ -120,6 +131,8 @@ def main():
                         help="Inference device; overrides the profile (default: profile value, else cpu)")
     parser.add_argument("--assets", choices=ASSET_MODES, default="png",
                         help="Image crops for preserved regions: png, jpeg, or none (default: png)")
+    parser.add_argument("--output-mode", choices=OUTPUT_MODES, default="legacy",
+                        help="legacy embeds pages in result.json; compact stores a versioned page index")
     parser.add_argument("--warmup-docling", action="store_true",
                         help="Load Docling models before the first page so start-up is timed separately")
     parser.add_argument("--benchmark", action="store_true",
@@ -132,13 +145,18 @@ def main():
                         help="Resume processing by skipping pages in the page cache")
     parser.add_argument("--debug", action="store_true",
                         help="Enable verbose debug logging")
+    parser.add_argument("--log-format", choices=LOG_FORMATS, default="text",
+                        help="text keeps console progress; json writes JSON lines with run/doc/page/stage to stderr")
 
     args = parser.parse_args()
+    configure_logging(args.log_format)
 
     try:
-        converter = ConvertDocumentUseCase(config_path=args.config)
+        converter = ConvertDocumentUseCase(
+            config_path=args.config, thread_budget=hardware.threads_per_worker if hardware else None,
+            batch_size=hardware.batch_size if hardware else None)
         pdf_path = resolve_input_path(args.input)
-        profile_config = converter.resolve_profile(args.profile, args.device)
+        profile_config = converter.resolve_profile(args.profile, args.device or (hardware and hardware.device))
     except (FileNotFoundError, ValueError, RuntimeError) as e:
         print(f"\n[ERROR] Pipeline failed: {e}", file=sys.stderr)
         sys.exit(1)
@@ -148,6 +166,8 @@ def main():
         "run_ocr", config_path=converter.config_path, profile=args.profile,
         profile_config=profile_config, device=profile_config["device"],
         cache_dir=Path(args.cache_dir), resume=args.resume, assets_mode=args.assets,
+        hardware_profile=hardware.record() if hardware else None,
+        output_mode=args.output_mode,
     )
 
     print("=" * 60)
@@ -160,6 +180,7 @@ def main():
         print(f"Resume: ENABLED (cache: {args.cache_dir})")
     print("=" * 60)
 
+    context_token = bind_context(run_id=recorder.run_id)  # ENV-11
     try:
         doc = converter.execute(
             file_path=str(pdf_path),
@@ -174,6 +195,7 @@ def main():
             assets_mode=args.assets,
             warmup=args.warmup_docling,
             cache_dir=args.cache_dir,
+            output_mode=args.output_mode,
         )
         recorder.add_document(doc)
         recorder.write(Path(args.output) / doc.document_id / "run_manifest.json")
@@ -241,6 +263,8 @@ def main():
             import traceback
             traceback.print_exc()
         sys.exit(1)
+    finally:
+        reset_context(context_token)
 
 if __name__ == "__main__":
     main()

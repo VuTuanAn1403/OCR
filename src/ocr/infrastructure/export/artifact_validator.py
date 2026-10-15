@@ -1,6 +1,7 @@
 """Validate the PDF-to-Markdown artifact contract after export."""
 
 import json
+import hashlib
 import re
 import unicodedata
 from pathlib import Path
@@ -9,6 +10,8 @@ from typing import Any, Dict, List
 from src.ocr.domain.models.table import TableStructure
 from src.ocr.domain.models.region import Region
 from src.ocr.infrastructure.export.markdown_exporter import ASSET_MODES, MarkdownExporter
+from src.ocr.infrastructure.export.output_contract import OUTPUT_MODES, RESULT_INDEX_SCHEMA
+from src.ocr.infrastructure.export.result_reader import load_document_json
 
 
 _IMAGE_LINK = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
@@ -17,6 +20,16 @@ _HTML_TABLE = re.compile(r"</?(?:table|thead|tbody|tr|td|th)\b", re.IGNORECASE)
 
 
 def validate_document_artifacts(
+    doc_dir: Path, ground_truth_manifest: Path | None = None
+) -> Dict[str, Any]:
+    try:
+        return _validate_document_artifacts(Path(doc_dir), ground_truth_manifest)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        return {"status": "FAIL", "counts": {}, "warnings": [],
+                "errors": [f"Artifact data cannot be read or is malformed ({type(exc).__name__}): {exc}"]}
+
+
+def _validate_document_artifacts(
     doc_dir: Path, ground_truth_manifest: Path | None = None
 ) -> Dict[str, Any]:
     errors: List[str] = []
@@ -52,6 +65,27 @@ def validate_document_artifacts(
         assets_mode = manifest.get("assets_mode", "png")
         if assets_mode not in ASSET_MODES:
             errors.append(f"manifest.json has unknown assets_mode {assets_mode!r}")
+        output_mode = manifest.get("output_mode", "legacy")
+        if output_mode not in OUTPUT_MODES:
+            errors.append(f"manifest.json has unknown output_mode {output_mode!r}")
+        result_json = doc_dir / "result.json"
+        # Legacy fixtures may omit result.json; a declared compact output
+        # always needs its index and all referenced pages.
+        if output_mode == "compact" or result_json.is_file():
+            try:
+                result = json.loads(result_json.read_text(encoding="utf-8"))
+                indexed = isinstance(result, dict) and result.get("schema_version") == RESULT_INDEX_SCHEMA
+                if indexed != (output_mode == "compact"):
+                    errors.append("result.json schema differs from manifest.json output_mode")
+                if output_mode == "compact" or (isinstance(result, dict) and "page_refs" in result):
+                    expanded = load_document_json(result_json)
+                    if expanded.get("selected_pages") != expected_pages:
+                        errors.append("result.json selected_pages differs from manifest.json")
+                    for key in ("document_id", "file_hash"):
+                        if expanded.get(key) != manifest.get(key):
+                            errors.append(f"result.json {key} differs from manifest.json")
+            except (OSError, ValueError, TypeError, KeyError) as exc:
+                errors.append(f"result.json cannot be read or its page index is invalid: {exc}")
         if len(page_files) != len(expected_pages):
             errors.append(
                 f"Page JSON count {len(page_files)} differs from selected pages {len(expected_pages)}"
@@ -290,67 +324,73 @@ _ELEMENT_ID = re.compile(r"^[^:\s]+:p\d{4}:[btfi]\d{4}$")
 
 def _validate_document_contracts(doc_dir: Path, errors: List[str], warnings: List[str],
                                  counts: Dict[str, Any]) -> None:
-    """C3.7: every id that document.json uses must exist in extraction.json.
-    Outputs written before V6 have no document.json and are skipped."""
-    document_path = doc_dir / "document.json"
-    extraction_path = doc_dir / "extraction.json"
-    if not document_path.is_file():
-        if extraction_path.is_file():
-            from src.ocr.infrastructure.export.contract_schema import ExtractionContract
-            try:
-                extraction = json.loads(extraction_path.read_text(encoding="utf-8"))
-                ExtractionContract.model_validate(extraction)
-            except (OSError, ValueError, TypeError) as exc:
-                errors.append(f"extraction.json is invalid: {exc}")
-                return
-            warnings.append("V6 structure is incomplete: extraction.json exists but document.json is missing")
+    from src.ocr.infrastructure.export.output_contract import OUTPUT_CONTRACT_VERSION, V6_ARTIFACTS
+    from src.ocr.infrastructure.export.contract_schema import validate_extraction, validate_contract_set
+
+    manifest = json.loads((doc_dir / "manifest.json").read_text(encoding="utf-8")) if (doc_dir / "manifest.json").is_file() else {}
+    declaration = manifest.get("output_contract")
+    is_v6 = declaration is not None or any((doc_dir / name).exists() for name in V6_ARTIFACTS)
+    counts["output_contract_policy"] = "v6" if is_v6 else "legacy"
+    if not is_v6:
         return
-    if not extraction_path.is_file():
-        errors.append("document.json exists but extraction.json is missing")
+    if declaration is not None and (not isinstance(declaration, dict)
+            or declaration.get("schema_version") != OUTPUT_CONTRACT_VERSION
+            or declaration.get("required_artifacts") != list(V6_ARTIFACTS)):
+        errors.append("manifest.json has an invalid output_contract declaration")
+    missing = [name for name in V6_ARTIFACTS if not (doc_dir / name).is_file()]
+    errors.extend(f"V6 required artifact {name} is missing" for name in missing)
+    payloads = {}
+    for name in V6_ARTIFACTS[:-1]:
+        if name in missing:
+            continue
+        try:
+            payloads[name] = json.loads((doc_dir / name).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            errors.append(f"{name} cannot be read: {exc}")
+    if "extraction.json" in payloads:
+        errors.extend(validate_extraction(payloads["extraction.json"]))
+    if missing or len(payloads) != 3:
         return
-    try:
-        extraction = json.loads(extraction_path.read_text(encoding="utf-8"))
-        document = json.loads(document_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        errors.append(f"V6 contracts cannot be read: {exc}")
-        return
-    from src.ocr.infrastructure.export.contract_schema import validate_contract_pair
-    contract_errors = validate_contract_pair(extraction, document)
+    extraction, structure, document = (payloads[name] for name in V6_ARTIFACTS[:-1])
+    contract_errors = validate_contract_set(extraction, document, structure)
+    errors.extend(contract_errors)
     if contract_errors:
-        errors.extend(contract_errors)
         return
-    ids = [item["id"] for page in extraction.get("pages", []) for item in page.get("items", [])]
-    known = set(ids)
-    if len(known) != len(ids):
-        errors.append("extraction.json has duplicate element ids")
-    malformed = [i for i in ids if not _ELEMENT_ID.match(i)]
-    if malformed:
-        errors.append(f"extraction.json has malformed ids, e.g. {malformed[0]}")
-
-    def check(ref: str, where: str) -> None:
-        if ref not in known:
-            errors.append(f"document.json {where} references unknown id {ref}")
-
-    sections = {s["section_id"] for s in document.get("sections", [])}
-    chunk_ids = [c["chunk_id"] for c in document.get("chunks", [])]
-    if len(set(chunk_ids)) != len(chunk_ids):
-        errors.append("document.json has duplicate chunk ids")
-    for section in document.get("sections", []):
-        for ref in section.get("heading_item_ids", []):
-            check(ref, f"section {section['section_id']}")
-    for chunk in document.get("chunks", []):
-        if chunk.get("section_id") not in sections:
-            errors.append(f"chunk {chunk['chunk_id']} is outside the section tree")
-        if not chunk.get("spans"):
-            errors.append(f"chunk {chunk['chunk_id']} has no spans")
-        for span in chunk.get("spans", []):
-            for ref in span.get("block_ids", []):
-                check(ref, f"chunk {chunk['chunk_id']}")
-    for key, field in (("tables", "table_id"), ("formulas", "formula_id"), ("images", "image_id")):
-        for entry in document.get(key, []):
-            check(entry[field], key)
-    counts["structure_sections"] = len(sections)
-    counts["structure_chunks"] = len(chunk_ids)
-    review = sum(1 for chunk in document.get("chunks", []) if chunk.get("needs_review"))
+    pages = [page["page"] for page in extraction["pages"]]
+    if pages != manifest.get("selected_pages"):
+        errors.append("extraction.json pages differ from manifest selected_pages")
+    if manifest.get("document_id", document["doc_id"]) != document["doc_id"]:
+        errors.append("document.json identity differs from manifest")
+    markdown_path = doc_dir / "document.md"
+    markdown = markdown_path.read_text(encoding="utf-8")
+    if isinstance(declaration, dict):
+        expected = declaration.get("markdown_sha256")
+        if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
+            errors.append("manifest.json output_contract is missing a valid Markdown hash")
+        elif hashlib.sha256(markdown_path.read_bytes()).hexdigest() != expected:
+            errors.append("document.md differs from the exported Markdown contract")
+    # Independently check semantic content, including older V6 outputs which
+    # did not yet declare a Markdown checksum. Escaping must not hide deletion.
+    def content(text):
+        return " ".join(re.sub(r"\\([#|>+*\-])", r"\1", unicodedata.normalize("NFC", text)).split())
+    body = content(markdown)
+    for section in document["sections"]:
+        for field in ("title", "title_en"):
+            text = section.get(field)
+            if text and content(text) not in body:
+                errors.append(f"document.md is missing {field} for section {section['section_id']}")
+    for chunk in document["chunks"]:
+        text = chunk["text_corrected"]
+        if chunk["type"] == "list_item" and text.strip():
+            text = "- " + text.lstrip()[1:].lstrip()
+        if chunk["type"] in ("paragraph", "list_item", "formula") and text and content(text) not in body:
+            errors.append(f"document.md is missing content for chunk {chunk['chunk_id']}")
+    counts["structure_sections"] = len(document["sections"])
+    counts["structure_chunks"] = len(document["chunks"])
+    counts["cells_with_coarse_bbox"] = sum(cell.get("bbox_source") == "table_fallback"
+            for table in document["tables"] for cell in table["cells"])
+    if counts["cells_with_coarse_bbox"]:
+        warnings.append(f"{counts['cells_with_coarse_bbox']} table cells have coarse table_fallback coordinates")
+    review = sum(1 for chunk in document["chunks"] if chunk.get("needs_review"))
     if review:
         warnings.append(f"{review} document chunks need review")

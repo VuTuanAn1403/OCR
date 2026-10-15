@@ -1,0 +1,26 @@
+{
+  "source_fingerprint": "79105a540a7fb484",
+  "records": [
+    {
+      "document": "first",
+      "worker_pid": 25832,
+      "requests": 1,
+      "wall_seconds": 57.102591400000165,
+      "tables": 1,
+      "formulas": 1
+    },
+    {
+      "document": "second",
+      "worker_pid": 25832,
+      "requests": 2,
+      "wall_seconds": 14.649960199999896,
+      "tables": 1,
+      "formulas": 1
+    }
+  ],
+  "same_worker_across_documents": true,
+  "closed_at_converter_exit": true,
+  "offline": true,
+  "fixture_scope": "native_table_formula_lifetime_only",
+  "eligible_for_quality_acceptance": false
+}

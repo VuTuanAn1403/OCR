@@ -1,0 +1,118 @@
+{
+  "schema": "financial-checks-real-probe-v1",
+  "method": "financial-checks-v2",
+  "source_fingerprint": "95cace67366d4be0",
+  "scope": "Real native pages extracted with the fast profile on CPU; flag-only checks, no GT. Shows behaviour (no false VIOLATION observed), not accuracy.",
+  "documents": {
+    "AGR_Baocaothuongnien_2025": {
+      "pdf_sha256": "d725d8b5b4992b165fef98164f0111dab161c960a5771b6fc5a13c09d775992e",
+      "pages": [
+        12,
+        14,
+        15,
+        22,
+        28
+      ],
+      "tables": 13,
+      "status_counts": {
+        "CONSISTENT": 2,
+        "VIOLATION": 1,
+        "INCONCLUSIVE": 1
+      },
+      "balance_identity": [
+        "INCONCLUSIVE"
+      ],
+      "checks": [
+        {
+          "table_id": "page_15_vector_table_1",
+          "check": "total_row",
+          "status": "CONSISTENT",
+          "label": "TỔNG CỘNG TÀI SẢN",
+          "decomposition": "letter_rows",
+          "reason": null
+        },
+        {
+          "table_id": "page_15_vector_table_1",
+          "check": "total_row",
+          "status": "CONSISTENT",
+          "label": "TỔNG CỘNG TÀI SẢN",
+          "decomposition": "letter_rows",
+          "reason": null
+        },
+        {
+          "table_id": "page_15_vector_table_1",
+          "check": "single_value_cell",
+          "status": "VIOLATION",
+          "label": null,
+          "decomposition": null,
+          "reason": "cells hold several amounts; rows were likely merged during extraction"
+        },
+        {
+          "table_id": "page_22_table_4",
+          "check": "total_row",
+          "status": "INCONCLUSIVE",
+          "label": null,
+          "decomposition": null,
+          "reason": "mixed Vietnamese and English number grouping"
+        }
+      ]
+    },
+    "ADP_Baocaothuongnien_2025": {
+      "pdf_sha256": "7e2eeb86a60c6c2cf5b62adfff99d25b5b3e3a28e5d7fc107d43ab520a0696d8",
+      "pages": [
+        17,
+        18,
+        22
+      ],
+      "tables": 3,
+      "status_counts": {
+        "INCONCLUSIVE": 5
+      },
+      "balance_identity": [
+        "INCONCLUSIVE"
+      ],
+      "checks": [
+        {
+          "table_id": "page_17_vector_table_1",
+          "check": "total_row",
+          "status": "INCONCLUSIVE",
+          "label": "Tổng giá trị tài sản",
+          "decomposition": null,
+          "reason": "fewer than two detail rows"
+        },
+        {
+          "table_id": "page_17_vector_table_1",
+          "check": "total_row",
+          "status": "INCONCLUSIVE",
+          "label": "Tổng giá trị tài sản",
+          "decomposition": null,
+          "reason": "fewer than two detail rows"
+        },
+        {
+          "table_id": "page_17_vector_table_1",
+          "check": "total_row",
+          "status": "INCONCLUSIVE",
+          "label": "Tổng giá trị tài sản",
+          "decomposition": null,
+          "reason": "fewer than two detail rows"
+        },
+        {
+          "table_id": "page_22_table_1",
+          "check": "total_row",
+          "status": "INCONCLUSIVE",
+          "label": "Tổng nguồn vốn",
+          "decomposition": null,
+          "reason": "blank or non-numeric detail cell"
+        },
+        {
+          "table_id": "page_22_table_1",
+          "check": "total_row",
+          "status": "INCONCLUSIVE",
+          "label": "Tổng nguồn vốn",
+          "decomposition": null,
+          "reason": "total cell is blank or not a number"
+        }
+      ]
+    }
+  }
+}

@@ -62,6 +62,32 @@ TABLE_HEADER_KEYWORDS = [
     "thời hạn", "thời hạn sử dụng", "năm nay", "năm trước", "số cuối năm", "số đầu năm", "số cuối kỳ", "số đầu kỳ", "chỉ số cpi", "chỉ số pmi"
 ]
 
+# Proposal V6 C3.5(g)/H5: a contents page laid out in columns aligns like a
+# table. Without a D1 Document-index label, a standalone contents title on the
+# page plus titles followed by bare page numbers identify it.
+_DOCUMENT_INDEX_TITLE = re.compile(r"(?:mục lục|table of contents|contents)")
+_PAGE_REFERENCE = re.compile(r"\d{1,3}")
+_AMOUNT_OR_RATIO = re.compile(r"\d{1,3}(?:[.,]\d{3})+|\d+,\d+|%")
+
+
+def has_document_index_title(blocks: List[TextBlock]) -> bool:
+    for block in blocks:
+        for line in (block.text or "").splitlines():
+            if _DOCUMENT_INDEX_TITLE.fullmatch(" ".join(unicodedata.normalize("NFC", line).casefold().split())):
+                return True
+    return False
+
+
+def looks_like_document_index(cells: List[TableCell]) -> bool:
+    """Rows of titles with bare page numbers and no amounts or ratios."""
+    filled = [cell for cell in cells if cell.text.strip()]
+    if any(_AMOUNT_OR_RATIO.search(cell.text) for cell in filled):
+        return False
+    rows = {cell.row_idx for cell in filled}
+    reference_rows = {cell.row_idx for cell in filled if _PAGE_REFERENCE.fullmatch(cell.text.strip())}
+    return len(reference_rows) >= 2 and len(reference_rows) >= 0.4 * len(rows)
+
+
 class DocumentLayoutEngine:
     """
     Analyzes document layout to detect genuine tables with explicit row/column boundaries.
@@ -77,14 +103,19 @@ class DocumentLayoutEngine:
         page_num: int,
         allow_vector_tables: bool = True,
         regions: Optional[List[Region]] = None,
+        rejections: Optional[List[Dict[str, Any]]] = None,
     ) -> List[TableStructure]:
         """
         Extracts genuine tables from page:
         1. Checks vector-defined tables from PyMuPDF.
         2. Reconstructs tables from IMAGE_TABLE regions (Phase C).
         3. Checks remaining structured OCR blocks using geometric alignment and table keywords.
+
+        Heuristic candidates rejected as a contents page are appended to
+        ``rejections``; their blocks stay text.
         """
         tables: List[TableStructure] = []
+        document_index_page = has_document_index_title(blocks)
 
         # 1. Vector tables
         if allow_vector_tables:
@@ -181,7 +212,9 @@ class DocumentLayoutEngine:
                 ocr_table = self._detect_table_from_ocr_blocks(
                     candidate_blocks,
                     page_num,
-                    table_id=f"page_{page_num}_table_{len(tables)+1}"
+                    table_id=f"page_{page_num}_table_{len(tables)+1}",
+                    document_index_page=document_index_page,
+                    rejections=rejections,
                 )
                 if not ocr_table:
                     break
@@ -315,7 +348,8 @@ class DocumentLayoutEngine:
             num_rows=len(logical_rows),
             num_cols=num_cols,
             cells=cells,
-            confidence=0.95
+            confidence=0.95,
+                            confidence_source="heuristic",
         )
 
     @staticmethod
@@ -432,7 +466,9 @@ class DocumentLayoutEngine:
         self,
         blocks: List[TextBlock],
         page_num: int,
-        table_id: Optional[str] = None
+        table_id: Optional[str] = None,
+        document_index_page: bool = False,
+        rejections: Optional[List[Dict[str, Any]]] = None,
     ) -> Optional[TableStructure]:
         if not blocks or len(blocks) < 5:
             return None
@@ -620,13 +656,23 @@ class DocumentLayoutEngine:
                             col_idx=c_idx,
                             text=cell_text,
                             bbox=r[0].bbox if r and r[0].bbox else [],
-                            confidence=0.95
+                            confidence=0.95,
+                            confidence_source="heuristic",
                         ))
                         if c_idx > max_col_found:
                             max_col_found = c_idx
 
             cells = self._merge_wrapped_numeric_rows(cells)
             if self._looks_like_signature_block(cells):
+                continue
+            if document_index_page and looks_like_document_index(cells):
+                # Later header candidates retry sub-ranges of the same rows;
+                # record each contents area once.
+                if rejections is not None and not any(
+                        r["bbox"][0] <= t_bbox[0] and r["bbox"][1] <= t_bbox[1]
+                        and r["bbox"][2] >= t_bbox[2] and r["bbox"][3] >= t_bbox[3] for r in rejections):
+                    rejections.append({"bbox": t_bbox, "reason": "document_index_layout",
+                                       "rows": len(table_rows), "method": "contents-title-page-refs-v1"})
                 continue
             num_rows = max((cell.row_idx for cell in cells), default=-1) + 1
             num_cols = max_col_found + 1
@@ -674,7 +720,8 @@ class DocumentLayoutEngine:
                 num_rows=num_rows,
                 num_cols=num_cols,
                 cells=cells,
-                confidence=0.92
+                confidence=0.92,
+                            confidence_source="heuristic",
             )
 
         return None
@@ -897,7 +944,8 @@ class DocumentLayoutEngine:
                     col_idx=c_idx,
                     text=text_val,
                     bbox=cell_box,
-                    confidence=0.90
+                    confidence=0.90,
+                            confidence_source="heuristic",
                 ))
 
         all_boxes = [b.bbox for r in rows for b in r if b.bbox]
@@ -914,5 +962,6 @@ class DocumentLayoutEngine:
             num_rows=len(rows),
             num_cols=num_cols,
             cells=cells,
-            confidence=0.88
+            confidence=0.88,
+                            confidence_source="heuristic",
         )

@@ -258,6 +258,7 @@ def test_cache_invalidates_old_artifacts_and_backend_options(tmp_path):
     runner = BatchOCRRunner.__new__(BatchOCRRunner)
     runner.force, runner.output_dir, runner.profile = False, tmp_path, "accuracy"
     runner.assets_mode = "png"
+    runner.output_mode = "legacy"
     runner.profile_config = {"profile": "accuracy", "docling": options}
     doc_dir = tmp_path / "fixture"
     (doc_dir / "pages").mkdir(parents=True)

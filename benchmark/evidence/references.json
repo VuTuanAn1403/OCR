@@ -1,0 +1,30 @@
+{
+  "retrieved_date": "2026-10-14",
+  "plugin": "Firecrawl",
+  "sources": [
+    {
+      "id": "COCOEVAL",
+      "title": "COCO Python API: cocoeval.py",
+      "url": "https://raw.githubusercontent.com/cocodataset/cocoapi/master/PythonAPI/pycocotools/cocoeval.py",
+      "supports": "Backend COCO precision/matching/iscrowd; explicit project ignore policy is separate"
+    },
+    {
+      "id": "SCIPY_BOOTSTRAP",
+      "title": "SciPy bootstrap documentation",
+      "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html",
+      "supports": "Paired resampling uses shared indices; reproducibility and degenerate CI need explicit treatment; company-cluster implementation is project code"
+    },
+    {
+      "id": "STATSMODELS_HOLM",
+      "title": "statsmodels.stats.multitest.multipletests",
+      "url": "https://www.statsmodels.org/stable/generated/statsmodels.stats.multitest.multipletests.html",
+      "supports": "Holm step-down Bonferroni correction; percentile CIs are not relabeled as corrected CIs"
+    },
+    {
+      "id": "PYMUPDF_TEXTTRACE",
+      "title": "PyMuPDF Page.get_texttrace",
+      "url": "https://pymupdf.readthedocs.io/en/latest/functions.html#Page.get_texttrace",
+      "supports": "Text rendering type 3 identifies invisible text; agreement and OCR-layer trust require separate evidence"
+    }
+  ]
+}

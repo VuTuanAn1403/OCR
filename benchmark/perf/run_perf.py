@@ -40,8 +40,12 @@ from src.ocr.application.convert_document import ConvertDocumentUseCase  # noqa:
 from src.ocr.cli.run_ocr import parse_pages_arg  # noqa: E402
 from src.ocr.infrastructure.export.markdown_exporter import ASSET_MODES  # noqa: E402
 from src.ocr.runtime.atomic_io import atomic_write_json  # noqa: E402
+from src.ocr.runtime.config import ConfigError  # noqa: E402
 from src.ocr.runtime.device import VALID_DEVICES  # noqa: E402
+from src.ocr.runtime.hardware import load_hardware, preparse_hardware  # noqa: E402
 from src.ocr.runtime.run_manifest import RunRecorder, file_sha256  # noqa: E402
+from src.ocr.infrastructure.export.output_contract import OUTPUT_MODES  # noqa: E402
+from src.ocr.runtime.structured_logging import LOG_FORMATS, configure_logging  # noqa: E402
 
 PERF_SCHEMA = "perf-v1"
 # Agreed CPU requirements (REQ-01..03), applied to p50 as proposed in ADJ-05.
@@ -143,8 +147,9 @@ def compare_with_previous(current: Dict[str, Any], previous: Dict[str, Any]) -> 
     if not same_hw:
         return result
     mismatches = []
-    for key in ("device", "assets_mode"):
-        if (key in current or key in previous) and current.get(key) != previous.get(key):
+    for key in ("device", "assets_mode", "output_mode"):
+        default = "legacy" if key == "output_mode" else None
+        if (key in current or key in previous) and current.get(key, default) != previous.get(key, default):
             mismatches.append(key)
     def workload(report):
         return {(page.get("document_id"), page.get("page"), page.get("page_type"))
@@ -219,14 +224,19 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
     document_ids = [Path(pdf).stem.casefold() for pdf in args.pdf]
     if len(document_ids) != len(set(document_ids)):
         raise ValueError("Performance inputs must have distinct document IDs (PDF filenames)")
-    converter = ConvertDocumentUseCase(args.config)
-    profile_config = converter.resolve_profile(args.profile, args.device)
+    hardware = load_hardware(args.hardware) if getattr(args, "hardware", None) else None
+    overrides = {"thread_budget": hardware.threads_per_worker, "batch_size": hardware.batch_size} if hardware else {}
+    converter = ConvertDocumentUseCase(args.config, **overrides)
+    output_mode = getattr(args, "output_mode", "legacy")
+    profile_config = converter.resolve_profile(args.profile, args.device or (hardware and hardware.device))
     output = Path(args.output)
     pages = parse_pages_arg(args.pages)
     fresh_cache = Path(tempfile.mkdtemp(prefix="ocr-perf-cache-"))
     recorder = RunRecorder("perf", config_path=converter.config_path, profile=args.profile,
                            profile_config=profile_config, device=profile_config["device"],
-                           cache_dir=fresh_cache, resume=False, assets_mode=args.assets)
+                           cache_dir=fresh_cache, resume=False, assets_mode=args.assets,
+                           hardware_profile=hardware.record() if hardware else None)
+    recorder.data["output_mode"] = output_mode
     fresh_cache.rmdir()
     recorder.data["cache"]["dir"] = "fresh empty temporary directory per repeat"
 
@@ -248,6 +258,7 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
                         file_path=pdf, profile_name=args.profile, pages=pages, output_dir=str(repeat_dir),
                         resume=False, benchmark=True, device=profile_config["device"],
                         assets_mode=args.assets, warmup=True, cache_dir=str(cache_dir),
+                        output_mode=output_mode,
                     )
                     recorder.add_document(doc)
                     doc_dir = repeat_dir / doc.document_id
@@ -296,6 +307,7 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
         "profile": args.profile,
         "device": profile_config["device"],
         "assets_mode": args.assets,
+        "output_mode": output_mode,
         "repeats": repeats,
         "page_latency": summarize_pages(all_pages, timeout, device=profile_config["device"]),
         "document_latency_seconds": _stats(latency),
@@ -379,18 +391,27 @@ def _peak_vram_mb() -> Optional[float]:
 
 
 def main() -> None:
+    try:
+        preparse_hardware()  # exports the profile's model/cache paths
+    except ConfigError as exc:
+        raise SystemExit(f"[ERROR] {exc}")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--hardware", default=None, help="Hardware profile name in config/hardware/ or YAML path")
     parser.add_argument("--pdf", nargs="+", required=True, help="PDF files of the (stratified) perf subset")
     parser.add_argument("--pages", default=None, help="Pages applied to every PDF, e.g. '1-10' (default: all)")
     parser.add_argument("--profile", default="balanced")
     parser.add_argument("--config", default=None, help="Profile config path (default: config/profiles.yaml)")
     parser.add_argument("--device", choices=VALID_DEVICES, default=None)
     parser.add_argument("--assets", choices=ASSET_MODES, default="png")
+    parser.add_argument("--output-mode", choices=OUTPUT_MODES, default="legacy")
     parser.add_argument("--repeat", type=int, default=3, help="Repeats for stable p50/p95 (6.5 uses 3)")
     parser.add_argument("--ground-truth", default=None, help="Measure quality on the same outputs")
     parser.add_argument("--compare", default=None, help="Earlier perf.json; flags >10%% p50 regressions")
     parser.add_argument("--output", required=True, help="Directory for outputs and perf.json")
+    parser.add_argument("--log-format", choices=LOG_FORMATS, default="text",
+                        help="text keeps console progress; json writes JSON lines to stderr")
     args = parser.parse_args()
+    configure_logging(args.log_format)
     if args.repeat < 1:
         parser.error("--repeat must be >= 1")
     report = run(args)

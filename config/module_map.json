@@ -393,10 +393,7 @@
       "stage": "P09"
     }
   },
-  "temporary_legacy_imports": {
-    "ocr_workers.phase_text->src.ocr.application.process_page": "V6.2 legacy profiles (native-first, two-up, region fallback) keep the frozen ProcessPageUseCase in phase A; V6.3 uses ocr_workers.text_page since P09b. Remove with V6.2 support.",
-    "ocr_workers.phase_export->src.ocr.application.export_document": "V6.2 legacy finalize path (finalize_document=True) counts keywords in the export phase; V6.3 never takes it."
-  },
+  "temporary_legacy_imports": {},
   "private_import_exceptions": {
     "ocr_pipeline.completion->ocr_artifacts.completion._EXCLUDED": "Keeps the attribute set of the frozen legacy module src.ocr.infrastructure.export.completion, which is an alias of ocr_pipeline.completion. Re-export only; no caller uses it. Remove with that alias, or with the next change that already alters the extraction closure (the file is part of it).",
     "ocr_pipeline.completion->ocr_artifacts.completion._artifact_files": "Same as ocr_pipeline.completion->ocr_artifacts.completion._EXCLUDED.",

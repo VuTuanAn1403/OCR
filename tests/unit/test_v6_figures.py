@@ -1,5 +1,6 @@
 """Figure captions and figure text in document.json (proposal V6 C3.6,
 review item R-09)."""
+from process_test_helpers import historical_profiles
 import copy
 import json
 
@@ -72,7 +73,7 @@ def _figure_pdf(path):
 
 def test_pipeline_links_the_caption_and_validates(tmp_path):
     pdf = _figure_pdf(tmp_path / "FIG_doc.pdf")
-    ConvertDocumentUseCase().execute(str(pdf), "fast", output_dir=str(tmp_path / "out"),
+    ConvertDocumentUseCase(config_path=historical_profiles()).execute(str(pdf), "fast", output_dir=str(tmp_path / "out"),
                                      cache_dir=str(tmp_path / "cache"), assets_mode="none")
     out = tmp_path / "out/FIG_doc"
     document = json.loads((out / "document.json").read_text(encoding="utf-8"))

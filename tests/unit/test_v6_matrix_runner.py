@@ -1,6 +1,7 @@
 """Proposal 9.4 matrix runner: one variable per configuration, every slot
 visible, B0 accepted only under the 6.5 conditions at a locked commit,
 failed documents counted as MISSING_OUTPUT, counts only from GT."""
+from process_test_helpers import historical_profiles
 import argparse
 import hashlib
 import json
@@ -96,7 +97,7 @@ GIT = {"commit": "abc", "dirty": True, "uncommitted_diff_sha256": "d"}
 def test_runs_record_counts_from_gt_and_keep_unrunnable_slots(tmp_path, workspace):
     pdf, gt, sources, inventory = workspace
     args = _args(tmp_path, [pdf], gt, sources)
-    converter = ConvertDocumentUseCase()
+    converter = ConvertDocumentUseCase(config_path=historical_profiles())
     f = run_configuration("F", args, converter, GIT, inventory)
     assert f["status"] == "COMPLETED" and f["schema"] == RUN_RECORD_SCHEMA
     assert f["quality_status"] == "COUNTS_RECORDED"
@@ -124,7 +125,7 @@ def test_runs_record_counts_from_gt_and_keep_unrunnable_slots(tmp_path, workspac
 def test_failed_document_contributes_missing_output_records(tmp_path, workspace):
     pdf, gt, sources, inventory = workspace
     absent = tmp_path / "MAT_report_absent" / "MAT_report.pdf"  # same document id, no file
-    record = run_configuration("F", _args(tmp_path, [absent], gt, sources), ConvertDocumentUseCase(), GIT,
+    record = run_configuration("F", _args(tmp_path, [absent], gt, sources), ConvertDocumentUseCase(config_path=historical_profiles()), GIT,
                                inventory)
     assert record["status"] == "FAILED" and record["failed_documents"] == ["MAT_report"]
     assert record["documents"][0]["traceback"]
@@ -142,10 +143,10 @@ def test_missing_output_records_use_reference_lengths(tmp_path):
 
 def test_unverified_company_or_unprefixed_gt_records_no_counts(tmp_path, workspace):
     pdf, gt, sources, inventory = workspace
-    record = run_configuration("F", _args(tmp_path, [pdf], gt, sources), ConvertDocumentUseCase(), GIT, {})
+    record = run_configuration("F", _args(tmp_path, [pdf], gt, sources), ConvertDocumentUseCase(config_path=historical_profiles()), GIT, {})
     assert record["quality_status"] == "NOT_EVALUATED" and "company_id" in record["quality_status_reason"]
     (gt / "mat_page_0001.txt").rename(gt / "page_0001.txt")
-    record = run_configuration("F", _args(tmp_path, [pdf], gt, sources), ConvertDocumentUseCase(), GIT, inventory)
+    record = run_configuration("F", _args(tmp_path, [pdf], gt, sources), ConvertDocumentUseCase(config_path=historical_profiles()), GIT, inventory)
     assert "document-prefixed" in record["quality_status_reason"] and "records_by_metric" not in record
 
 

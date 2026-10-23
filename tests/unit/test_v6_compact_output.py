@@ -1,11 +1,12 @@
 """Compact export preserves complete pages/contracts and rejects broken indexes."""
+from process_test_helpers import historical_profiles
 import json
 
 import pymupdf
 import pytest
 
 from src.ocr.application.convert_document import ConvertDocumentUseCase
-from src.ocr.cli.batch_runner import BatchOCRRunner
+from benchmark.baselines.legacy_cli.batch_runner import BatchOCRRunner
 from src.ocr.infrastructure.export.artifact_validator import validate_document_artifacts
 from src.ocr.infrastructure.export.completion import verify_completed
 from src.ocr.infrastructure.export.output_contract import V6_ARTIFACTS
@@ -23,7 +24,7 @@ def outputs(tmp_path):
             for row in range(20):
                 page.insert_text((40, 100 + row * 20), "Revenue 1.234.567 VND; profit (25.000); growth 12,5%.")
         doc.save(pdf)
-    converter = ConvertDocumentUseCase()
+    converter = ConvertDocumentUseCase(config_path=historical_profiles())
     for mode in ("legacy", "compact"):
         converter.execute(str(pdf), "fast", output_dir=str(tmp_path / mode),
                           cache_dir=str(tmp_path / "cache"), resume=mode == "compact",
@@ -94,4 +95,4 @@ def test_bad_compact_index_is_a_validation_failure(outputs, damage):
 
 def test_unsupported_output_mode_fails_before_opening_the_pdf(tmp_path):
     with pytest.raises(ValueError, match="output_mode"):
-        ConvertDocumentUseCase().execute("missing.pdf", output_mode="unknown")
+        ConvertDocumentUseCase(config_path=historical_profiles()).execute("missing.pdf", output_mode="unknown")

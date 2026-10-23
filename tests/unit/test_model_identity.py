@@ -59,7 +59,7 @@ def project(tmp_path, monkeypatch):
             encoding="utf-8")
 
     write_registry()
-    data = yaml.safe_load((ROOT / "config/profiles-v63.yaml").read_text(encoding="utf-8"))
+    data = yaml.safe_load((ROOT / "config/profiles.yaml").read_text(encoding="utf-8"))
     data["profiles"]["unified_gpu_full_ocr"]["model_registry"] = str(registry)
     config = tmp_path / "profiles-v63.yaml"
     config.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")

@@ -1,7 +1,7 @@
 import json
 import pytest
 from pathlib import Path
-from src.ocr.cli.batch_runner import BatchOCRRunner
+from benchmark.baselines.legacy_cli.batch_runner import BatchOCRRunner
 
 
 def test_review_queue_captures_region_risks_including_numeric(tmp_path):

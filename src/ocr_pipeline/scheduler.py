@@ -112,7 +112,7 @@ def stage_key(phase, request, identity, input_receipt, code, coordinator, enviro
         parts["docling_python"] = str(Path(request["docling_python"]).absolute())
     if phase == "export":
         parts.update({name: request.get(name) for name in ("config_path", "assets", "output_mode", "keywords_file")},
-                     finalize_document=bool(request.get("finalize_document", True)))
+                     finalize_document=bool(request.get("finalize_document", False)))
     return sha256_json_ascii({"schema_version": STAGE_KEY_SCHEMA, "stage": phase, "protocol": PROTOCOL, **parts})
 
 
@@ -120,7 +120,7 @@ def run_document(request, *, resume=False):
     validate_policy(request["device"], request.get("allow_cpu_benchmark", False))
     if "torch" in sys.modules:
         raise RuntimeError("GPU supervisor must start in a fresh interpreter without importing Torch")
-    from ocr_runtime.fingerprint import coordinator_fingerprint, extraction_fingerprint, legacy_stage, stage_fingerprint
+    from ocr_runtime.fingerprint import coordinator_fingerprint, extraction_fingerprint, stage_fingerprint
     snapshot = gpu_snapshot(request["device"])
     # Extraction code only (P11a): keyword/Excel edits keep phase checkpoints valid.
     identity = {"pdf": sha256(request["pdf"]), "source": extraction_fingerprint(),
@@ -149,11 +149,10 @@ def run_document(request, *, resume=False):
             upstream = None  # (phase, directory, key) of the stage this phase consumes
             coordinator = coordinator_fingerprint()
             for phase in PHASES:
-                legacy = legacy_stage(phase, request["config"], request.get("finalize_document", True))
-                code = stage_fingerprint(phase, legacy=legacy)
+                code = stage_fingerprint(phase)
                 input_receipt = upstream[1] / "done.json" if upstream else None
                 key = stage_key(phase, request, identity, input_receipt, code, coordinator, worker_environ)
-                stage = {"key": key, "code": code, "legacy": legacy, "reused": False}
+                stage = {"key": key, "code": code, "reused": False}
                 final = cache / phase / key if phase in CACHED_PHASES else root
                 if resume and phase in CACHED_PHASES and committed_stage(final, phase, key, input_receipt):
                     receipt = json.loads((final / "done.json").read_text(encoding="utf-8"))

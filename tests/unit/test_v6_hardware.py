@@ -1,4 +1,5 @@
 """Hardware profiles (proposal V6 ENV-01, review item R-05)."""
+from process_test_helpers import historical_profiles
 import sys
 
 import pytest
@@ -63,15 +64,15 @@ def test_preparse_reads_only_the_hardware_flag(tmp_path, monkeypatch):
 
 
 def test_batch_size_reaches_the_hashed_configuration():
-    base = ConvertDocumentUseCase().resolve_profile("balanced", "cpu")
-    tuned = ConvertDocumentUseCase(batch_size=4).resolve_profile("balanced", "cpu")
+    base = ConvertDocumentUseCase(config_path=historical_profiles()).resolve_profile("balanced", "cpu")
+    tuned = ConvertDocumentUseCase(config_path=historical_profiles(), batch_size=4).resolve_profile("balanced", "cpu")
     assert tuned["batch_size"] == 4 and config_hash(tuned) != config_hash(base)
     with pytest.raises(ValueError, match="batch_size"):
-        ConvertDocumentUseCase(batch_size=0)
+        ConvertDocumentUseCase(config_path=historical_profiles(), batch_size=0)
 
 
 def test_batch_cli_flags_win_over_the_hardware_profile(tmp_path, monkeypatch):
-    import src.ocr.cli.batch_runner as batch_runner
+    import benchmark.baselines.legacy_cli.batch_runner as batch_runner
     captured = {}
 
     class Runner:
@@ -96,7 +97,7 @@ def test_batch_cli_flags_win_over_the_hardware_profile(tmp_path, monkeypatch):
 
 def test_run_manifest_records_requested_and_measured_hardware(tmp_path):
     profile = load_hardware("cpu_local")
-    recorder = RunRecorder("test", config_path=ConvertDocumentUseCase().config_path, profile="fast",
+    recorder = RunRecorder("test", config_path=ConvertDocumentUseCase(config_path=historical_profiles()).config_path, profile="fast",
                            profile_config={"device": "cpu"}, device="cpu", cache_dir=tmp_path, resume=False,
                            assets_mode="none", hardware_profile=profile.record())
     assert recorder.data["hardware_profile"]["name"] == "cpu_local"

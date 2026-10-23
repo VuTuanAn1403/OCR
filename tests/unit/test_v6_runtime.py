@@ -8,9 +8,9 @@ import pytest
 from benchmark.perf.run_perf import (
     CPU_P50_LIMITS, compare_with_previous, page_category, percentile, summarize_pages,
 )
-from src.ocr.cli.batch_runner import BatchOCRRunner, parse_shard
-from src.ocr.cli.batch_runner import merge_shard_manifests, shard_report_dir
-from src.ocr.cli.run_ocr import parse_pages_arg, resolve_input_path
+from benchmark.baselines.legacy_cli.batch_runner import BatchOCRRunner, parse_shard
+from benchmark.baselines.legacy_cli.batch_runner import merge_shard_manifests, shard_report_dir
+from benchmark.baselines.legacy_cli.run_ocr import parse_pages_arg, resolve_input_path
 from src.ocr.infrastructure.cache.artifact_cache import ArtifactCache
 from src.ocr.infrastructure.export.completion import (
     MARKER_NAME, clear_completed, mark_completed, verify_completed,
@@ -59,9 +59,9 @@ def test_unknown_profile_lists_available_names():
         get_profile({"quick": {}}, "balanced")
 
 
-def test_repository_config_defines_the_three_documented_profiles():
+def test_repository_config_defines_only_the_unified_profile():
     _, profiles = load_profiles()
-    assert {"fast", "balanced", "accuracy"} <= set(profiles)
+    assert set(profiles) == {"unified_gpu_full_ocr"}
 
 
 def test_config_hash_is_order_independent_and_sensitive_to_values():
@@ -308,7 +308,7 @@ def test_batch_resume_rejects_same_filename_with_changed_pdf_or_model(tmp_path, 
     runner.profile, runner.assets_mode = "fast", "none"
     runner.output_mode = "legacy"
     runner.profile_config = {"profile": "fast"}
-    monkeypatch.setattr("src.ocr.cli.batch_runner.model_fingerprint", lambda config: "model1")
+    monkeypatch.setattr("benchmark.baselines.legacy_cli.batch_runner.model_fingerprint", lambda config: "model1")
     output = tmp_path / "doc"
     output.mkdir()
     manifest = {"profile": "fast", "configuration": runner.profile_config,
@@ -433,7 +433,7 @@ def test_batch_retries_layout_model_failure_when_docling_is_disabled(tmp_path, m
     runner.assets_mode = "none"
     runner.output_mode = "legacy"
     runner.profile_config = {"profile": "fast", "docling": {"enabled": False}}
-    monkeypatch.setattr("src.ocr.cli.batch_runner.model_fingerprint", lambda config: "actual-model")
+    monkeypatch.setattr("benchmark.baselines.legacy_cli.batch_runner.model_fingerprint", lambda config: "actual-model")
     doc_dir = tmp_path / "annual"
     (doc_dir / "pages").mkdir(parents=True)
     (doc_dir / "pages/page-0001.md").write_text("Content")

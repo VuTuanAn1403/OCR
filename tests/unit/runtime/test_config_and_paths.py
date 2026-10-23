@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 UNICODE_DIR = "thư mục có dấu cách"
 
 
-@pytest.mark.parametrize("name,pipeline", [("profiles.yaml", "legacy"), ("profiles-v62.yaml", "v6.2"),
+@pytest.mark.parametrize("name,pipeline", [("profiles.yaml", "v6.3"), ("profiles-v62.yaml", "v6.3"),
                                            ("profiles-v63.yaml", "v6.3")])
 def test_each_profile_file_declares_its_pipeline(name, pipeline):
     assert config.read_declaration(ROOT / "config" / name) == {"config_schema": config.CONFIG_SCHEMA,
@@ -25,7 +25,7 @@ def test_each_profile_file_declares_its_pipeline(name, pipeline):
 
 
 def profile_file(directory, name, pipeline=None):
-    source = (ROOT / "config/profiles-v63.yaml").read_text(encoding="utf-8")
+    source = (ROOT / "config/profiles.yaml").read_text(encoding="utf-8")
     body = source[source.index("profiles:"):]
     head = f"config_schema: ocr-profiles-v1\npipeline: {pipeline}\n" if pipeline else ""
     path = Path(directory) / name
@@ -33,21 +33,11 @@ def profile_file(directory, name, pipeline=None):
     return str(path)
 
 
-def test_cli_routes_on_the_declared_pipeline_before_the_file_name(tmp_path):
-    from src.ocr.cli.unified import use_v63
-    assert use_v63([]) is True
-    assert use_v63(["--backend", "legacy"]) is False
-    assert use_v63(["--profile", "fast"]) is False
-    assert use_v63(["--config", str(ROOT / "config/profiles-v63.yaml")]) is True
-    assert use_v63(["--config", str(ROOT / "config/profiles.yaml")]) is False
-    # The declaration decides, whatever the file is called.
-    assert use_v63(["--config", profile_file(tmp_path, "gpu.yaml", "v6.3")]) is True
-    assert use_v63(["--config=" + profile_file(tmp_path, "profiles-v63-copy.yaml", "legacy")]) is False
-    # Files without a declaration keep the historical file-name rule.
-    assert use_v63(["--config", profile_file(tmp_path, "profiles-v63-old.yaml")]) is True
-    assert use_v63(["--config", profile_file(tmp_path, "other.yaml")]) is False
-    # --backend still wins.
-    assert use_v63(["--backend", "gpu_two_phase", "--config", str(ROOT / "config/profiles.yaml")]) is True
+def test_versioned_paths_resolve_the_same_canonical_profile():
+    canonical, profiles = config.load_profiles(ROOT / "config/profiles.yaml")
+    assert list(profiles) == ["unified_gpu_full_ocr"]
+    for name in ("profiles-v62.yaml", "profiles-v63.yaml"):
+        assert config.load_profiles(ROOT / "config" / name) == (canonical, profiles)
 
 
 @pytest.mark.parametrize("head,message", [("pipeline: v7\n", "pipeline must be one of"),
@@ -80,10 +70,11 @@ def test_legacy_config_precedence(tmp_path, monkeypatch):
     assert config.resolve_config_path() == config.DEFAULT_CONFIG_PATH.resolve()
 
 
-def test_v63_cli_takes_its_own_config_and_ignores_ocr_config_path(tmp_path, monkeypatch):
+def test_cli_honors_ocr_config_path(tmp_path, monkeypatch):
     import ocr_pipeline.backend as backend
     from ocr_pipeline.cli import main_v63
-    monkeypatch.setenv("OCR_CONFIG_PATH", str(ROOT / "config/profiles.yaml"))
+    selected = profile_file(tmp_path, "selected.yaml", "v6.3")
+    monkeypatch.setenv("OCR_CONFIG_PATH", selected)
     seen = []
 
     def stop(config_path, profile, env_root, **kwargs):
@@ -93,7 +84,7 @@ def test_v63_cli_takes_its_own_config_and_ignores_ocr_config_path(tmp_path, monk
     monkeypatch.setattr(backend, "prepare_backend", stop)
     with pytest.raises(SystemExit):
         main_v63(argv=["--input", str(tmp_path), "--output", str(tmp_path / "out")])
-    assert seen == [paths.PROJECT_ROOT / "config/profiles-v63.yaml"]
+    assert seen == [Path(selected)]
 
 
 def test_storage_variables_and_defaults(tmp_path, monkeypatch):
@@ -168,7 +159,7 @@ def test_diagnosis_is_read_only_and_light(tmp_path):
     assert Path(cache["path"]) == (tmp_path / UNICODE_DIR).resolve()
     assert cache["source"] == "OCR_CACHE_DIR" and cache["exists"] is False
     declared = {Path(row["file"]).name: row["declaration"].get("pipeline") for row in report["profile_files"]}
-    assert declared["profiles-v63.yaml"] == "v6.3" and declared["profiles.yaml"] == "legacy"
+    assert set(declared.values()) == {"v6.3"}
     cli = subprocess.run([sys.executable, "-m", "ocr_runtime.diagnose"], cwd=tmp_path, env=env, capture_output=True,
                          text=True, encoding="utf-8", timeout=120)
     assert cli.returncode == 0 and "[layout]" in cli.stdout

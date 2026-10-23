@@ -39,12 +39,11 @@ def main():
     lock = next(path for path in request["lock_hashes"] if path.endswith("text-gpu.lock"))
     verify_installed_lock(lock)
     # No mutable weights, locks or source may be reused after phase A starts.
-    from ocr_runtime.fingerprint import extraction_fingerprint, legacy_stage, stage_fingerprint
+    from ocr_runtime.fingerprint import extraction_fingerprint, stage_fingerprint
     if request["identity"]["source"] != extraction_fingerprint():
         raise RuntimeError("Source changed during document phases; restart with a new generation")
-    legacy = legacy_stage(args.phase, request["config"], request.get("finalize_document", True))
     stages = request.get("stages")
-    if stages and stages[args.phase]["code"] != stage_fingerprint(args.phase, legacy=legacy):
+    if stages and stages[args.phase]["code"] != stage_fingerprint(args.phase):
         raise RuntimeError(f"Phase {args.phase} code differs from its stage key; restart with a new generation")
     for path, digest in {**request["model_hashes"], **request["lock_hashes"]}.items():
         if sha256(path) != digest:
@@ -63,7 +62,7 @@ def main():
     # inside this phase's own closure, or its stage key could miss a change.
     from ocr_runtime.fingerprint import assert_loaded_code_fingerprinted, assert_loaded_code_in_stage
     assert_loaded_code_fingerprinted()
-    assert_loaded_code_in_stage(args.phase, legacy=legacy)
+    assert_loaded_code_in_stage(args.phase)
 
 
 if __name__ == "__main__":

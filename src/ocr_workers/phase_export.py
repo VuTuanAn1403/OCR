@@ -10,6 +10,8 @@ from ocr_workers.stage_io import read, receipt_path, stage_dir, write_receipt
 
 
 def run_export(request):
+    from ocr_runtime.pipeline_policy import validate_phase_request
+    validate_phase_request(request)
     from ocr_contracts.document import ExtractedDocument
     from ocr_contracts.page import ExtractedPage
     from ocr_contracts.quality import DocumentQualityReport
@@ -26,9 +28,7 @@ def run_export(request):
         return sum(values)/len(values) if values else None
     counts = {"native": 0, "mixed": 0, "ocr": 0}
     for p in pages:
-        kind = p.page_type.value
-        counts["ocr" if request["config"].get("ocr_source_policy") == "gpu_ocr_only_v1" else
-               "native" if kind in ("NATIVE_TEXT", "PRODUCT_SHOWCASE_COLLAGE") else "mixed" if kind == "MIXED" else "ocr"] += 1
+        counts["ocr"] += 1
     quality = DocumentQualityReport(document_id=Path(request["pdf"]).stem, total_pages=a["total_pages"],
         mean_native_score=mean([p.quality.native_text_score for p in pages]) or 0,
         mean_ocr_confidence=mean([p.quality.ocr_confidence for p in pages]),
@@ -56,15 +56,8 @@ def run_export(request):
             phase: {key: stages[phase][key] for key in ("key", "reused", "receipt_sha256", "produced_by_generation",
                                                          "historical_seconds") if key in stages[phase]}
             for phase in ("text", "structure", "export")}
-    if request.get("finalize_document", True):
-        # V6.2 legacy finalize path (cli/gpu_runner.py) counts keywords in this
-        # phase. V6.3 never takes it: keywords are counted by the document owner.
-        from src.ocr.application.export_document import ExportDocumentUseCase as exporter
-        options = {"keywords_file": request.get("keywords_file")}
-    else:
-        exporter, options = DocumentExporter, {}
-    output = exporter.execute(document, Path(request["output"]), assets_mode=request.get("assets", "png"),
-                              output_mode=request.get("output_mode", "compact"), **options)
+    output = DocumentExporter.execute(document, Path(request["output"]), assets_mode=request.get("assets", "png"),
+                                      output_mode=request.get("output_mode", "compact"))
     validation = read(output / "validation.json")
     if validation["status"] == "FAIL":
         raise RuntimeError(f"Export validation failed: {validation['errors'][:5]}")

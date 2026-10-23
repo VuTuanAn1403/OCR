@@ -1,5 +1,6 @@
 """Hidden OCR-layer agreement on SCANNED_WITH_OCR_LAYER pages (proposal V6
 C2.1, review item R-07): measured on sampled lines, never used to route."""
+from process_test_helpers import historical_profiles
 import json
 
 import pymupdf
@@ -60,7 +61,7 @@ def test_layer_and_ocr_disagreement_is_measured_not_called_cer(tmp_path):
 
 def test_scan_with_layer_is_still_ocred_and_the_agreement_is_recorded(tmp_path):
     pdf = _scan_with_layer(tmp_path / "LAYER_scan.pdf")
-    doc = ConvertDocumentUseCase().execute(str(pdf), "fast", output_dir=str(tmp_path / "out"),
+    doc = ConvertDocumentUseCase(config_path=historical_profiles()).execute(str(pdf), "fast", output_dir=str(tmp_path / "out"),
                                            cache_dir=str(tmp_path / "cache"), assets_mode="none")
     page = json.loads((tmp_path / "out/LAYER_scan/pages/page-0001.json").read_text(encoding="utf-8"))
     assert doc.pages[0].page_type.value == "SCANNED_WITH_OCR_LAYER"

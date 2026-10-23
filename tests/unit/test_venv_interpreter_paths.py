@@ -101,17 +101,15 @@ def test_v63_preflight_and_requests_keep_worker_venv_paths(tmp_path, monkeypatch
 def test_v62_launcher_keeps_worker_venv_paths(tmp_path, monkeypatch, worker_paths):
     from src.ocr.cli import gpu_runner
     env_root, workers, base = worker_paths
-    registry_fixture(tmp_path)
-    monkeypatch.setattr(gpu_runner, "ROOT", tmp_path)
     pdf = tmp_path / "input.pdf"
     pdf.touch()
     monkeypatch.setattr(sys, "argv", ["gpu_runner", str(pdf), "--env-root", str(env_root),
         "--config", str(ROOT / "config/profiles-v62.yaml"), "--keywords-file", str(ROOT / "config/keywords.txt")])
     requests = []
-    monkeypatch.setattr(gpu_runner, "run_document", lambda request, **kwargs: requests.append(request) or {})
+    monkeypatch.setattr(gpu_runner, "_main", lambda batch: requests.append((batch, list(sys.argv))))
     gpu_runner.main()
-    assert requests[0]["text_python"] == str(workers["text"].absolute())
-    assert requests[0]["docling_python"] == str(workers["docling"].absolute())
+    assert requests == [(False, list(sys.argv))]
+    assert str(env_root) in requests[0][1]
 
 
 def test_docling_cache_distinguishes_envs_with_shared_base_interpreter(monkeypatch, worker_paths):

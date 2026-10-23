@@ -1,3 +1,4 @@
+from process_test_helpers import historical_profiles
 from unittest.mock import Mock
 
 from src.ocr.application.convert_document import ConvertDocumentUseCase
@@ -12,7 +13,7 @@ def test_shared_docling_client_is_kept_between_documents_and_invalidated_on_mode
     model = Mock(return_value="weights-1")
     monkeypatch.setattr(models, "model_fingerprint", model)
     monkeypatch.setattr(fingerprint, "source_fingerprint", lambda: "code-1")
-    converter = ConvertDocumentUseCase(reuse_docling=True)
+    converter = ConvertDocumentUseCase(config_path=historical_profiles(), reuse_docling=True)
     config = {"primary_engine": "rapidocr", "docling": {"enabled": True, "device": "cpu"}}
     first = converter._docling_client(config)
     assert converter._docling_client(config) is first
@@ -36,7 +37,7 @@ def test_disabling_docling_releases_previously_shared_worker(monkeypatch):
     monkeypatch.setattr(docling_structure, "DoclingStructureExtractor", Mock(return_value=client))
     monkeypatch.setattr(models, "model_fingerprint", lambda _: "weights")
     monkeypatch.setattr(fingerprint, "source_fingerprint", lambda: "code")
-    converter = ConvertDocumentUseCase(reuse_docling=True)
+    converter = ConvertDocumentUseCase(config_path=historical_profiles(), reuse_docling=True)
     converter._docling_client({"docling": {"enabled": True}})
     assert converter._docling_client({"docling": {"enabled": False}}) is None
     client.close.assert_called_once()

@@ -1,4 +1,5 @@
 """Local Vietnamese OCR retains quality settings while bounding inference work."""
+from process_test_helpers import historical_profiles
 from unittest.mock import Mock
 
 import numpy as np
@@ -12,7 +13,7 @@ from src.ocr.infrastructure.ocr.vietnamese_seq2seq_engine import VietnameseSeq2S
 def test_local_uses_vietocr_and_preserves_balanced_review_settings_without_docling(monkeypatch):
     from src.ocr.runtime import device
     monkeypatch.setattr(device, "cuda_available", lambda: False)
-    converter = ConvertDocumentUseCase()
+    converter = ConvertDocumentUseCase(config_path=historical_profiles())
     local = converter.resolve_profile("local")
     balanced = converter.resolve_profile("balanced", "cpu")
     assert local["primary_engine"] == "vietocr" and local["device"] == "cpu"
@@ -23,7 +24,7 @@ def test_local_uses_vietocr_and_preserves_balanced_review_settings_without_docli
                 "min_confidence", "numeric_retry_threshold", "native_quality", "orientation_fallback_enabled"):
         assert local[key] == balanced[key], key
     assert balanced["docling"]["enabled"] and balanced["docling"]["formulas"] and balanced["docling"]["tables"]
-    tuned = ConvertDocumentUseCase(thread_budget=3, batch_size=2).resolve_profile("local")
+    tuned = ConvertDocumentUseCase(config_path=historical_profiles(), thread_budget=3, batch_size=2).resolve_profile("local")
     assert (tuned["num_threads"], tuned["batch_size"]) == (3, 2)
     assert not tuned["docling"]["enabled"]
 
@@ -34,7 +35,7 @@ def test_local_uses_vietocr_and_preserves_balanced_review_settings_without_docli
 def test_local_auto_uses_cuda_when_available_and_respects_explicit_cpu(monkeypatch, cuda_available, override, expected):
     from src.ocr.runtime import device
     monkeypatch.setattr(device, "cuda_available", lambda: cuda_available)
-    converter = ConvertDocumentUseCase()
+    converter = ConvertDocumentUseCase(config_path=historical_profiles())
     assert converter.profiles["local"]["device"] == "auto"
     config = converter.resolve_profile("local", override)
     assert config["device"] == expected
@@ -48,7 +49,7 @@ def test_local_explicit_cuda_fails_if_not_available(monkeypatch):
     from src.ocr.runtime import device
     monkeypatch.setattr(device, "cuda_available", lambda: False)
     with pytest.raises(RuntimeError, match="no CUDA device"):
-        ConvertDocumentUseCase().resolve_profile("local", "cuda")
+        ConvertDocumentUseCase(config_path=historical_profiles()).resolve_profile("local", "cuda")
 
 
 @pytest.mark.parametrize("batch_size", [0, -1, True, 1.5])
@@ -162,9 +163,9 @@ def test_timeout_drains_shared_model_before_returning_and_retains_failure():
 @pytest.mark.parametrize("options, expected_profile", [([], "local"), (["--profile", "fast"], "fast"),
                                                       (["--profile", "balanced"], "balanced")])
 def test_monitor_runner_defaults_to_local_and_forwards_overrides(tmp_path, monkeypatch, options, expected_profile):
-    from scripts import run_batch_test_with_monitoring as script
+    from benchmark.baselines.legacy_cli import run_batch_test_with_monitoring as script
     (tmp_path / "sample.pdf").write_bytes(b"not-opened-by-stub")
-    converter = ConvertDocumentUseCase()
+    converter = ConvertDocumentUseCase(config_path=historical_profiles())
     runner = Mock(profile_config=converter.resolve_profile(expected_profile, "cpu"))
     factory = Mock(return_value=runner)
     monkeypatch.setattr(script, "BatchOCRRunner", factory)
@@ -182,7 +183,7 @@ def test_monitor_runner_defaults_to_local_and_forwards_overrides(tmp_path, monke
 
 
 def test_invalid_monitor_profile_does_not_start_background_monitor(tmp_path, monkeypatch):
-    from scripts import run_batch_test_with_monitoring as script
+    from benchmark.baselines.legacy_cli import run_batch_test_with_monitoring as script
     (tmp_path / "sample.pdf").write_bytes(b"not-opened")
     monitor = Mock()
     monkeypatch.setattr(script, "SystemMonitor", monitor)

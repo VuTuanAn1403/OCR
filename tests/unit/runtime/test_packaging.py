@@ -60,7 +60,8 @@ def installed_copy(site):
     resources = site / "ocr_runtime/resources"
     resources.mkdir()
     for name, source in (("docling_structure_worker.py", "scripts/docling_structure_worker.py"),
-                         ("keywords.txt", "config/keywords.txt"), ("profiles-v63.yaml", "config/profiles-v63.yaml")):
+                         ("keywords.txt", "config/keywords.txt"), ("profiles.yaml", "config/profiles.yaml"),
+                         ("profiles-v63.yaml", "config/profiles-v63.yaml")):
         shutil.copyfile(ROOT / source, resources / name)
 
 

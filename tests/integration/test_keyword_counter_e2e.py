@@ -1,3 +1,4 @@
+from process_test_helpers import historical_profiles
 import json
 from pathlib import Path
 import subprocess
@@ -44,7 +45,7 @@ def test_native_pipeline_exports_keyword_excel_and_preserves_completion(tmp_path
     _native_pdf(pdf)
     keywords = tmp_path / "keywords.txt"
     keywords.write_text("artificial intelligence\ncloud computing\nabsent\n", encoding="utf-8")
-    with ConvertDocumentUseCase() as converter:
+    with ConvertDocumentUseCase(config_path=historical_profiles()) as converter:
         document = converter.execute(str(pdf), profile_name="fast", output_dir=str(tmp_path / "out"),
             assets_mode="none", output_mode=mode, keywords_file=str(keywords),
             cache_dir=str(tmp_path / "cache"))

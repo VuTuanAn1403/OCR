@@ -29,7 +29,7 @@ $supervisedStatus = [ordered]@{
     process_id = $PID
     started_at_utc = [DateTime]::UtcNow.ToString('o')
     output_directory = $supervisedRun
-    profile = 'balanced'
+    profile = 'unified_gpu_full_ocr'
     resume = $false
     full_batch = [bool]$FullBatch
     accuracy_status = 'NOT_EVALUATED_NO_INDEPENDENT_GROUND_TRUTH'
@@ -69,10 +69,9 @@ try {
     Save-SupervisedStatus
     Write-Host "Execution owner: $RequestedBy; output: $supervisedRun"
     if (-not (Test-Path -LiteralPath $supervisedPython -PathType Leaf)) { throw 'Project Python environment is missing.' }
-    Invoke-SupervisedStep 'sample' @('run_ocr.py', 'examples/sample.pdf', '--profile', 'balanced', '--pages', '1', '--output', (Join-Path $supervisedRun 'sample'), '--benchmark', '--debug')
-    Invoke-SupervisedStep 'real_pdf' @('run_ocr.py', 'inputs/LBM_Baocaothuongnien_2020.pdf', '--profile', 'balanced', '--pages', '1-4', '--output', (Join-Path $supervisedRun 'real_pdf'), '--benchmark', '--debug')
+    Invoke-SupervisedStep 'gpu_smoke' @('scripts/smoke_unified.py', '--output', (Join-Path $supervisedRun 'smoke'))
     if ($FullBatch) {
-        Invoke-SupervisedStep 'full_batch' @('run_batch.py', '--input', 'inputs', '--output', (Join-Path $supervisedRun 'batch'), '--excel', (Join-Path $supervisedRun 'batch_benchmark.xlsx'), '--profile', 'balanced', '--force')
+        Invoke-SupervisedStep 'full_batch' @('run_batch.py', '--input', 'inputs', '--output', (Join-Path $supervisedRun 'batch'))
     }
     $supervisedStatus.status = 'COMPLETED'
     $supervisedStatus.finished_at_utc = [DateTime]::UtcNow.ToString('o')

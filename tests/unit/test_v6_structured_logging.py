@@ -1,5 +1,6 @@
 """JSON logging with run/document/page/stage/worker context (proposal V6
 ENV-11, review item R-04)."""
+from process_test_helpers import historical_profiles
 import io
 import json
 import logging
@@ -64,7 +65,7 @@ def test_pipeline_progress_is_structured_end_to_end(json_logs, tmp_path):
         document.new_page().insert_text((72, 100), "Doanh thu tang truong manh trong nam", fontsize=14)
         document.save(pdf)
     with sl.log_context(run_id="run-7"):
-        ConvertDocumentUseCase().execute(str(pdf), "fast", output_dir=str(tmp_path / "out"),
+        ConvertDocumentUseCase(config_path=historical_profiles()).execute(str(pdf), "fast", output_dir=str(tmp_path / "out"),
                                          cache_dir=str(tmp_path / "cache"), assets_mode="none")
     records = [r for r in _records(json_logs) if r["logger"] == "ocr.progress"]
     assert records and all(r["run_id"] == "run-7" and r["doc_id"] == "LOG_doc" and r["page"] == 1

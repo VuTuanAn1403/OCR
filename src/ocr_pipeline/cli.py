@@ -1,23 +1,36 @@
-"""V6.3 command line (CPU-only): full-page GPU OCR batch, recount and
-analysis runs. `src.ocr.cli.unified` dispatches here unless a historical
-profile, config or `--backend legacy` selects the frozen legacy CLI.
-"""
+"""One CPU-only application CLI: full-page GPU OCR, recount and analysis."""
 import argparse
 from pathlib import Path
 
 from ocr_runtime.paths import PROJECT_ROOT, default_keywords_path
+from ocr_runtime.config import ConfigError, resolve_config_path
+from ocr_runtime.pipeline_policy import BACKEND, PROFILE
 
 
-def main_v63(batch=True, argv=None):
-    parser = argparse.ArgumentParser(description="V6.3: full-page GPU OCR -> keyword Excel -> committed matrix -> next PDF")
+def _backend(value):
+    if value != BACKEND:
+        raise argparse.ArgumentTypeError("Legacy backend was retired. Use the unified pipeline without --backend.")
+    return value
+
+
+def _profile(value):
+    if value != PROFILE:
+        raise argparse.ArgumentTypeError(f"Historical profiles were retired. Use --profile {PROFILE} or omit --profile.")
+    return value
+
+
+def main(batch=True, argv=None):
+    parser = argparse.ArgumentParser(allow_abbrev=False,
+        description="Unified OCR: full-page GPU OCR -> Docling -> keyword Excel -> committed matrix. "
+                    "One pipeline; legacy profiles/backends are retired.")
     if batch:
         parser.add_argument("--input",type=Path,default=PROJECT_ROOT/"inputs")
     else:
         parser.add_argument("input",type=Path)
     parser.add_argument("--output",type=Path,default=None,help="default: output/v63")
-    parser.add_argument("--backend",choices=("gpu_two_phase",),default="gpu_two_phase")
-    parser.add_argument("--config",type=Path,default=PROJECT_ROOT/"config/profiles-v63.yaml")
-    parser.add_argument("--profile",default="unified_gpu_full_ocr")
+    parser.add_argument("--backend",type=_backend,default=BACKEND,help=argparse.SUPPRESS)
+    parser.add_argument("--config",type=Path,default=None,help="argument, OCR_CONFIG_PATH, then config/profiles.yaml")
+    parser.add_argument("--profile",type=_profile,default=PROFILE)
     parser.add_argument("--device",choices=("cuda",),default="cuda")
     parser.add_argument("--env-root",type=Path,default=PROJECT_ROOT/".venv-v62")
     parser.add_argument("--keywords-file",type=Path,default=default_keywords_path())
@@ -57,7 +70,11 @@ def main_v63(batch=True, argv=None):
     from ocr_keywords.contract import dictionary_snapshot
     dictionary_snapshot(args.keywords_file,args.keyword_set_version)
     from ocr_pipeline.backend import prepare_backend, verify_runtime, GPUProcessor
-    backend = prepare_backend(args.config,args.profile,args.env_root)
+    try:
+        config_path = resolve_config_path(args.config)
+        backend = prepare_backend(config_path,args.profile,args.env_root)
+    except ConfigError as exc:
+        parser.error(str(exc))
     processor = GPUProcessor(backend,assets=args.assets,output_mode=args.output_mode)
     from ocr_pipeline.batch import process_batch
     result = process_batch(args.input,args.output,{"backend":backend,"assets":args.assets,"output_mode":args.output_mode,
@@ -66,3 +83,7 @@ def main_v63(batch=True, argv=None):
         resume=args.resume,retry_failed=args.retry_failed,force_ocr=args.force_ocr,max_attempts=args.max_attempts,
         identity_check=lambda:verify_runtime(backend))
     return 1 if not result["documents"] or any(r.get("outcome")!="SUCCEEDED" for r in result["documents"]) else 0
+
+
+# Stable spelling for existing importers, without a second implementation.
+main_v63 = main

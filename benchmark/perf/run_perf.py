@@ -226,7 +226,7 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
         raise ValueError("Performance inputs must have distinct document IDs (PDF filenames)")
     hardware = load_hardware(args.hardware) if getattr(args, "hardware", None) else None
     overrides = {"thread_budget": hardware.threads_per_worker, "batch_size": hardware.batch_size} if hardware else {}
-    converter = ConvertDocumentUseCase(args.config, **overrides)
+    converter = ConvertDocumentUseCase(args.config or str(Path(__file__).resolve().parents[1] / "baselines/profiles-v61.yaml"), **overrides)
     output_mode = getattr(args, "output_mode", "legacy")
     profile_config = converter.resolve_profile(args.profile, args.device or (hardware and hardware.device))
     output = Path(args.output)

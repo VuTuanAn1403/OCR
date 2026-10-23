@@ -7,7 +7,8 @@ import subprocess
 import sys
 import uuid
 
-from ocr_runtime.config import declared_pipeline, load_profiles, get_profile
+from ocr_runtime.config import ConfigError, declared_pipeline, load_profiles, get_profile
+from ocr_runtime.pipeline_policy import PIPELINE, validate_profile
 from ocr_contracts.protocol import DOCUMENT_WORKER_PROTOCOL
 from ocr_pipeline.scheduler import ROOT, sha256
 from ocr_runtime.fingerprint import code_fingerprints, source_fingerprint
@@ -27,18 +28,10 @@ def prepare_backend(config_path, profile, env_root, *, preflight=True):
         # into their separately locked runtimes (P10 decision).
         raise ValueError("NOT_SUPPORTED: V6.3 GPU backend runs from a checkout, not from an installed wheel")
     path, profiles = load_profiles(config_path)
-    if declared_pipeline(path) not in (None, "v6.3"):
-        raise ValueError(f"{path} declares pipeline {declared_pipeline(path)!r}; V6.3 needs a v6.3 profile file")
+    if declared_pipeline(path) != PIPELINE:
+        raise ConfigError(f"{path} declares pipeline {declared_pipeline(path)!r}; V6.3 needs a v6.3 profile file")
     config = copy.deepcopy(get_profile(profiles, profile))
-    required = {"device":"cuda","native_first":False,"ocr_scope":"all_pages","ocr_source_policy":"gpu_ocr_only_v1",
-                "bridge_policy":"raster-plus-gpu-text-v1"}
-    if any(config.get(k) != v for k,v in required.items()) or config.get("runtime",{}).get("scheduler") != "document_two_phase_v1":
-        raise ValueError("V6.3 requires CUDA, native_first=false, all_pages and gpu_ocr_only_v1")
-    if (not config.get("docling",{}).get("strict_gpu") or not config["docling"].get("verify_placement")
-            or not config["docling"].get("enabled") or config["docling"].get("ocr")
-            or config.get("two_up_detection_enabled") or config.get("multi_region_detection_enabled")
-            or config.get("orientation_fallback_enabled")):
-        raise ValueError("V6.3 requires verified Docling GPU and original full-page OCR geometry")
+    validate_profile(config)
     registry_path = (ROOT/config["model_registry"]).resolve()
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
     # Pin the files the phases will load, located like the engines locate

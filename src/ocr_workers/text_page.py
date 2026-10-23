@@ -30,6 +30,7 @@ from ocr_recognition.inference import predict_image_counted
 from ocr_recognition.diacritic_retry import retry_diacritic_blocks
 from ocr_recognition.ocr_layer_agreement import page_layer_agreement
 from ocr_runtime.config import document_layout_settings, furniture_settings
+from ocr_runtime.pipeline_policy import TEXT_REQUIRED
 from ocr_runtime.structured_logging import log_context, progress
 from ocr_structure.enrichment import drop_blocks_inside_tables, enrich_structures
 from ocr_workers.page_engines import build_page_engines, validate_page_config
@@ -37,9 +38,7 @@ from ocr_workers.page_engines import build_page_engines, validate_page_config
 logger = logging.getLogger(__name__)
 
 # Settings of the V6.3 phase A path; anything else belongs to another orchestrator.
-_REQUIRED = {"ocr_source_policy": "gpu_ocr_only_v1", "native_first": False, "two_up_detection_enabled": False,
-             "multi_region_detection_enabled": False, "orientation_fallback_enabled": False,
-             "fallback_enabled": False}
+_REQUIRED = TEXT_REQUIRED
 
 
 class TextPageExtractor:

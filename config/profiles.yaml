@@ -1,138 +1,50 @@
-# Declaration (P12): the CLI routes on `pipeline`, never on this file's name.
+# Canonical configuration of the one supported pipeline; versioned files are aliases.
 config_schema: ocr-profiles-v1
-pipeline: legacy
+pipeline: v6.3
 profiles:
-  fast:
-    profile: fast
-    document_layout: {method: legacy, furniture: {method: document_context_v3}}
-    native_first: true
-    render_dpi: 150
-    primary_engine: rapidocr
-    docling:
-      enabled: false
-    layout: light
-    fallback_enabled: false
-    batch_size: 16
-    orientation_fallback_enabled: true
-    vector_table_min_native_score: 0.90
-    skip_vector_tables_on_restricted_pdf: true
-    two_up_detection_enabled: true
-    multi_region_detection_enabled: true
-    page_timeout_seconds: 120
-    native_quality:
-      reliable_threshold: 0.90
-      review_threshold: 0.70
-
-  # Personal workstation: retain the v4.3 balanced Vietnamese recognition path.
-  # Use CUDA for VietOCR when available, otherwise CPU; --device cpu forces CPU.
-  # Heuristic/vector tables remain available; Docling structure models are opt-in
-  # through balanced/accuracy for machines with more resources.
-  local:
-    profile: local
-    document_layout: {method: legacy, furniture: {method: document_context_v3}}
-    device: auto
-    native_first: true
+  unified_gpu_full_ocr:
+    profile: unified_gpu_full_ocr
+    device: cuda
+    native_first: false
+    ocr_scope: all_pages
+    ocr_source_policy: gpu_ocr_only_v1
+    bridge_policy: raster-plus-gpu-text-v1
+    document_layout: {method: region_tree_graph_v1, furniture: {method: document_context_v3}}
     render_dpi: 180
+    # Dispose of the normalized view after each phase; keep input bytes/hash.
+    pdf_render_policy: normalized_memory_v1
     primary_engine: vietocr
     num_threads: 2
     batch_size: 4
-    layout: standard
-    docling:
-      enabled: false
-    fallback_enabled: false
-    fallback_only_on_review: true
-    max_fallback_region_ratio: 0.15
-    max_fallback_regions_per_page: 5
-    fallback_upscale_dpi: 250
-    min_confidence: 0.80
-    diacritic_retry: {enabled: true, upscale_dpi: 300, max_regions_per_page: 5, max_region_ratio: 0.15}
-    numeric_retry_threshold: 0.85
-    # Match balanced's bounded orientation policy on the local workstation.
-    orientation_fallback_enabled: false
-    vector_table_min_native_score: 0.90
-    skip_vector_tables_on_restricted_pdf: true
-    two_up_detection_enabled: true
-    multi_region_detection_enabled: true
-    page_timeout_seconds: 120
-    native_quality:
-      reliable_threshold: 0.90
-      review_threshold: 0.70
-
-  balanced:
-    profile: balanced
-    document_layout: {method: legacy, furniture: {method: document_context_v3}}
-    native_first: true
-    render_dpi: 180
-    primary_engine: vietocr
-    layout: standard
+    layout: accurate
+    model_registry: models/v62/runtime-models.json
+    runtime:
+      scheduler: document_two_phase_v1
+      phase_timeout_seconds: 14400
+      lease_timeout_seconds: 60
     docling:
       enabled: true
-      page_selection: auto
+      page_selection: all
       tables: true
       formulas: true
       table_mode: fast
-      num_threads: 6
+      num_threads: 2
       ocr: false
-      ocr_languages: [vi, en]
       formula_max_tokens: 256
-      timeout_seconds: 90
+      timeout_seconds: 360
       startup_timeout_seconds: 900
       on_error: fallback
+      strict_gpu: true
+      verify_placement: true
     fallback_enabled: false
-    fallback_only_on_review: true
-    max_fallback_region_ratio: 0.15
-    max_fallback_regions_per_page: 5
-    fallback_upscale_dpi: 250
-    min_confidence: 0.80
+    # Same GPU recognizer; only lines with Vietnamese diacritic review hints.
     diacritic_retry: {enabled: true, upscale_dpi: 300, max_regions_per_page: 5, max_region_ratio: 0.15}
+    min_confidence: 0.80
     numeric_retry_threshold: 0.85
-    batch_size: 8
     orientation_fallback_enabled: false
     vector_table_min_native_score: 0.90
     skip_vector_tables_on_restricted_pdf: true
     two_up_detection_enabled: false
     multi_region_detection_enabled: false
-    page_timeout_seconds: 120
-    native_quality:
-      reliable_threshold: 0.90
-      review_threshold: 0.70
-
-  accuracy:
-    profile: accuracy
-    document_layout: {method: legacy, furniture: {method: document_context_v3}}
-    native_first: true
-    render_dpi: 180
-    primary_engine: vietocr
-    layout: accurate
-    docling:
-      enabled: true
-      page_selection: auto
-      tables: true
-      formulas: true
-      table_mode: fast
-      num_threads: 6
-      ocr: false
-      ocr_languages: [vi, en]
-      formula_max_tokens: 256
-      timeout_seconds: 120
-      startup_timeout_seconds: 900
-      on_error: fallback
-    fallback_enabled: true
-    adaptive_second_pass: true
-    max_fallback_region_ratio: 0.25
-    max_fallback_regions_per_page: 30
-    fallback_upscale_dpi: 300
-    regional_retry_enabled: true
-    min_confidence: 0.85
-    diacritic_retry: {enabled: true, upscale_dpi: 300, max_regions_per_page: 10, max_region_ratio: 0.25}
-    numeric_retry_threshold: 0.85
-    batch_size: 8
-    orientation_fallback_enabled: true
-    vector_table_min_native_score: 0.92
-    skip_vector_tables_on_restricted_pdf: true
-    two_up_detection_enabled: true
-    multi_region_detection_enabled: true
     page_timeout_seconds: 180
-    native_quality:
-      reliable_threshold: 0.92
-      review_threshold: 0.75
+    native_quality: {reliable_threshold: 0.90, review_threshold: 0.70}

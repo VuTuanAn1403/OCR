@@ -120,7 +120,7 @@ def run(pdf: Path, pages: List[int], output: Path, *, font: Optional[Path] = Non
     font_info = font_record(font)
     if not font_info["covers_vietnamese"]:
         raise ValueError(f"Font {font} lacks Vietnamese glyphs; hidden words would not round-trip")
-    converter = ConvertDocumentUseCase(config)
+    converter = ConvertDocumentUseCase(config or str(Path(__file__).resolve().parents[1] / "baselines/profiles-v61.yaml"))
     # Preserve the paired OCR evidence before tables consume their blocks.
     # Use an inspectable config file, included in the run's provenance.
     profiles = copy.deepcopy(converter.profiles)

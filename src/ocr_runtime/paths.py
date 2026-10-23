@@ -11,7 +11,7 @@ from pathlib import Path
 
 # A checkout is recognized by these files together, never by depth or by a
 # lone pyproject.toml. OCR_PROJECT_ROOT overrides the search.
-CHECKOUT_MARKERS = ("pyproject.toml", "config/profiles-v63.yaml", "src/ocr_runtime/paths.py")
+CHECKOUT_MARKERS = ("pyproject.toml", "config/profiles.yaml", "src/ocr_runtime/paths.py")
 # Where the code is, independent of PROJECT_ROOT (P10). PACKAGE_ROOT holds the
 # `ocr_*` packages: `<checkout>/src`, or site-packages of an installed wheel.
 # LEGACY_ROOT holds the legacy namespace package `src` (`src.ocr`): the

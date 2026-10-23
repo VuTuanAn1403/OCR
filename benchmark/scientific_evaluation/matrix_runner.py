@@ -430,7 +430,7 @@ def main() -> None:
             parser.error(f"--ground-truth {args.ground_truth} is not a directory")
         if not args.sources:
             parser.error("--ground-truth needs --sources with verified company IDs for paired counts")
-    converter = ConvertDocumentUseCase(args.config)
+    converter = ConvertDocumentUseCase(args.config or str(Path(__file__).resolve().parents[1] / "baselines/profiles-v61.yaml"))
     git = git_state()
     inventory = _company_inventory(args.sources)
     summary = {}

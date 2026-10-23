@@ -12,7 +12,7 @@ import pymupdf
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-NOTEBOOK = ROOT / "kaggle/ocr_pdf_kaggle.ipynb"
+NOTEBOOK = ROOT / "benchmark/baselines/ocr_pdf_legacy_kaggle.ipynb"
 
 
 def _cells():
@@ -133,53 +133,14 @@ def test_batch_checks_file_status_instead_of_only_process_exit_code(tmp_path):
 
 
 @pytest.mark.parametrize("full_batch", [False, True])
-def test_native_notebook_flow_creates_excel_and_download_zip(tmp_path, full_batch):
-    namespace, cells = _namespace()
-    inputs = tmp_path / "input"
-    inputs.mkdir()
-    with pymupdf.open() as source:
-        page = source.new_page()
-        page.insert_textbox((40, 40, 550, 700), (
-            "Annual financial report for shareholders and investors. "
-            "The company uses artificial intelligence and cloud computing. "
-            "We invest in artificial intelligence for business growth. "
-            "Management develops technology to improve customer service and operations. "
-            "Revenue and profit are reviewed by the board each year.\n") * 4)
-        source.save(inputs / "annual.pdf")
-    results = tmp_path / "results"
-    runtime = tmp_path / "runtime"
-    namespace.update(PROFILE="fast", DEVICE="cpu", INPUT_ROOT=inputs,
-        RUNTIME_ROOT=runtime, RESULTS_DIR=results, LOG_DIR=results / "logs",
-        SMOKE_DIR=results / "smoke", BATCH_DIR=results / "documents",
-        ARCHIVE_PATH=tmp_path / "results.zip", RUN_FULL_BATCH=full_batch, ASSETS="none")
-    exec(cells["inputs"], namespace)
-    keywords = tmp_path / "keywords.txt"
-    keywords.write_text("artificial intelligence\nabsent\n", encoding="utf-8")
-    hardware = runtime / "hardware.yaml"
-    hardware.write_text(json.dumps({"hardware": {"name": "notebook-test", "device": "cpu",
-        "workers": 1, "threads_per_worker": 1, "batch_size": 4}}), encoding="utf-8")
-    environment = os.environ.copy()
-    environment.pop("OCR_CONFIG_PATH", None)
-    environment.update(PYTHONIOENCODING="utf-8", PYTHONPATH=str(ROOT),
-        OCR_OUTPUT_DIR=str(results / "documents"), OCR_CACHE_DIR=str(runtime / "cache"))
-    namespace.update(REPO_DIR=ROOT, OCR_PYTHON=Path(sys.executable), CACHE_DIR=runtime / "cache",
-        KEYWORDS_PATH=keywords, HARDWARE_PATH=hardware, RUNTIME_ENV=environment)
-    for name in ("commands", "smoke", "batch", "matrix"):
-        exec(cells[name], namespace)
-    assert namespace["SMOKE_SUMMARY"][0]["matches"] == 8
-    if full_batch:
-        assert namespace["BATCH_SUMMARY"][0]["matches"] == 8
-        assert namespace["MATRIX_PATH"].name == "MA_TRAN_DEM_TU_KHOA_1_FILES.xlsx"
-    else:
-        assert namespace["MATRIX_PATH"] is None
-    _functions(cells["download"], namespace)
-    archive = namespace["bundle_results"](results, tmp_path / "results.zip")
-    with ZipFile(archive) as bundle:
-        names = bundle.namelist()
-        assert "smoke/annual/count_keywords.xlsx" in names
-        assert ("documents/annual/count_keywords.xlsx" in names) == full_batch
-        assert ("MA_TRAN_DEM_TU_KHOA_1_FILES.xlsx" in names) == full_batch
-        assert not any(".venv" in name or name.startswith("models/") for name in names)
+def test_archived_notebook_execution_is_rejected(tmp_path, full_batch):
+    command = [sys.executable, str(ROOT / ("run_batch.py" if full_batch else "run_ocr.py"))]
+    if not full_batch:
+        command.append(str(tmp_path / "fixture.pdf"))
+    result = subprocess.run([*command, "--profile", "fast", "--device", "cpu"],
+                            capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert result.returncode == 2
+    assert "Historical profiles were retired" in result.stderr
 
 
 def _matrix_namespace(tmp_path, texts, *, completed=True):

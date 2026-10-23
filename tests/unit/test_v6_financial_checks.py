@@ -334,7 +334,7 @@ def test_schema_rejects_merged_continuations_and_unknown_statuses():
 
 
 def test_violations_and_candidates_reach_the_batch_review_queue(tmp_path):
-    from src.ocr.cli.batch_runner import consistency_review_items
+    from benchmark.baselines.legacy_cli.batch_runner import consistency_review_items
     head = ["Chỉ tiêu", "Năm 2025", "Năm 2024"]
     first = table([head, ["1. Doanh thu A", "1.000", "900"], ["2. Doanh thu B", "234", "100"],
                    ["Tổng cộng", "1.300", "1.000"]], table_id="p1_t1", page=1, bbox=(50, 500, 545, 800))

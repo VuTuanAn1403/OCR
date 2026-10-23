@@ -29,7 +29,7 @@ def export(tmp_path, assets):
     for phase, receipt in (("text", run["text_receipt"]), ("structure", run["structure_receipt"])):
         files = {"structure/page-0001.json": "fixture"} if phase == "structure" else {}
         (job / f"{phase}.done.json").write_text(json.dumps({**receipt, "files": files}), encoding="utf-8")
-    request = {"job_dir": str(job), "pdf": str(PROJECT_ROOT / run["source"]), "config": run["config"],
+    request = {"job_dir": str(job), "pdf": str(PROJECT_ROOT / run["source"]), "config": {**__import__("ocr_runtime.config", fromlist=["load_profiles"]).load_profiles()[1]["unified_gpu_full_ocr"], **run["config"]}, "device": "cuda",
                "config_path": str(PROJECT_ROOT / "config/profiles-v63.yaml"), "generation": run["generation"],
                "identity": {"pdf": run["pdf_sha256"]}, "model_hashes": {}, "lock_hashes": {},
                "output": str(tmp_path / "out"), "assets": assets, "output_mode": "compact",

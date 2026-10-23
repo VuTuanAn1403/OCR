@@ -48,9 +48,9 @@ test = ["pytest>=8.0.0,<=9.1.1", "import-linter==2.5.2", "apted>=1.0.3", "scipy>
 research = ["apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0", "pycocotools>=2.0.7,<3"]
 dev = ["import-linter==2.5.2"]
 
-# Install editable (`pip install -e ".[legacy]"`) for development and the V6.3
-# GPU backend: its workers load the code from the checkout. A wheel supports
-# keywords, reporting, analysis runs and the legacy CPU path.
+# Install editable (`pip install -e ".[app]"`) for the unified supervisor.
+# GPU workers load this checkout using their own locks. A wheel supports
+# keywords, reporting and verified analysis runs; extraction needs a checkout.
 [project.scripts]
 ocrpdf = "src.ocr.cli.unified:run_one"
 ocrpdf-batch = "src.ocr.cli.unified:run_batch"
@@ -131,8 +131,6 @@ type = "forbidden"
 source_modules = ["ocr_workers"]
 forbidden_modules = ["ocr_keywords", "ocr_reporting", "ocr_pipeline", "src.ocr.application.count_keywords",
                      "src.ocr.application.export_document"]
-# V6.2 legacy finalize path only (finalize_document=True); V6.3 never runs it.
-ignore_imports = ["ocr_workers.phase_export -> src.ocr.application.export_document"]
 
 [[tool.importlinter.contracts]]
 id = "runtime"
@@ -204,9 +202,6 @@ name = "ocr_workers run one GPU phase: no keywords, reporting, ledger or pipelin
 type = "forbidden"
 source_modules = ["ocr_workers"]
 forbidden_modules = ["src", "ocr_keywords", "ocr_reporting", "ocr_pipeline", "openpyxl"]
-# Temporary (config/module_map.json "temporary_legacy_imports").
-ignore_imports = ["ocr_workers.phase_text -> src.ocr.application.process_page",
-                  "ocr_workers.phase_export -> src.ocr.application.export_document"]
 
 [[tool.importlinter.contracts]]
 id = "pipeline"

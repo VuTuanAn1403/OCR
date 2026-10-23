@@ -71,12 +71,12 @@ def collect(verify_models=False):
     models, models_source = _env_or("OCR_MODELS_DIR", root / "models")
     lease, lease_source = _env_or("OCR_GPU_LEASE_DIR", root / ".cache/gpu-leases")
     v63_cache_source = "OCR_CACHE_DIR" if os.getenv("OCR_CACHE_DIR") else "default"
-    profile_files = [(paths.default_profile_path(), "legacy default (OCR_CONFIG_PATH not applied here)"),
-                     (root / "config/profiles-v62.yaml" if paths.is_checkout() else None, "V6.2"),
+    profile_files = [(paths.default_profile_path(), "canonical unified profile"),
+                     (root / "config/profiles-v62.yaml" if paths.is_checkout() else None, "retired path alias"),
                      (root / "config/profiles-v63.yaml" if paths.is_checkout()
-                      else paths.runtime_resource("profiles-v63.yaml"), "V6.3 default")]
+                      else paths.runtime_resource("profiles-v63.yaml"), "canonical path alias")]
     if os.getenv("OCR_CONFIG_PATH"):
-        profile_files.insert(0, (Path(os.environ["OCR_CONFIG_PATH"]).expanduser(), "OCR_CONFIG_PATH (legacy)"))
+        profile_files.insert(0, (Path(os.environ["OCR_CONFIG_PATH"]).expanduser(), "OCR_CONFIG_PATH"))
     suffix = "Scripts/python.exe" if os.name == "nt" else "bin/python"
     return {
         "layout": {"source_tree": paths.source_tree(), "package_root": str(paths.PACKAGE_ROOT),
@@ -84,9 +84,8 @@ def collect(verify_models=False):
                    "project_root_source": _project_root_source(), "is_checkout": paths.is_checkout(),
                    "code_roots": [str(p) for p in paths.code_roots()], "python": sys.executable},
         "paths": [
-            _entry("data (legacy CLI)", paths.data_dir(), "OCR_DATA_DIR" if os.getenv("OCR_DATA_DIR") else "default, working directory"),
-            _entry("output (legacy CLI)", paths.output_dir(), "OCR_OUTPUT_DIR" if os.getenv("OCR_OUTPUT_DIR") else "default, working directory"),
-            _entry("page cache (legacy CLI)", paths.cache_dir(), "OCR_CACHE_DIR" if os.getenv("OCR_CACHE_DIR") else "default, working directory"),
+            _entry("data", paths.data_dir(), "OCR_DATA_DIR" if os.getenv("OCR_DATA_DIR") else "default, working directory"),
+            _entry("output", paths.output_dir(), "OCR_OUTPUT_DIR" if os.getenv("OCR_OUTPUT_DIR") else "default, working directory"),
             _entry("V6.3 job and stage cache", paths.v63_cache_root(), v63_cache_source),
             _entry("models", models, models_source),
             _entry("VietOCR weights", Path(os.getenv("VIETOCR_MODEL_DIR") or models / "vietocr"),

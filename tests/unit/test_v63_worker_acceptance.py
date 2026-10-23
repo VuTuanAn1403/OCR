@@ -231,8 +231,7 @@ def test_non_docling_failure_in_phase_b_still_fails(tmp_path, monkeypatch):
         raise OSError("bridge font unreadable")
     monkeypatch.setattr(ocr_bridge, "ocr_bridge", broken_bridge)
     request = {"job_dir": str(job), "pdf": str(source), "generation": "g",
-               "config": {"ocr_source_policy": "gpu_ocr_only_v1", "render_dpi": 72,
-                          "docling": {"enabled": True, "on_error": "fallback"}}}
+               "device": "cuda", "config": __import__("ocr_runtime.config", fromlist=["load_profiles"]).load_profiles()[1]["unified_gpu_full_ocr"]}
     with pytest.raises(OSError, match="bridge font unreadable"):
         gpu_phase_worker.run_structure(request)
     assert not (job / "structure.done.json").exists()

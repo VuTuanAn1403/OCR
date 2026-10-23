@@ -17,7 +17,7 @@ from src.ocr.infrastructure.cache.artifact_cache import ArtifactCache
 from src.ocr.infrastructure.export.completion import mark_completed
 from src.ocr.infrastructure.export.manifest_exporter import ManifestExporter
 from src.ocr.runtime.atomic_io import atomic_write_json
-from src.ocr.runtime.config import get_profile, load_profiles
+from src.ocr.runtime.config import ConfigError, declared_pipeline, get_profile, load_profiles
 from src.ocr.runtime.device import resolve_device
 from src.ocr.runtime.structured_logging import log_context
 
@@ -78,6 +78,9 @@ class ConvertDocumentUseCase:
                  thread_budget: Optional[int] = None, batch_size: Optional[int] = None):
         # Single config source; a missing file is an error (ENV-13).
         self.config_path, self.profiles = load_profiles(config_path)
+        if declared_pipeline(self.config_path) == "v6.3":
+            raise ConfigError("Historical ConvertDocumentUseCase was retired for production. "
+                              "Use run_ocr.py or ocr_pipeline.cli; historical research needs an explicit baseline config.")
         if thread_budget is not None and (type(thread_budget) is not int or thread_budget < 1):
             raise ValueError("thread_budget must be a positive integer")
         if batch_size is not None and (type(batch_size) is not int or batch_size < 1):

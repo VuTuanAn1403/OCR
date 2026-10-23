@@ -24,6 +24,8 @@ def phase_b_status_accepted(info, on_error):
 
 
 def run_structure(request):
+    from ocr_runtime.pipeline_policy import validate_phase_request
+    validate_phase_request(request)
     from ocr_pdf_io.document_view import processing_pdf
     # Phase B maps Docling output onto phase A text; it never loads recognition
     # code (ProcessPageUseCase/VietOCR) into this coordinating process.
@@ -43,28 +45,22 @@ def run_structure(request):
             for name in sorted(checkpoint["files"]):
                 page = ExtractedPage.model_validate(read(text_root / name))
                 before = time.perf_counter()
-                if request["config"].get("ocr_source_policy") == "gpu_ocr_only_v1":
-                    from ocr_structure.ocr_bridge import ocr_bridge
-                    with ocr_bridge(pdf[page.page_num-1], page, request["config"]["render_dpi"],
-                                    font_path=request["config"].get("bridge_font")) as bridge:
-                        page.blocks, page.tables, page.formulas = enrich_structures(
-                            extractor, bridge[0], page.page_num, page.page_type, page.blocks,
-                            page.tables, page.regions, page.metadata)
-                    page.metadata["ocr_structure_bridge"] = {"policy":"raster-plus-gpu-text-v1",
-                        "native_text_layer_copied":False,"generation":request["generation"]}
-                    for structure in [*page.tables,*page.formulas]:
-                        structure.provenance["text_source_policy"] = "gpu_ocr_only_v1"
-                        structure.provenance["bridge"] = "raster-plus-gpu-text-v1"
-                    for table in page.tables:
-                        # Embedded font cmaps may extract a space glyph as NBSP.
-                        # Undo that bridge encoding artifact; never change digits.
-                        for cell in table.cells:
-                            cell.text = cell.text.replace("\u00a0", " ")
-                        table.provenance["bridge_whitespace"] = "nbsp-to-ocr-space"
-                else:
+                from ocr_structure.ocr_bridge import ocr_bridge
+                with ocr_bridge(pdf[page.page_num-1], page, request["config"]["render_dpi"],
+                                font_path=request["config"].get("bridge_font")) as bridge:
                     page.blocks, page.tables, page.formulas = enrich_structures(
-                        extractor, pdf[page.page_num-1], page.page_num, page.page_type, page.blocks,
+                        extractor, bridge[0], page.page_num, page.page_type, page.blocks,
                         page.tables, page.regions, page.metadata)
+                page.metadata["ocr_structure_bridge"] = {"policy":"raster-plus-gpu-text-v1",
+                    "native_text_layer_copied":False,"generation":request["generation"]}
+                for structure in [*page.tables,*page.formulas]:
+                    structure.provenance["text_source_policy"] = "gpu_ocr_only_v1"
+                    structure.provenance["bridge"] = "raster-plus-gpu-text-v1"
+                for table in page.tables:
+                    # Restore OCR whitespace after font encoding, never digits.
+                    for cell in table.cells:
+                        cell.text = cell.text.replace("\u00a0", " ")
+                    table.provenance["bridge_whitespace"] = "nbsp-to-ocr-space"
                 info = page.metadata["docling_structure"]
                 if not phase_b_status_accepted(info, request["config"]["docling"].get("on_error")):
                     raise RuntimeError(f"Incomplete Docling phase B: {info}")

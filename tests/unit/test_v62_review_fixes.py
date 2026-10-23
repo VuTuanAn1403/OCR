@@ -1,4 +1,5 @@
 """Regression probes for the seven V6.2 review findings."""
+from process_test_helpers import historical_profiles
 import copy
 import json
 from unittest.mock import Mock
@@ -69,7 +70,7 @@ def test_docling_formula_sources_are_owned_and_rendered_once(tmp_path, profile, 
     lock_text_evidence(page.blocks, doc.file_hash, 1, page.metadata)
     source_id = page.blocks[0].source_id
     formula = Formula(formula_id="f1", page=1, latex=latex, bbox=[45, 195, 455, 235])
-    options = copy.deepcopy(load_profiles()[1][profile]["docling"])
+    options = copy.deepcopy(load_profiles(historical_profiles())[1][profile]["docling"])
     processor = object.__new__(ProcessPageUseCase)
     processor.structure_extractor = Mock(enabled=True, options=options)
     processor.structure_extractor.cache_fingerprint.return_value = "formula-fixture"
@@ -195,7 +196,7 @@ def test_valid_page_number_sequences_move_to_metadata(sequence):
 
 
 def test_profile_defaults_are_legacy_and_invalid_settings_are_rejected():
-    assert all(document_layout_settings(profile)["method"] == "legacy" for profile in load_profiles()[1].values())
+    assert all(document_layout_settings(profile)["method"] == "legacy" for profile in load_profiles(historical_profiles())[1].values())
     assert document_layout_settings({})["method"] == "legacy"
     for bad in (None, "xycut", {"method": "typo"}, {"method": NEW, "min_gap": 0}):
         with pytest.raises(ConfigError):

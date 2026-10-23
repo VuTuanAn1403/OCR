@@ -303,9 +303,11 @@ def test_each_phase_closure_holds_its_own_code_only():
     assert names("structure") <= {n for n, _ in fingerprint.closure_entries("extraction")}
 
 
-def test_legacy_routes_add_their_frozen_entry_modules():
-    assert "src/ocr/application/process_page.py" in names("text", legacy=True) - names("text")
-    assert "src/ocr/application/export_document.py" in names("export", legacy=True) - names("export")
+def test_no_phase_can_restore_a_legacy_route():
+    for phase in fingerprint.STAGES:
+        with pytest.raises(ValueError, match="retired"):
+            names(phase, legacy=True)
+        assert not any(name.startswith("src/ocr/") for name in names(phase))
 
 
 @pytest.mark.parametrize("extra,ok", [("", True), ("import ocr_recognition.blocks\n", False)])

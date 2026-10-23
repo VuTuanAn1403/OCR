@@ -1,3 +1,4 @@
+from process_test_helpers import historical_profiles
 import pytest
 from pathlib import Path
 from src.ocr.application.convert_document import ConvertDocumentUseCase
@@ -9,7 +10,7 @@ def test_clw_benchmark_four_pages(tmp_path, monkeypatch):
     # The page cache and Docling job files stay with the test, not in the checkout's .cache.
     monkeypatch.setenv("OCR_CACHE_DIR", str(tmp_path / "cache"))
 
-    converter = ConvertDocumentUseCase()
+    converter = ConvertDocumentUseCase(config_path=historical_profiles())
     out_dir = tmp_path / "output"
 
     doc = converter.execute(

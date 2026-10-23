@@ -14,7 +14,7 @@ import pytest
 
 from src.ocr.application.process_page import ProcessPageUseCase
 from src.ocr.application.export_document import ExportDocumentUseCase
-from src.ocr.cli.batch_runner import BatchOCRRunner
+from benchmark.baselines.legacy_cli.batch_runner import BatchOCRRunner
 from src.ocr.domain.models.document import ExtractedDocument
 from src.ocr.domain.models.page import ExtractedPage
 from src.ocr.domain.models.quality import DocumentQualityReport, PageQualityReport

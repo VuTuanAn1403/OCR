@@ -29,9 +29,10 @@ page = json.loads((fixture / "text_page-0001.json").read_text(encoding="utf-8"))
 atomic_write_json(root / "text" / "page-0001.json", page)
 atomic_write_json(root / "text.done.json", {"files": {"text/page-0001.json": "fixture"}})
 run = json.loads((fixture / "run.json").read_text(encoding="utf-8"))
-config = run["config"]
+from ocr_runtime.config import load_profiles
+config = {**load_profiles()[1]["unified_gpu_full_ocr"], **run["config"]}
 config["bridge_font"] = str(Path(sys.argv[4]))
-gpu_phase_worker.run_structure({"job_dir": str(root), "pdf": str(pdf), "generation": "g", "config": config})
+gpu_phase_worker.run_structure({"job_dir": str(root), "pdf": str(pdf), "generation": "g", "config": config, "device": "cuda"})
 out = json.loads((root / "structure" / "page-0001.json").read_text(encoding="utf-8"))
 print(json.dumps({"loaded": sorted(m for m in ("vietocr", "ocr_recognition", "src.ocr.application.process_page",
                                                   "torch") if m in sys.modules),

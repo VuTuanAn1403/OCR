@@ -3,11 +3,9 @@
 Resolution order: explicit path, then `OCR_CONFIG_PATH`, then
 `<repo>/config/profiles.yaml`. A missing file or an unknown profile is an
 error; nothing silently falls back to another copy or to built-in defaults.
-The V6.3 CLI takes `--config` or `<project root>/config/profiles-v63.yaml`
-and never reads `OCR_CONFIG_PATH` (docs/architecture/CAU_HINH_VA_DU_LIEU.md).
-
-A profile file declares `config_schema` and `pipeline` at its top (P12); the
-CLI routes on the declared pipeline. Files from before P12 declare neither.
+Versioned paths may reference the canonical file through profiles_file.
+They cannot override or define another profile set. Declarations describe
+data; they never select another executable pipeline.
 """
 from __future__ import annotations
 
@@ -43,12 +41,37 @@ def _declaration(data: Dict[str, Any], path: Path) -> Dict[str, Any]:
 
 
 def read_declaration(config_path: str | Path) -> Dict[str, Any]:
-    path = Path(config_path).expanduser()
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError) as exc:
-        raise ConfigError(f"Cannot read profile config {path}: {exc}") from exc
-    return _declaration(data if isinstance(data, dict) else {}, path)
+    path, data = _profile_source(Path(config_path).expanduser())
+    return _declaration(data, path)
+
+
+def _profile_source(path: Path) -> Tuple[Path, Dict[str, Any]]:
+    """Resolve aliases with cycle/declaration checks and no overrides."""
+    seen, declarations = set(), []
+    while True:
+        path = path.resolve()
+        if path in seen:
+            raise ConfigError(f"Profile config reference cycle: {path}")
+        seen.add(path)
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8-sig"))
+        except (OSError, yaml.YAMLError) as exc:
+            raise ConfigError(f"Cannot read profile config {path}: {exc}") from exc
+        if not isinstance(data, dict):
+            raise ConfigError(f"{path}: profile config must be a mapping")
+        declarations.append(_declaration(data, path))
+        if "profiles_file" not in data:
+            final = declarations[-1]
+            if any(any(final.get(k) != value for k, value in declaration.items())
+                   for declaration in declarations[:-1]):
+                raise ConfigError(f"Profile config reference has conflicting declaration: {path}")
+            return path, data
+        if set(data) - {"config_schema", "pipeline", "profiles_file"}:
+            raise ConfigError(f"{path}: profiles_file cannot be combined with profiles or overrides")
+        reference = data["profiles_file"]
+        if not isinstance(reference, str) or not reference.strip():
+            raise ConfigError(f"{path}: profiles_file must be a non-empty path")
+        path = path.parent / reference
 
 
 def declared_pipeline(config_path: str | Path) -> Optional[str]:
@@ -116,7 +139,7 @@ def resolve_config_path(config_path: Optional[str | Path] = None) -> Path:
     path = path.expanduser()
     if not path.is_file():
         raise ConfigError(f"Profile config not found: {path} (from {origin})")
-    return path.resolve()
+    return _profile_source(path)[0]
 
 
 def load_profiles(config_path: Optional[str | Path] = None) -> Tuple[Path, Dict[str, Dict[str, Any]]]:

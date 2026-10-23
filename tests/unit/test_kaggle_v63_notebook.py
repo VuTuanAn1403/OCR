@@ -14,7 +14,7 @@ from zipfile import ZipFile
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-NOTEBOOK = ROOT / "kaggle/ocr_pdf_v63_kaggle.ipynb"
+NOTEBOOK = ROOT / "kaggle/ocr_pdf_kaggle.ipynb"
 
 
 def notebook_cells():
@@ -180,7 +180,7 @@ def test_setup_refreshes_failed_checkout_before_batch_and_freezes_it_after_ledge
     repo = runtime / ("source-" + key)
     (repo / ".git").mkdir(parents=True)
     (repo / "config").mkdir()
-    (repo / "config/profiles-v63.yaml").touch()
+    (repo / "config/profiles.yaml").touch()
     (repo / "config/keywords.txt").write_text("fixture", encoding="utf-8")
     python = repo / ".venv/bin/python"
     python.parent.mkdir(parents=True)

@@ -159,8 +159,6 @@ STAGE_ROOTS = {
     "structure": ("ocr_workers.phases", "ocr_workers.phase_structure", "ocr_workers.docling_server"),
     "export": ("ocr_workers.phases", "ocr_workers.phase_export"),
 }
-LEGACY_STAGE_ROOTS = {"text": ("src.ocr.application.process_page",),
-                      "export": ("src.ocr.application.export_document",)}
 STAGE_SCRIPTS = {"structure": ("scripts/docling_structure_worker.py",)}
 
 
@@ -192,17 +190,15 @@ def _imported_names(path: Path, module: str) -> set[str]:
 
 def stage_entries(stage: str, *, legacy: bool = False) -> list[tuple[str, Path]]:
     """Project files the phase can load, in fingerprint order."""
+    if legacy:
+        raise ValueError("Legacy phase routes were retired; there is one phase implementation")
     entries = _source_entries()
     modules = {_module_name(name): (name, path) for name, path in entries if _module_name(name)}
-    roots = list(STAGE_ROOTS[stage]) + list(LEGACY_STAGE_ROOTS.get(stage, ()) if legacy else ())
-    # Without legacy settings the walk stops at the legacy entry modules: they
-    # are imported only on the V6.2 branch, and loading one anyway trips
-    # assert_loaded_code_in_stage.
-    blocked = () if legacy else LEGACY_STAGE_ROOTS.get(stage, ())
+    roots = list(STAGE_ROOTS[stage])
     seen, todo = set(), roots
     while todo:
         module = todo.pop()
-        if module in seen or module not in modules or module in blocked:
+        if module in seen or module not in modules:
             continue
         seen.add(module)
         # A module loads its parent packages first.
@@ -230,16 +226,6 @@ def assert_loaded_code_in_stage(stage: str, *, legacy: bool = False) -> None:
                                f"outside its fingerprinted closure")
 
 
-def legacy_stage(stage: str, config: dict, finalize_document: bool) -> bool:
-    """Whether the phase takes a V6.2 route into LEGACY_STAGE_ROOTS: the
-    legacy page use case in phase A, keyword finalization in export."""
-    if stage == "text":
-        return config.get("ocr_source_policy") != "gpu_ocr_only_v1"
-    if stage == "export":
-        return bool(finalize_document)
-    return False
-
-
 # Code that builds the phase requests and worker environments (F05): the
 # supervisor and the document owner run it outside every phase process, so
 # no phase closure holds it, and every stage key carries its digest. Only
@@ -251,7 +237,6 @@ COORDINATOR_CODE = (
     "src/ocr_pipeline/backend.py",
     "src/ocr_pipeline/document.py",
     "src/ocr_pipeline/document_owner.py",
-    "src/ocr/cli/gpu_runner.py",  # V6.2 legacy request builder
 )
 
 

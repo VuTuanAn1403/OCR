@@ -1,4 +1,5 @@
 """Current-run timings and measured confidence survive every export."""
+from process_test_helpers import historical_profiles
 import json
 import sys
 from unittest.mock import Mock
@@ -7,7 +8,7 @@ import pymupdf
 import pytest
 
 from src.ocr.application import convert_document, process_page
-from src.ocr.cli import run_ocr
+from benchmark.baselines.legacy_cli import run_ocr
 from src.ocr.domain.models.document import ExtractedDocument
 from src.ocr.domain.models.evidence_block import EvidenceBlock
 from src.ocr.domain.models.page import ExtractedPage
@@ -52,7 +53,7 @@ def test_timings_in_exported_json_agree_and_cache_timers_stay_historical(tmp_pat
     processor = Mock(cache_key="fixture-v6")
     processor.execute.side_effect = pages
     monkeypatch.setattr(convert_document, "ProcessPageUseCase", Mock(return_value=processor))
-    result = convert_document.ConvertDocumentUseCase().execute(
+    result = convert_document.ConvertDocumentUseCase(config_path=historical_profiles()).execute(
         str(pdf), "fast", output_dir=str(tmp_path / "output"), cache_dir=str(tmp_path / "cache"),
         assets_mode="none", benchmark=True, resume=cached)
     out = tmp_path / "output/fixture"
@@ -119,13 +120,13 @@ def test_out_of_range_api_pages_do_not_fall_back_to_processing_every_page(tmp_pa
         source.new_page()
         source.save(pdf)
     with pytest.raises(ValueError, match="outside the document"):
-        convert_document.ConvertDocumentUseCase().execute(str(pdf), "fast", pages=[2])
+        convert_document.ConvertDocumentUseCase(config_path=historical_profiles()).execute(str(pdf), "fast", pages=[2])
 
 
 def test_cpu_only_rapidocr_profile_cannot_claim_gpu_execution(monkeypatch):
     monkeypatch.setattr(convert_document, "resolve_device", lambda _: "cuda")
     with pytest.raises(ValueError, match="RapidOCR primary backend currently runs on CPU"):
-        convert_document.ConvertDocumentUseCase().resolve_profile("fast", "cuda")
+        convert_document.ConvertDocumentUseCase(config_path=historical_profiles()).resolve_profile("fast", "cuda")
 
 
 def test_model_initialization_failure_closes_source_pdf(tmp_path, monkeypatch):
@@ -137,5 +138,5 @@ def test_model_initialization_failure_closes_source_pdf(tmp_path, monkeypatch):
     monkeypatch.setattr(convert_document.pymupdf, "open", lambda _: opened)
     monkeypatch.setattr(convert_document, "ProcessPageUseCase", Mock(side_effect=RuntimeError("model unavailable")))
     with pytest.raises(RuntimeError, match="model unavailable"):
-        convert_document.ConvertDocumentUseCase().execute(str(pdf), "fast", cache_dir=str(tmp_path / "cache"))
+        convert_document.ConvertDocumentUseCase(config_path=historical_profiles()).execute(str(pdf), "fast", cache_dir=str(tmp_path / "cache"))
     assert opened.is_closed

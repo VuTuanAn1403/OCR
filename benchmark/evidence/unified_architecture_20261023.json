@@ -1,0 +1,116 @@
+{
+  "schema_version": "unified-architecture-verification-v1",
+  "date": "2026-10-23",
+  "base_commit": "9f5ac481adcd73e24bdcec7714cf9be7d3a7895e",
+  "working_tree_changes_committed": false,
+  "code_fingerprints": {
+    "extraction": "0060aa8c7a896f85",
+    "analysis": "bd42907a8d408832",
+    "publication": "da5e4638dcefdfc6"
+  },
+  "canonical_config": "C:\\kk_2\\OCR_pdf\\config\\profiles.yaml",
+  "profile_names": [
+    "unified_gpu_full_ocr"
+  ],
+  "tests": {
+    "total": 1317,
+    "passed": 1316,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 318.068,
+    "skip_reason": "Real Linux symlinked venv test is not applicable on Windows",
+    "evidence": "scratch\\runs\\20261023-213124-716eef08",
+    "command": [
+      "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+      "-B",
+      "-m",
+      "pytest",
+      "tests/unit",
+      "tests/scientific",
+      "tests/legacy_compat",
+      "-q",
+      "--capture=fd",
+      "--tb=short",
+      "-p",
+      "no:cacheprovider",
+      "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261023-213124-716eef08\\pytest",
+      "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261023-213124-716eef08\\evidence\\junit.xml"
+    ]
+  },
+  "preflight": "CAPABILITY_READY",
+  "models": {
+    "registry_file_count": 34,
+    "hash_verification": "PASS during actual prepare_backend"
+  },
+  "gpu": "NVIDIA GeForce RTX 2050, 4096 MiB, 592.00",
+  "smoke": {
+    "fixture": "scripts/smoke_unified.py synthetic 1-page PDF with Vietnamese text and one table",
+    "outcome": "SUCCEEDED",
+    "pages": 1,
+    "tables": 1,
+    "keyword_canonical_matches": 2,
+    "published_revision": 1,
+    "validation": {
+      "status": "NEEDS_REVIEW",
+      "counts": {
+        "formulas_json": 0,
+        "pages_json": 1,
+        "pages_markdown": 1,
+        "tables_json": 1,
+        "pipe_tables_markdown": 1,
+        "table_candidates_as_paragraphs": 0,
+        "image_links": 0,
+        "broken_image_links": 0,
+        "evidence_blocks": 2,
+        "review_required_lines": 0,
+        "large_unread_image_regions": 0,
+        "ground_truth_cases": 0,
+        "output_contract_policy": "v6",
+        "structure_sections": 1,
+        "structure_chunks": 3,
+        "cells_with_coarse_bbox": 0
+      },
+      "errors": [],
+      "warnings": [
+        "Page 1: region p1_r2 orientation unknown",
+        "Page 1: region p1_dla_3 orientation unknown",
+        "Page 1: region p1_dla_4 orientation unknown",
+        "Page 1: region p1_dla_5 orientation unknown",
+        "Page 1: region p1_dla_6 orientation unknown"
+      ]
+    },
+    "gpu_source_gate": "PASS",
+    "completion_valid": true,
+    "full_coverage": true,
+    "detector_placement": "VERIFIED_INFERENCE",
+    "recognizer_placement": "VERIFIED_INFERENCE",
+    "layout_placement": "VERIFIED_INFERENCE",
+    "docling_placement": "VERIFIED_INFERENCE",
+    "formula_model_not_exercised": true,
+    "bridge_native_text_copied": false,
+    "phase_tree_exit": "text, structure and export verified exited in scheduler.json",
+    "source_pdf_sha256": "17ff4169e217f4108775365b8df65cbf19cb2cb963a3902fea5129229ef5597e",
+    "evidence": "scratch\\unified_architecture_20261023\\smoke_before_resume.json"
+  },
+  "resume": {
+    "artifacts_unchanged": true,
+    "new_document_requests": 0,
+    "revision_unchanged": true
+  },
+  "analysis": {
+    "status": "PASS",
+    "analysis_outcome": "SUCCEEDED",
+    "counts": [
+      1,
+      1,
+      0
+    ],
+    "source_artifacts_unchanged": true,
+    "quality_acceptance": "NOT_EVALUATED",
+    "source_file_count": 20
+  },
+  "quality_acceptance": "NOT_EVALUATED",
+  "large_real_pdf_soak": "NOT_EVALUATED",
+  "design_before_update_docx_sha256": "9f52bb14e48509d1749186c71eb6472f4d808a96f716e93939e2c3e7b70dbaa1"
+}

@@ -11,3 +11,7 @@ def assert_reaped(pid, *, timeout=5):
     except psutil.NoSuchProcess:
         pass
     assert not psutil.pid_exists(pid)
+def historical_profiles():
+    """Explicit frozen input for historical algorithm tests, never runtime default."""
+    from pathlib import Path
+    return str(Path(__file__).resolve().parents[2] / "benchmark/baselines/profiles-v61.yaml")

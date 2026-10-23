@@ -71,13 +71,12 @@ def boundary_checkout(tmp_path):
     for package in (*ALLOWED, "src"):
         _module(tmp_path, f"{package}.__init__")
         _module(tmp_path, f"{package}._boundary_target")
-    # Exercise the exact legacy exclusions as well; a typo/over-broad exclusion
-    # cannot silently pass due to unmatched_ignore_imports_alerting defaults.
+    # No worker has a legacy exclusion after unification.
     _module(tmp_path, "src.ocr.application.process_page")
     _module(tmp_path, "src.ocr.application.export_document")
     _module(tmp_path, "src.ocr.application.count_keywords")
-    _module(tmp_path, "ocr_workers.phase_text", "import src.ocr.application.process_page\n")
-    _module(tmp_path, "ocr_workers.phase_export", "import src.ocr.application.export_document\n")
+    _module(tmp_path, "ocr_workers.phase_text")
+    _module(tmp_path, "ocr_workers.phase_export")
     return tmp_path
 
 

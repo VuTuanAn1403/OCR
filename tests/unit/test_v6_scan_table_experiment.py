@@ -1,6 +1,7 @@
 """Scanned-table experiment tooling (proposal V6 C3.5(a), review item R-10).
 Variant A's hidden word layer must round-trip Vietnamese text and never
 alter the source; without L5 GT the comparison stays NOT_EVALUATED."""
+from process_test_helpers import historical_profiles
 import hashlib
 from types import SimpleNamespace
 
@@ -180,7 +181,7 @@ def test_pipeline_retains_paired_ocr_evidence_before_table_blocks_are_removed(tm
     from src.ocr.application import process_page
     from src.ocr.application.convert_document import ConvertDocumentUseCase
     from src.ocr.runtime.config import load_profiles
-    _, profiles = load_profiles()
+    _, profiles = load_profiles(historical_profiles())
     profiles["fast"].update(retain_table_ocr_lines=True, orientation_fallback_enabled=False,
                             document_layout={"method": "region_tree_graph_v1"})
     profiles["fast"]["docling"] = {"enabled": True, "tables": True, "formulas": False, "page_selection": "all"}

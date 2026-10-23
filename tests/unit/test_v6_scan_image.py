@@ -1,5 +1,6 @@
 """Scan image acquisition: source DPI, embedded image, DPI clamp (proposal V6
 C2.2(2)(3), review item R-08). Both options are off by default."""
+from process_test_helpers import historical_profiles
 import copy
 import json
 
@@ -84,7 +85,7 @@ def test_malformed_settings_are_rejected(settings):
 
 
 def _config_with(tmp_path, **extra):
-    _, profiles = load_profiles()
+    _, profiles = load_profiles(historical_profiles())
     fast = copy.deepcopy(profiles["fast"])
     fast.update(extra)
     path = tmp_path / "profiles.yaml"
@@ -93,7 +94,7 @@ def _config_with(tmp_path, **extra):
 
 
 def _run(tmp_path, name, pdf, **extra):
-    converter = ConvertDocumentUseCase(str(_config_with(tmp_path / name, **extra)) if extra else None)
+    converter = ConvertDocumentUseCase(str(_config_with(tmp_path / name, **extra)) if extra else historical_profiles())
     converter.execute(str(pdf), "fast", output_dir=str(tmp_path / name / "out"),
                       cache_dir=str(tmp_path / name / "cache"), assets_mode="none")
     return json.loads((tmp_path / name / "out/SCAN_page/pages/page-0001.json").read_text(encoding="utf-8"))

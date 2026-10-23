@@ -64,7 +64,22 @@ def test_native_pipeline_exports_keyword_excel_and_preserves_completion(tmp_path
 
 
 @pytest.mark.parametrize("workers", [1, 2])
-def test_batch_counts_custom_keywords_and_refreshes_cached_outputs(tmp_path, workers):
+def test_batch_counts_custom_keywords_and_refreshes_cached_outputs(tmp_path, workers, monkeypatch):
+    pool_contexts = []
+    if workers == 2:
+        from concurrent.futures import ProcessPoolExecutor
+        from ocr_recognition.rapidocr_engine import RapidOCREngine
+
+        # Linux must not fork ONNX Runtime state initialized by an earlier
+        # conversion in the parent (the CI crash occurred during reinitialization).
+        RapidOCREngine(num_threads=1)
+
+        def create_pool(*args, **kwargs):
+            context = kwargs.get("mp_context")
+            pool_contexts.append(context.get_start_method() if context else None)
+            return ProcessPoolExecutor(*args, **kwargs)
+
+        monkeypatch.setattr("concurrent.futures.ProcessPoolExecutor", create_pool)
     inputs = tmp_path / "inputs"
     inputs.mkdir()
     for name in ("annual", "second"):
@@ -75,6 +90,8 @@ def test_batch_counts_custom_keywords_and_refreshes_cached_outputs(tmp_path, wor
                    assets_mode="none", output_mode="compact", workers=workers,
                    keywords_file=str(keywords), cache_dir=str(tmp_path / "cache"), excel_path=None)
     BatchOCRRunner(**options).execute_batch()
+    if workers == 2:
+        assert pool_contexts == ["spawn"]
     directory = tmp_path / "out/annual"
     assert _excel_counts(directory) == {"artificial intelligence": 8}
     original_result = (directory / "result.md").read_bytes()

@@ -438,9 +438,13 @@ class BatchOCRRunner:
         batch_t0 = time.time()
         if self.workers > 1:
             from concurrent.futures import ProcessPoolExecutor
+            from multiprocessing import get_context
             from src.ocr.runtime.document_pool import initialize_worker
+            # A fresh interpreter must own its native model/thread state.
+            # Forking a parent that already used ONNX Runtime can segfault
+            # while RapidOCR initializes the worker's thread budget on Linux.
             self._executor = ProcessPoolExecutor(max_workers=self.workers, initializer=initialize_worker,
-                                                 initargs=(self.worker_threads,))
+                                                 initargs=(self.worker_threads,), mp_context=get_context("spawn"))
             for entry in files_manifest:
                 if entry["status"] not in ("CACHED", "FAILED_INPUT"):
                     self._submit_document(entry)

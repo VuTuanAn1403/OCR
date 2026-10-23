@@ -7,6 +7,10 @@ change a value; a new serialization needs a new name and a new identity.
 import hashlib
 import json
 from pathlib import PurePosixPath
+import shutil
+import subprocess
+
+import pytest
 
 from src.ocr.infrastructure.postprocessing.keyword_contract import dictionary_snapshot, digest
 from src.ocr.runtime.config import config_hash
@@ -43,3 +47,26 @@ def test_config_hash_uses_default_str():
 def test_keyword_v1_snapshot_hash():
     snapshot = dictionary_snapshot(PROJECT_ROOT / "config/keywords.txt", "v1")
     assert snapshot["snapshot_sha256"] == SNAPSHOT_V1
+
+
+@pytest.mark.parametrize("autocrlf", ["false", "true"])
+def test_keyword_v1_snapshot_survives_git_checkout(tmp_path, autocrlf):
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("Git is required to exercise checkout line-ending conversion")
+    (tmp_path / ".gitattributes").write_bytes((PROJECT_ROOT / ".gitattributes").read_bytes())
+    keywords = tmp_path / "config/keywords.txt"
+    keywords.parent.mkdir()
+    # Git stores text as LF; the checkout must recover the bytes used by the
+    # existing v1 receipts on both Linux and Windows, regardless of Git defaults.
+    keywords.write_bytes((PROJECT_ROOT / "config/keywords.txt").read_bytes().replace(b"\r\n", b"\n"))
+
+    def run_git(*args):
+        subprocess.run([git, "-c", f"core.autocrlf={autocrlf}", "-c", "core.safecrlf=false", *args],
+                       cwd=tmp_path, capture_output=True, text=True, check=True)
+
+    run_git("init", "--quiet")
+    run_git("add", ".gitattributes", "config/keywords.txt")
+    keywords.unlink()  # Require an actual checkout, not a stat-cache shortcut.
+    run_git("checkout-index", "--force", "--", "config/keywords.txt")
+    assert dictionary_snapshot(keywords, "v1")["snapshot_sha256"] == SNAPSHOT_V1

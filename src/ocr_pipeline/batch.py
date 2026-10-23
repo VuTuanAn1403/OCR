@@ -109,6 +109,8 @@ def process_batch(input_path, output, config, keywords_path, processor, *, resum
                         raise IdentityMismatch("Worker receipt changed before ledger preparation")
                     report=json.loads(path.read_text(encoding="utf-8"))
                     validate_report(report,snapshot,directory/"result.md",record["id"],record["pdf_sha256"])
+                    if hasattr(processor, "verify_existing"):
+                        processor.verify_existing(updated, snapshot, output)
                     updated.update(counts=report["display_counts"],total_canonical_matches=report["total_canonical_matches"])
                 else:
                     # A failed replacement must not carry forward accepted
@@ -123,6 +125,8 @@ def process_batch(input_path, output, config, keywords_path, processor, *, resum
                 if prior.get("outcome")=="SUCCEEDED" and not verify_completed(Path(prior["output"])):
                     repaired=processor(prior,snapshot,output,resume=True,force_ocr=False,max_attempts=max_attempts)
                     store.prepare(accept(prior,repaired),allow_unpublished=True)
+                elif prior.get("outcome") == "SUCCEEDED" and hasattr(processor, "verify_existing"):
+                    processor.verify_existing(prior, snapshot, output)
             # Reconcile replacement/ack crash windows and missing/tampered XLSX.
             publish_keyword_matrix(store, matrix, snapshot)
             for record in store.records():

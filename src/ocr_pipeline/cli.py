@@ -47,7 +47,7 @@ def main_v63(batch=True, argv=None):
         result = run_analysis(args.analysis_from, args.output, args.keywords_file,
                               keyword_set_version=args.keyword_set_version, resume=args.resume,
                               retry_failed=args.retry_failed)
-        return 1 if any(r.get("outcome")=="FAILED_DOCUMENT" for r in result["documents"]) else 0
+        return 1 if not result["documents"] or any(r.get("outcome")!="SUCCEEDED" for r in result["documents"]) else 0
     if args.output is None:
         args.output = PROJECT_ROOT/"output/v63"
     if args.recount:
@@ -65,4 +65,4 @@ def main_v63(batch=True, argv=None):
         "keyword_set_version":args.keyword_set_version,"counting_policy":args.counting_policy},args.keywords_file,processor,
         resume=args.resume,retry_failed=args.retry_failed,force_ocr=args.force_ocr,max_attempts=args.max_attempts,
         identity_check=lambda:verify_runtime(backend))
-    return 1 if any(r.get("outcome")=="FAILED_DOCUMENT" for r in result["documents"]) else 0
+    return 1 if not result["documents"] or any(r.get("outcome")!="SUCCEEDED" for r in result["documents"]) else 0

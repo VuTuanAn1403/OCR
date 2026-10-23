@@ -48,3 +48,14 @@ def test_model_and_gpu_evidence_stay_explicit():
     jobs = _jobs()
     assert _opt_in(jobs["model-integration"]) and _opt_in(jobs["gpu"])
     assert "NOT_RUN" in _commands(jobs["evidence-status"])
+
+
+def test_wheel_job_builds_through_the_source_distribution():
+    # `python -m build` builds the wheel from the sdist by default, so missing
+    # source resources cannot hide behind a wheel built directly from checkout.
+    steps = _jobs()["wheel"]["steps"]
+    commands = [step.get("run", "") for step in steps]
+    build_index = next(i for i, command in enumerate(commands)
+                       if any(line.strip() == "python -m build" for line in command.splitlines()))
+    install_index = next(i for i, command in enumerate(commands) if "scripts/ci/check_wheel.py" in command)
+    assert build_index < install_index

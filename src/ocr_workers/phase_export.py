@@ -49,6 +49,8 @@ def run_export(request):
         "model_locks": request["model_hashes"], "dependency_locks": request["lock_hashes"],
         "phase_a_placement": a["placement"], "phase_b_placement": b["placement"],
         "quality_acceptance": "NOT_EVALUATED"}
+    if a.get("pdf_render_view"):
+        document.manifest["gpu_runtime"]["pdf_render_view"] = a["pdf_render_view"]
     if stages:
         document.manifest["gpu_runtime"]["stages"] = {
             phase: {key: stages[phase][key] for key in ("key", "reused", "receipt_sha256", "produced_by_generation",

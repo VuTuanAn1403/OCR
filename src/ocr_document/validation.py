@@ -18,6 +18,7 @@ from ocr_contracts.region import Region
 from ocr_document.markdown_exporter import ASSET_MODES, MarkdownExporter
 from ocr_document.output_contract import OUTPUT_MODES, RESULT_INDEX_SCHEMA
 from ocr_document.result_reader import load_document_json
+from ocr_document.id_patterns import ELEMENT_ID_PATTERN
 
 
 _IMAGE_LINK = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
@@ -350,7 +351,7 @@ def _validate_document_artifacts(
 
 # `{doc_sha16}:p{page:04d}:{kind}{n:04d}`; the document part is not checked
 # for hex so synthetic fixtures with short hashes stay valid.
-_ELEMENT_ID = re.compile(r"^[^:\s]+:p\d{4}:[btfi]\d{4}$")
+_ELEMENT_ID = re.compile(ELEMENT_ID_PATTERN)
 
 
 def _validate_document_contracts(doc_dir: Path, errors: List[str], warnings: List[str],

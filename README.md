@@ -225,6 +225,14 @@ V6.3 nhận `.pdf`/`.PDF`, không quét thư mục con. Stem tên PDF phải kh�
 
 Sau khi cài editable, `ocrpdf` và `ocrpdf-batch` tương đương hai script; `ocrpdf-gpu` là alias của CLI một PDF.
 
+Để mỗi lượt GPU tự tạo thư mục output mới, dùng:
+
+```powershell
+python scripts/run_gpu_pipeline.py --input inputs
+```
+
+Script in đường dẫn output đã chọn. Tiếp tục lượt đó bằng `--output <thu_muc_da_in> --resume`; các tùy chọn V6.3 khác được chuyển tới CLI chính.
+
 ### Tiếp tục hoặc thử lại
 
 ```powershell
@@ -234,6 +242,14 @@ python run_batch.py --input inputs --output output/v63 --resume --force-ocr
 ```
 
 Batch khóa input, cấu hình, keyword, mã nguồn và runtime/model ở lần đầu. Khi resume, giữ nguyên chúng và truyền lại tùy chọn đã dùng như `--assets none` hoặc `--env-root`. `--force-ocr` không thay `--retry-failed` đối với tài liệu đã lỗi. Thêm PDF, đổi code/model hoặc đổi cấu hình thì chọn output mới.
+
+Kiểm tra tính toàn vẹn, số trang và nguồn OCR của một batch đã có:
+
+```powershell
+python scripts/audit_batch_outputs.py --output output/v63 --report scratch/v63-audit.json --validate
+```
+
+Báo cáo phải nằm ngoài thư mục batch. Công cụ chỉ đọc batch, không sửa receipt/SQLite hoặc chạy OCR; kiểm tra này không đo độ chính xác nhận dạng.
 
 | Tùy chọn V6.3 | Mặc định / ý nghĩa |
 | --- | --- |

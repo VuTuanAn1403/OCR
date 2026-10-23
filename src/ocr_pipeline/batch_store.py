@@ -43,6 +43,8 @@ class BatchStore:
         return json.loads(row[0]) if row else None
 
     def put(self, key, value):
+        if key == "identity" and self.get(key) not in (None, value):
+            raise ValueError("BATCH_IDENTITY_MISMATCH: identity is immutable; use a new output directory")
         self.connection.execute("INSERT OR REPLACE INTO meta VALUES(?,?)", (key, json.dumps(value)))
 
     def records(self):

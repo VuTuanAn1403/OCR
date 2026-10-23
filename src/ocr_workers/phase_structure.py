@@ -24,7 +24,7 @@ def phase_b_status_accepted(info, on_error):
 
 
 def run_structure(request):
-    import pymupdf
+    from ocr_pdf_io.document_view import processing_pdf
     # Phase B maps Docling output onto phase A text; it never loads recognition
     # code (ProcessPageUseCase/VietOCR) into this coordinating process.
     from ocr_contracts.page import ExtractedPage
@@ -36,7 +36,10 @@ def run_structure(request):
     files, placement = [], []
     started = time.perf_counter()
     try:
-        with pymupdf.open(request["pdf"]) as pdf:
+        with processing_pdf(request["pdf"], request["config"].get("pdf_render_policy", "original_v1"),
+                            expected_sha256=request.get("identity", {}).get("pdf")) as (pdf, render_view):
+            if checkpoint.get("pdf_render_view", render_view) != render_view:
+                raise ValueError("Phase B processing view differs from phase A")
             for name in sorted(checkpoint["files"]):
                 page = ExtractedPage.model_validate(read(text_root / name))
                 before = time.perf_counter()

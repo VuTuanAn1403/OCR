@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Dict, List, Literal, Optional
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
+from ocr_document.id_patterns import ELEMENT_ID_PATTERN
 
 
 def _valid_bbox(box: List[float]) -> List[float]:
@@ -33,7 +34,7 @@ def _evidence_bbox(box):
 
 
 EvidenceBBox = Annotated[List[Coordinate], AfterValidator(_evidence_bbox)]
-ElementId = Annotated[str, Field(pattern=r"^[^:\s]+:p\d{4}:[btfi]\d{4}$")]
+ElementId = Annotated[str, Field(pattern=ELEMENT_ID_PATTERN)]
 SectionId = Annotated[str, Field(pattern=r"^[^:\s]+:s\d{4}$")]
 PageNumber = Annotated[int, Field(ge=1)]
 Confidence = Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]

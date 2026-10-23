@@ -54,10 +54,11 @@ def harness(tmp_path, monkeypatch):
     output = tmp_path / "output"
     worker = tmp_path / "fake_worker.py"
     worker.write_text(FAKE_WORKER, encoding="utf-8")
-    state = {"plans": [], "launches": 0}
+    state = {"plans": [], "launches": 0, "request_paths": []}
 
     def fake_supervised_run(command, **kwargs):
         request_path = Path(command[command.index("--request") + 1])
+        state["request_paths"].append(request_path)
         payload = json.loads(request_path.read_text(encoding="utf-8"))
         plan = state["plans"][state["launches"]]
         state["launches"] += 1
@@ -85,6 +86,17 @@ def harness(tmp_path, monkeypatch):
 def test_clean_exit_with_verified_result_is_accepted(harness):
     result = harness({"exit": 0})
     assert result["outcome"] == "SUCCEEDED" and result["attempts"] == 1
+
+
+def test_retries_and_later_runs_preserve_prior_attempt_evidence(harness):
+    harness({"exit": 0})
+    first = harness.state["request_paths"][0]
+    evidence = first.read_bytes()
+    response = first.with_name("response.json").read_bytes()
+    harness({"exit": 0})
+    second = harness.state["request_paths"][-1]
+    assert first != second and first.read_bytes() == evidence
+    assert first.with_name("response.json").read_bytes() == response
 
 
 def test_result_with_unclassified_nonzero_exit_is_rejected(harness):

@@ -185,6 +185,10 @@ def verify_document_result(response, request, snapshot, attempt_id):
                 or sha256(output / "COMPLETED.json") != result["completion_sha256"]):
             raise ValueError("receipt differs from the artifacts on disk")
         validate_gpu_source(output)
+        from ocr_pipeline.artifact_validation import validate_document_artifacts
+        validation = validate_document_artifacts(output)
+        if validation["status"] == "FAIL" or result["validation"] != validation["status"]:
+            raise ValueError("Document validation differs from the accepted result")
         validate_report(json.loads(report_path.read_text(encoding="utf-8")), snapshot,
                         output / "result.md", output.name, request["pdf_sha256"])
     except (ValueError, KeyError, TypeError) as exc:
@@ -196,24 +200,34 @@ class GPUProcessor:
     def __init__(self, backend, *, assets="png", output_mode="compact"):
         self.backend, self.assets, self.output_mode = backend, assets, output_mode
 
-    def __call__(self, item, snapshot, output, *, resume, force_ocr, max_attempts=2):
+    def request_for(self, item, output):
         request = {**self.backend,"pdf":item["path"],"pdf_sha256":item["pdf_sha256"],"output":str(output),
                    "assets":self.assets,"output_mode":self.output_mode,"finalize_document":False}
         request["ocr_identity"] = ocr_identity(request)
+        return request
+
+    def verify_existing(self, item, snapshot, output):
+        """Recheck the OCR identity before accepting a resume skip/publication."""
+        return verify_document_result({"attempt_id": "resume", "result": item},
+                                      self.request_for(item, output), snapshot, "resume")
+
+    def __call__(self, item, snapshot, output, *, resume, force_ocr, max_attempts=2):
+        request = self.request_for(item, output)
         log_dir = Path(output)/"logs"
-        request_path = log_dir/f"{item['id']}.request.json"
-        response_path = log_dir/f"{item['id']}.response.json"
         request_id = uuid.uuid4().hex
         for attempt in range(max_attempts):
             attempt_id = uuid.uuid4().hex
-            response_path.unlink(missing_ok=True)
+            attempt_dir = log_dir / "requests" / item["id"] / request_id / attempt_id
+            attempt_dir.mkdir(parents=True, exist_ok=False)
+            request_path = attempt_dir / "request.json"
+            response_path = attempt_dir / "response.json"
             atomic_write_json(request_path,{"protocol":DOCUMENT_WORKER_PROTOCOL,"request_id":request_id,
                                             "attempt_id":attempt_id,"request":request,"snapshot":snapshot,
                                             "resume":resume and not force_ocr})
             try:
                 supervised_run([sys.executable,"-m",DOCUMENT_WORKER_MODULE,"--request",str(request_path),
                     "--response",str(response_path)],cwd=ROOT,env={**os.environ,**absolute_path_env(),**self.backend.get("model_env",{}),"PYTHONIOENCODING":"utf-8","PYTHONPATH":worker_pythonpath()},
-                    log_path=log_dir/f"{item['id']}.log",timeout=request["phase_timeout"]*3)
+                    log_path=attempt_dir/"worker.log",timeout=request["phase_timeout"]*3)
             except ProcessTreeSurvived as exc:
                 # Never accept a result while a process of this document may
                 # still hold the GPU, whatever the response file says.

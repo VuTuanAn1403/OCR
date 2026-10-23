@@ -383,20 +383,8 @@ class ProcessPageUseCase:
                 meta["region_count"] = len(regions)
             render_duration = time.perf_counter() - t_render_start
             t_ocr_start = time.perf_counter()
-            if (self.config.get("ocr_source_policy") != "gpu_ocr_only_v1"
-                    and meta.get("layout_type") in ("TWO_UP", "MULTI_REGION") and len(regions) >= 2):
-                ocr_results, orientation_fallback = self._predict_region_ocr(
-                    img_bgr,
-                    regions,
-                    page_w,
-                    page_h,
-                    enabled=self.config.get("orientation_fallback_enabled", True),
-                )
-            else:
-                ocr_results, orientation_fallback = self._predict_with_orientation_fallback(
-                    img_bgr,
-                    enabled=self.config.get("orientation_fallback_enabled", True),
-                )
+            ocr_results, orientation_fallback = self._predict_page_ocr(
+                img_bgr, regions, page_w, page_h, meta)
             if orientation_fallback:
                 meta["orientation_fallback"] = orientation_fallback
                 progress(f"[{page_num}/{total_pages}] orientation_fallback={orientation_fallback}", stage="ocr")
@@ -647,6 +635,16 @@ class ProcessPageUseCase:
     @classmethod
     def _calculate_vn_lexicon_ratio(cls, results: List[Dict[str, Any]]) -> float:
         return _hallucination.calculate_vn_lexicon_ratio(results)
+
+    def _predict_page_ocr(self, img_bgr, regions, page_w, page_h, meta):
+        """Bound regional OCR work; noisy segmentation falls back to one page."""
+        enabled = self.config.get("orientation_fallback_enabled", True)
+        if (self.config.get("ocr_source_policy") != "gpu_ocr_only_v1"
+                and self.config.get("two_up_detection_enabled", True)
+                and meta.get("layout_type") in ("TWO_UP", "MULTI_REGION")
+                and 2 <= len(regions) <= 10):
+            return self._predict_region_ocr(img_bgr, regions, page_w, page_h, enabled=enabled)
+        return self._predict_with_orientation_fallback(img_bgr, enabled=enabled)
 
     def _predict_with_orientation_fallback(
         self,

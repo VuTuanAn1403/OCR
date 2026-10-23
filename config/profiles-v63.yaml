@@ -11,6 +11,8 @@ profiles:
     bridge_policy: raster-plus-gpu-text-v1
     document_layout: {method: region_tree_graph_v1, furniture: {method: document_context_v3}}
     render_dpi: 180
+    # Dispose of the normalized view after each phase; keep input bytes/hash.
+    pdf_render_policy: normalized_memory_v1
     primary_engine: vietocr
     num_threads: 2
     batch_size: 4

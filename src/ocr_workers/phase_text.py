@@ -12,7 +12,7 @@ from ocr_workers.stage_io import stage_dir, write_receipt
 
 
 def run_text(request):
-    import pymupdf
+    from ocr_pdf_io.document_view import processing_pdf
     import numpy as np
     from ocr_recognition.route_page import RoutePageUseCase
     from ocr_recognition.routing_policy import RoutingPolicy
@@ -24,7 +24,8 @@ def run_text(request):
         "reliable_threshold": config["native_quality"]["reliable_threshold"],
         "review_threshold": config["native_quality"]["review_threshold"]}))
     started = time.perf_counter()
-    with pymupdf.open(request["pdf"]) as doc:
+    with processing_pdf(request["pdf"], config.get("pdf_render_policy", "original_v1"),
+                        expected_sha256=request["identity"]["pdf"]) as (doc, render_view):
         pages = request.get("pages") or list(range(1, len(doc)+1))
         if any(type(p) is not int or p < 1 or p > len(doc) for p in pages):
             raise ValueError("Page selection is outside the PDF")
@@ -68,6 +69,8 @@ def run_text(request):
                     raise RuntimeError(f"Phase A page {page_num} has extraction errors; inspect the phase log")
                 page.metadata["runtime_phase"] = {"method": "document-two-phase-v1", "phase": "A",
                                                    "generation": request["generation"], "docling_deferred": True}
+                if render_view["policy"] != "original_v1":
+                    page.metadata["pdf_render_view"] = render_view
                 path = root / "text" / f"page-{page_num:04d}.json"
                 atomic_write_json(path, page.model_dump(mode="json"))
                 files.append(path)
@@ -92,6 +95,7 @@ def run_text(request):
                 raise RuntimeError("Layout model inference was never exercised")
             write_receipt(request, "text", files, total_pages=len(doc), selected_pages=sorted(set(pages)),
                     init_seconds=init_seconds, seconds=time.perf_counter()-started,
-                    placement={"detector": detector.placement, "recognizer": observed, "layout": layout})
+                    placement={"detector": detector.placement, "recognizer": observed, "layout": layout},
+                    pdf_render_view=render_view)
         finally:
             processor.close()

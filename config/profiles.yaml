@@ -46,7 +46,8 @@ profiles:
     fallback_upscale_dpi: 250
     min_confidence: 0.80
     numeric_retry_threshold: 0.85
-    orientation_fallback_enabled: true
+    # Match balanced's bounded orientation policy on the local workstation.
+    orientation_fallback_enabled: false
     vector_table_min_native_score: 0.90
     skip_vector_tables_on_restricted_pdf: true
     two_up_detection_enabled: true
@@ -84,11 +85,11 @@ profiles:
     min_confidence: 0.80
     numeric_retry_threshold: 0.85
     batch_size: 8
-    orientation_fallback_enabled: true
+    orientation_fallback_enabled: false
     vector_table_min_native_score: 0.90
     skip_vector_tables_on_restricted_pdf: true
-    two_up_detection_enabled: true
-    multi_region_detection_enabled: true
+    two_up_detection_enabled: false
+    multi_region_detection_enabled: false
     page_timeout_seconds: 120
     native_quality:
       reliable_threshold: 0.90

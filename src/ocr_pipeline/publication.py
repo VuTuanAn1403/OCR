@@ -12,6 +12,9 @@ def publish_keyword_matrix(store, path, snapshot):
     identity = store.get("identity")
     for row in records:
         if row.get("outcome") == "SUCCEEDED":
+            from ocr_pipeline.completion import verify_completed
+            if not verify_completed(Path(row["output"])):
+                raise ValueError("Accepted document is incomplete or changed before matrix publication")
             report_path=Path(row["output"])/"keyword_counts.json"
             if sha256(report_path) != row["report_sha256"]:
                 raise ValueError("Accepted keyword report changed before matrix publication")

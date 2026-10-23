@@ -9,6 +9,7 @@ from ocr_contracts.region import BoundingBox, ContentType, Region
 from ocr_contracts.text_block import TextBlock
 from ocr_recognition.hallucination import classify_ocr_hallucination
 from ocr_text.unicode_normalizer import UnicodeNormalizer
+from ocr_text.vietnamese_diacritics import DIACRITIC_REASON_PREFIX, DIACRITIC_REVIEW_CODE
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,7 @@ def ocr_results_to_blocks(ocr_results, *, regions, page_num, scale_x, scale_y, u
             continue
 
         q_score, needs_fb, reasons = ocr_quality.evaluate_ocr_result(text, conf)
+        diacritic_reasons = [reason for reason in reasons if reason.startswith(DIACRITIC_REASON_PREFIX)]
         if res.get("needs_review"):
             needs_fb = True
             q_score = min(q_score, .74) if q_score is not None else None
@@ -95,7 +97,9 @@ def ocr_results_to_blocks(ocr_results, *, regions, page_num, scale_x, scale_y, u
             reviewed=False,
             line_index=idx,
             region_id=res.get("region_id"),
-            fallback_reason=res.get("review_reason") if res.get("needs_review") else None,
+            fallback_reason=(res.get("review_reason") if res.get("needs_review")
+                             else "; ".join(diacritic_reasons) or None),
+            review_reason_codes=[DIACRITIC_REVIEW_CODE] if diacritic_reasons else [],
         )
         if scaled_bbox and len(scaled_bbox) >= 4:
             dla = dla_engine

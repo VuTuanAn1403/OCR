@@ -3,10 +3,10 @@
 Full-page OCR of the rendered page, the layout model, heuristic tables,
 reading order, region statuses, quality and evidence. It runs only the V6.3
 path, so there is no native text extraction, two-up/multi-region split,
-orientation fallback, region re-OCR, page cache or Docling (Docling is phase
-B). Each statement follows ProcessPageUseCase._execute_page for that path in
-the same order, so the page JSON (including metadata key order) is unchanged;
-the steps themselves are the shared package functions both orchestrators call.
+orientation fallback, page cache or Docling (Docling is phase B). An optional
+bounded diacritic retry reads suspect line crops on the same GPU, retaining
+the full-page detections and coordinates. Shared package functions implement
+the steps used by both orchestrators.
 """
 import logging
 import time
@@ -27,6 +27,7 @@ from ocr_pdf_io.coordinate_transform import page_display_chain
 from ocr_pdf_io.scan_image import acquire_page_image, full_page_image_provenance
 from ocr_recognition.blocks import mark_review_regions, ocr_results_to_blocks
 from ocr_recognition.inference import predict_image_counted
+from ocr_recognition.diacritic_retry import retry_diacritic_blocks
 from ocr_recognition.ocr_layer_agreement import page_layer_agreement
 from ocr_runtime.config import document_layout_settings, furniture_settings
 from ocr_runtime.structured_logging import log_context, progress
@@ -54,6 +55,7 @@ class TextPageExtractor:
         engines = build_page_engines(doc, config, legacy_furniture=self.legacy_furniture)
         self.inspector, self.renderer = engines.inspector, engines.renderer
         self.ocr_engine, self.ocr_quality = engines.ocr_engine, engines.ocr_quality
+        self.fallback_engine = engines.fallback_engine
         self.layout_engine, self.structure_extractor = engines.layout_engine, engines.structure_extractor
         self.content_analyzer = engines.content_analyzer
         validate_page_config(config)
@@ -124,6 +126,13 @@ class TextPageExtractor:
         render_duration = time.perf_counter() - t_render_start
         t_ocr_start = time.perf_counter()
         ocr_results = predict_image_counted(self, img_bgr)
+        # Regional retries update the detector's last-call telemetry. Keep
+        # the primary full-page probe separate for the phase A GPU receipt.
+        detector = getattr(self.ocr_engine, "_detector", None)
+        primary_shape = getattr(detector, "last_input_shape", None)
+        self.primary_ocr_detector = ({"input_shape": list(primary_shape),
+                                      "detection_count": len(detector.last_detections)}
+                                     if isinstance(primary_shape, list) else None)
         ocr_duration = time.perf_counter() - t_ocr_start
         recognized_lines = len(ocr_results)
         recognizer_confidences = [r.get("confidence") for r in ocr_results if r.get("confidence") is not None]
@@ -142,6 +151,11 @@ class TextPageExtractor:
             # Layer vs primary OCR (C2.1).
             meta["ocr_layer_agreement"] = page_layer_agreement(
                 doc_page, blocks, meta, self.config.get("ocr_layer_agreement", {}).get("sample_lines", 5))
+        t_retry_start = time.perf_counter()
+        retry_record = retry_diacritic_blocks(self, page_num, blocks, candidates_for_fallback, suspicious_lines)
+        fallback_duration = time.perf_counter() - t_retry_start
+        if self.config.get("diacritic_retry") or retry_record["suspect_lines"]:
+            meta["diacritic_retry"] = retry_record
         mark_review_regions(candidates_for_fallback, regions)
 
         apply_layout_model(self.content_analyzer.dla_engine, self.renderer, self.config,
@@ -195,7 +209,7 @@ class TextPageExtractor:
         assign_region_statuses(regions, block_regions, tables, meta.get("orientation_fallback"))
         total_time = round(time.perf_counter() - t0, 2)
         durations = {"inspect": inspect_duration, "native_extract": 0.0, "image_region_ocr": 0.0,
-                     "render_and_refine": render_duration, "primary_ocr": ocr_duration, "fallback": 0.0,
+                     "render_and_refine": render_duration, "primary_ocr": ocr_duration, "fallback": fallback_duration,
                      "table": table_duration, "docling_structure": docling_duration,
                      "layout_model": layout_model_duration, "reading_order": reading_order_duration}
         quality_report, calibrated_q = build_page_quality(
@@ -204,7 +218,7 @@ class TextPageExtractor:
             diagrams=diagrams, regions=regions, rejected_evidence=rejected_evidence,
             candidates_for_fallback=candidates_for_fallback, suspicious_lines=suspicious_lines,
             ocr_calls=self._current_page_ocr_calls, page_errors=page_errors, recognized_lines=recognized_lines,
-            fallback_count=0, durations=durations, meta=meta, allow_vector_tables=allow_vector_tables,
+            fallback_count=retry_record["improved"], durations=durations, meta=meta, allow_vector_tables=allow_vector_tables,
             region_type_counts=region_type_counts)
         evidence_blocks = build_evidence_blocks(sorted_blocks, regions, page_num, rejected_evidence)
         extracted_page = ExtractedPage(
@@ -213,6 +227,6 @@ class TextPageExtractor:
             evidence_blocks=evidence_blocks, quality=quality_report, metadata=meta)
         extracted_page.markdown_content = MarkdownExporter.export_page_markdown(extracted_page)
         quality_text = f"{calibrated_q:.2f}" if calibrated_q is not None else "n/a"
-        progress(f"[{page_num}/{total_pages}] quality={quality_text} fallback=0/{len(sorted_blocks)}", stage="quality")
+        progress(f"[{page_num}/{total_pages}] quality={quality_text} fallback={retry_record['improved']}/{len(sorted_blocks)}", stage="quality")
         progress(f"[{page_num}/{total_pages}] completed time={total_time:.2f}s", stage="complete", seconds=round(total_time, 3))
         return extracted_page

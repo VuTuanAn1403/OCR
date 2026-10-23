@@ -3,6 +3,7 @@ import pymupdf
 import unicodedata
 from ocr_contracts.text_block import TextBlock
 from ocr_text.unicode_normalizer import UnicodeNormalizer
+from ocr_text.vietnamese_diacritics import DIACRITIC_REVIEW_CODE, diacritic_suspicions
 
 class NativeTextExtractor:
     """
@@ -49,6 +50,7 @@ class NativeTextExtractor:
 
                 avg_font_size = sum(font_sizes) / len(font_sizes) if font_sizes else 10.0
                 norm_text = UnicodeNormalizer.normalize(full_line_text)
+                diacritic_reasons = diacritic_suspicions(norm_text)
 
                 block = TextBlock(
                     producer_ref=f"native:p{page_num}:object{object_index}:line{native_line_index}",
@@ -60,7 +62,9 @@ class NativeTextExtractor:
                     page=page_num,
                     bbox=[round(coord, 2) for coord in line_bbox],
                     confidence=1.0,
-                    quality_score=1.0,
+                    quality_score=0.74 if diacritic_reasons else 1.0,
+                    fallback_reason="; ".join(diacritic_reasons) or None,
+                    review_reason_codes=[DIACRITIC_REVIEW_CODE] if diacritic_reasons else [],
                     reviewed=False,
                     block_type="paragraph",
                     line_index=line_idx,

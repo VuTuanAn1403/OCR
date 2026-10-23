@@ -8,6 +8,33 @@ from ocr_recognition.primary_engine import BaseOCREngine
 from ocr_recognition.ocr_quality import OCRQualityEvaluator
 from ocr_recognition.candidate_scorer import CandidateScorer
 from ocr_text.numeric_guard import preserves_numeric_evidence
+from ocr_text.vietnamese_diacritics import diacritic_suspicions, is_diacritic_only_change
+
+
+def apply_reocr_result(block, result) -> bool:
+    """Apply an image-backed retry while retaining the original extraction."""
+    if result.get("needs_review"):
+        block.fallback_reason = result.get("review_reason") or "ocr_disagreement"
+        block.reviewed = False
+    improved = result.get("improved", False)
+    if improved:
+        if block.text_raw is None:
+            block.text_raw = block.text
+        block.correction_source = "regional_reocr"
+        block.text = result["text"]
+        block.confidence = result["confidence"]
+        block.confidence_source = "recognizer" if block.confidence is not None else "unavailable"
+        block.quality_score = result.get("quality_score", block.quality_score)
+        block.source = "fallback_ocr"
+        block.engine = "vietnamese_seq2seq_fallback"
+        block.fallback = True
+        if not result.get("needs_review"):
+            block.fallback_reason = "regional_quality_gate_retry"
+            block.reviewed = True
+    if result.get("needs_review") and block.quality_score is not None:
+        block.quality_score = min(block.quality_score, 0.74)
+    return improved
+
 
 class FallbackEngine:
     """
@@ -35,13 +62,16 @@ class FallbackEngine:
             return None
 
     @staticmethod
-    def _safe_replacement(original: str, candidate: str) -> bool:
+    def _safe_replacement(original: str, candidate: str, *, diacritic_only: bool = False) -> bool:
         """Reject rewrites likely to lose names, numbers, or whole clauses."""
         original = unicodedata.normalize("NFC", original).strip()
         candidate = unicodedata.normalize("NFC", candidate).strip()
         if not candidate or not original:
             return False
-        if original.isupper() and len(original) <= 50:
+        if diacritic_only and (not diacritic_suspicions(original) or diacritic_suspicions(candidate)
+                               or not is_diacritic_only_change(original, candidate)):
+            return False
+        if original.isupper() and len(original) <= 50 and not diacritic_only:
             return False
         if len(original) >= 12 and SequenceMatcher(None, original, candidate).ratio() < 0.68:
             return False
@@ -65,7 +95,8 @@ class FallbackEngine:
         self,
         crop_bgr: np.ndarray,
         original_text: str,
-        original_conf: Optional[float]
+        original_conf: Optional[float],
+        *, predict_image=None, diacritic_only: bool = False,
     ) -> Dict[str, Any]:
         """
         Re-OCRs a cropped image region using up to 2-3 candidates (Codex v3.1 Section 6):
@@ -91,14 +122,15 @@ class FallbackEngine:
         }
 
         # Candidate C: High-DPI crop prediction
-        cands_c = self.ocr_engine.predict_image(crop_bgr)
+        predict = predict_image or self.ocr_engine.predict_image
+        cands_c = predict(crop_bgr)
         if cands_c:
             text_c = " ".join(c["text"] for c in cands_c).strip()
             numeric_disagreement |= not preserves_numeric_evidence(original_text, text_c)
             known = [c["confidence"] for c in cands_c if c.get("confidence") is not None]
             conf_c = sum(known) / len(known) if known else None
             score_c = self.scorer.score_candidate(text_c, conf_c)
-            if score_c > best_cand["score"] + 0.015 and self._safe_replacement(original_text, text_c):
+            if score_c > best_cand["score"] + 0.015 and self._safe_replacement(original_text, text_c, diacritic_only=diacritic_only):
                 best_cand = {
                     "text": text_c,
                     "confidence": conf_c,
@@ -108,7 +140,7 @@ class FallbackEngine:
 
         # A safe high-DPI correction is enough; avoid another full recognizer pass.
         if best_cand["improved"]:
-            best_q_score, _, _ = self.quality_evaluator.evaluate_ocr_result(
+            best_q_score, needs_review, reasons = self.quality_evaluator.evaluate_ocr_result(
                 best_cand["text"], best_cand["confidence"]
             )
             return {
@@ -117,21 +149,22 @@ class FallbackEngine:
                 "quality_score": best_q_score,
                 "candidate_score": best_cand["score"],
                 "improved": True,
-                "needs_review": numeric_disagreement,
-                "review_reason": "OCR candidates disagree on numeric text" if numeric_disagreement else None,
+                "needs_review": numeric_disagreement or needs_review,
+                "review_reason": ("OCR candidates disagree on numeric text" if numeric_disagreement
+                                  else "; ".join(reasons) or None),
             }
 
         # Candidate B: Enhanced contrast crop
         enh_crop = self._enhance_contrast(crop_bgr)
         if enh_crop is not None:
-            cands_b = self.ocr_engine.predict_image(enh_crop)
+            cands_b = predict(enh_crop)
             if cands_b:
                 text_b = " ".join(c["text"] for c in cands_b).strip()
                 numeric_disagreement |= not preserves_numeric_evidence(original_text, text_b)
                 known = [c["confidence"] for c in cands_b if c.get("confidence") is not None]
                 conf_b = sum(known) / len(known) if known else None
                 score_b = self.scorer.score_candidate(text_b, conf_b)
-                if score_b > best_cand["score"] + 0.015 and self._safe_replacement(original_text, text_b):
+                if score_b > best_cand["score"] + 0.015 and self._safe_replacement(original_text, text_b, diacritic_only=diacritic_only):
                     best_cand = {
                         "text": text_b,
                         "confidence": conf_b,
@@ -140,7 +173,7 @@ class FallbackEngine:
                     }
 
         orig_q_score, _, _ = self.quality_evaluator.evaluate_ocr_result(original_text, original_conf)
-        best_q_score, _, _ = self.quality_evaluator.evaluate_ocr_result(best_cand["text"], best_cand["confidence"])
+        best_q_score, needs_review, reasons = self.quality_evaluator.evaluate_ocr_result(best_cand["text"], best_cand["confidence"])
 
         return {
             "text": best_cand["text"],
@@ -148,6 +181,7 @@ class FallbackEngine:
             "quality_score": best_q_score if best_cand["improved"] else orig_q_score,
             "candidate_score": best_cand["score"],
             "improved": best_cand["improved"],
-            "needs_review": numeric_disagreement,
-            "review_reason": "OCR candidates disagree on numeric text" if numeric_disagreement else None,
+            "needs_review": numeric_disagreement or needs_review,
+            "review_reason": ("OCR candidates disagree on numeric text" if numeric_disagreement
+                              else "; ".join(reasons) or None),
         }

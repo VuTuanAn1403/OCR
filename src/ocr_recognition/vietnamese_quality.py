@@ -1,6 +1,7 @@
 import re
 import unicodedata
 from typing import Tuple, List
+from ocr_text.vietnamese_diacritics import diacritic_suspicions
 
 class VietnameseQualityEvaluator:
     """
@@ -52,6 +53,11 @@ class VietnameseQualityEvaluator:
 
         reasons = []
         score = 1.0
+
+        diacritic_reasons = diacritic_suspicions(clean)
+        if diacritic_reasons:
+            reasons.extend(diacritic_reasons)
+            score -= 0.35
 
         # Check for replacement character \ufffd
         if "\ufffd" in clean:

@@ -37,6 +37,8 @@ profiles:
       strict_gpu: true
       verify_placement: true
     fallback_enabled: false
+    # Same GPU recognizer; only lines with Vietnamese diacritic review hints.
+    diacritic_retry: {enabled: true, upscale_dpi: 300, max_regions_per_page: 5, max_region_ratio: 0.15}
     min_confidence: 0.80
     numeric_retry_threshold: 0.85
     orientation_fallback_enabled: false

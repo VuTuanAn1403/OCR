@@ -55,16 +55,19 @@ def run_text(request):
                 else:
                     detection_calls = detector.inference_calls-before_detection
                     recognition_calls = sum(placement.counts.values())-before_recognition
-                    if detection_calls < 1 or detector.last_detections and recognition_calls < 1:
+                    primary = processor.primary_ocr_detector
+                    if primary is None:
+                        raise RuntimeError("Missing primary full-page detector telemetry")
+                    if detection_calls < 1 or primary["detection_count"] and recognition_calls < 1:
                         raise RuntimeError("Missing actual GPU OCR inference for document page")
                     if any(b.source == "native" for b in page.blocks):
                         raise RuntimeError("Native text leaked into GPU-only page output")
                     page.metadata["gpu_ocr"] = {"scope":"all_pages", "source_policy":"gpu_ocr_only_v1",
                         "detector_device":request["device"], "recognizer_device":request["device"],
                         "detector_calls":detection_calls,"recognizer_forward_calls":recognition_calls,
-                        "detector_scope":"full_page","detector_input_shape":detector.last_input_shape,
+                        "detector_scope":"full_page","detector_input_shape":primary["input_shape"],
                         "render_dpi":config["render_dpi"],"workload":"document",
-                        "status":"OCR_PROCESSED" if detector.last_detections else "BLANK_NO_DETECTIONS"}
+                        "status":"OCR_PROCESSED" if primary["detection_count"] else "BLANK_NO_DETECTIONS"}
                 if page.quality.errors:
                     raise RuntimeError(f"Phase A page {page_num} has extraction errors; inspect the phase log")
                 page.metadata["runtime_phase"] = {"method": "document-two-phase-v1", "phase": "A",

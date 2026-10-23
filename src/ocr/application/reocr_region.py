@@ -3,6 +3,7 @@ import pymupdf
 from src.ocr.domain.models.text_block import TextBlock
 from src.ocr.infrastructure.pdf.pdf_renderer import PDFRenderer
 from src.ocr.infrastructure.ocr.fallback_engine import FallbackEngine
+from ocr_recognition.fallback_engine import apply_reocr_result
 
 class ReocrRegionUseCase:
     """
@@ -42,28 +43,7 @@ class ReocrRegionUseCase:
                 original_conf=block.confidence
             )
 
-            if res.get("needs_review"):
-                block.fallback_reason = res.get("review_reason") or "ocr_disagreement"
-                block.reviewed = False
-
-            if res.get("improved", False):
-                if block.text_raw is None:
-                    block.text_raw = block.text
-                block.correction_source = "regional_reocr"
-                block.text = res["text"]
-                block.confidence = res["confidence"]
-                block.confidence_source = "recognizer" if block.confidence is not None else "unavailable"
-                block.quality_score = res.get("quality_score", block.quality_score)
-                block.source = "fallback_ocr"
-                block.engine = "vietnamese_seq2seq_fallback"
-                block.fallback = True
-                if not res.get("needs_review"):
-                    block.fallback_reason = "regional_quality_gate_retry"
-                    block.reviewed = True
+            if apply_reocr_result(block, res):
                 improved_count += 1
-
-            if res.get("needs_review"):
-                if block.quality_score is not None:
-                    block.quality_score = min(block.quality_score, 0.74)
 
         return blocks_to_retry, improved_count

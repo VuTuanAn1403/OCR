@@ -370,6 +370,14 @@ Ma trận có các sheet `Ma trận từ khóa`, `Trạng thái`, `Tệp lỗi`,
 
 Sau mỗi tài liệu, pipeline ghi và đọc kiểm Excel rồi xác nhận revision SQLite trước khi xử lý PDF kế tiếp. Lỗi xuất workbook chặn batch; đóng file Excel đang mở trước khi resume. Nếu Docling fallback, kết quả được giữ cùng trạng thái cần review.
 
+Kiểm tra dấu tiếng Việt áp dụng cho cả OCR và native text copy. Các cụm thông dụng bị nhầm dấu (ví dụ `trị tuệ nhân tạo`) và một số tổ hợp dấu bất thường được đánh dấu ở từng dòng; điểm trung bình cao của trang hoặc recognizer không xóa cảnh báo đó. Bộ quy tắc hiện dùng một danh sách cụm từ nhỏ, chưa phải bộ kiểm lỗi chính tả tiếng Việt tổng quát.
+
+Các profile VietOCR `local`, `balanced`, `accuracy`, V6.2 và V6.3 bật `diacritic_retry`: render lại vùng nghi ngờ ở 300 DPI rồi nhận dạng bằng cùng engine/device. Mặc định giới hạn 5 vùng và 15% số dòng mỗi trang (`accuracy`: 10 vùng, 25%). Kết quả OCR chỉ được thay nếu hết dấu nghi ngờ, giữ chữ nền/dấu câu và vượt các kiểm tra số, đơn vị, mã. `text_raw` giữ bản nhận dạng ban đầu; `correction_source=regional_reocr` ghi nguồn sửa. Profile `fast` chỉ gắn cảnh báo, không tự đọc lại dấu.
+
+Native text có thể copy đúng cả lỗi in sẵn trong tài liệu. Khi OCR đề xuất cách đặt dấu khác, pipeline giữ chữ native, lưu phương án đối chiếu trong `pages/page-NNNN.json` → `metadata.diacritic_retry.native_disagreements` và để trạng thái cần review. Unicode NFC vẫn ghép dấu tách rời qua các font span; cơ chế này không tự thay chữ bằng từ điển. Có thể tắt đọc lại bằng `diacritic_retry: {enabled: false}` trong profile; cảnh báo ở dòng vẫn được giữ.
+
+Sau khi cập nhật mã, chạy lại OCR vào thư mục output mới để kiểm tra dấu. Đếm lại từ khóa trên Markdown cũ không chạy lại nhận dạng.
+
 Sao lưu cả thư mục batch, gồm SQLite, receipt và manifest, khi không còn tiến trình ghi. Không chỉ sao chép file Excel nếu cần resume hoặc kiểm nguồn gốc.
 
 ## 10. Cấu trúc và phát triển

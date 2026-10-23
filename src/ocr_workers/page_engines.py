@@ -20,6 +20,7 @@ from ocr_recognition.fallback_engine import FallbackEngine
 from ocr_recognition.ocr_quality import OCRQualityEvaluator
 from ocr_recognition.rapidocr_engine import RapidOCREngine
 from ocr_recognition.vietnamese_seq2seq_engine import VietnameseSeq2SeqEngine
+from ocr_recognition.diacritic_retry import diacritic_retry_settings
 from ocr_document.reading_order import READING_ORDER_METHODS
 from ocr_runtime.config import ConfigError
 from ocr_structure.docling_client import DoclingStructureExtractor
@@ -28,6 +29,10 @@ from ocr_structure.document_layout_engine import DocumentLayoutEngine
 
 def validate_page_config(config: Dict[str, Any]) -> bool:
     """Reject page settings that would otherwise be silently misread; returns native_first."""
+    try:
+        diacritic_retry_settings(config)
+    except ValueError as exc:
+        raise ConfigError(str(exc)) from exc
     native_first = config.get("native_first", True)
     if not isinstance(native_first, bool):
         # A YAML string such as "false" would otherwise be truthy.

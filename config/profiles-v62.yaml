@@ -33,6 +33,7 @@ profiles:
       verify_placement: true
     fallback_enabled: true
     fallback_only_on_review: true
+    diacritic_retry: {enabled: true, upscale_dpi: 300, max_regions_per_page: 5, max_region_ratio: 0.15}
     max_fallback_region_ratio: 0.15
     max_fallback_regions_per_page: 5
     fallback_upscale_dpi: 250

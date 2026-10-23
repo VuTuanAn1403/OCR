@@ -1,5 +1,6 @@
 from typing import Tuple, List, Optional
 from ocr_recognition.vietnamese_quality import VietnameseQualityEvaluator
+from ocr_text.vietnamese_diacritics import DIACRITIC_REASON_PREFIX
 
 class OCRQualityEvaluator:
     """
@@ -27,6 +28,10 @@ class OCRQualityEvaluator:
 
         # Weighted combination: 60% engine confidence + 40% linguistic quality
         combined_score = round(0.60 * confidence + 0.40 * vn_score, 4)
+        # A high line-average recognition probability must not hide one wrong
+        # tone from evidence/export gates, which use quality_score < 0.75.
+        if any(reason.startswith(DIACRITIC_REASON_PREFIX) for reason in reasons):
+            combined_score = min(combined_score, 0.74)
 
         needs_fallback = combined_score < 0.75 or confidence < self.min_confidence or vn_suspicious
 

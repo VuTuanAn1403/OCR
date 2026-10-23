@@ -56,6 +56,8 @@ from src.ocr.infrastructure.quality.ocr_layer_agreement import (
 from src.ocr.infrastructure.postprocessing.unicode_normalizer import UnicodeNormalizer
 from src.ocr.infrastructure.postprocessing.text_cleaner import TextCleaner
 from src.ocr.infrastructure.quality.vietnamese_quality import VietnameseQualityEvaluator
+from ocr_recognition.diacritic_retry import retry_diacritic_blocks
+from ocr_text.vietnamese_diacritics import DIACRITIC_REVIEW_CODE
 from src.ocr.infrastructure.cache.artifact_cache import ArtifactCache
 from src.ocr.application.route_page import RoutePageUseCase
 from src.ocr.application.reocr_region import ReocrRegionUseCase
@@ -279,10 +281,10 @@ class ProcessPageUseCase:
 
         if is_native_eligible:
             t_nat_start = time.perf_counter()
-            # Extract digital native text directly (accuracy-first, 0 OCR corruption)
+            # Preserve copied text and any line-level diacritic review flags.
             blocks = self.native_extractor.extract_blocks(page_num)
             for b in blocks:
-                b.quality_score = round(native_score, 4)
+                b.quality_score = min(b.quality_score, round(native_score, 4)) if b.quality_score is not None else None
                 b.confidence = round(native_score, 4)
                 b.confidence_source = "native_text_score"
                 if b.bbox and len(b.bbox) >= 4:
@@ -452,7 +454,9 @@ class ProcessPageUseCase:
                     t_fallback_start = time.perf_counter()
                     upscale_dpi = self.config.get("fallback_upscale_dpi", 250)
                     priority_candidates = sorted(
-                        candidates_for_fallback,
+                        (block for block in candidates_for_fallback
+                         if not (self.config.get("diacritic_retry", {}).get("enabled", False)
+                                 and DIACRITIC_REVIEW_CODE in block.review_reason_codes)),
                         key=lambda block: (_score_or(block.quality_score, 0.0), _score_or(block.confidence, 0.0)),
                     )[:budget]
                     _, improved = self.reocr_use_case.execute(
@@ -474,7 +478,7 @@ class ProcessPageUseCase:
             logger.info("Page %d: OCR returned 0 blocks but native text exists (%d chars). Applying defensive native recovery.", page_num, meta.get("char_count", 0))
             blocks = self.native_extractor.extract_blocks(page_num)
             for b in blocks:
-                b.quality_score = round(native_score, 4)
+                b.quality_score = min(b.quality_score, round(native_score, 4)) if b.quality_score is not None else None
                 b.confidence = round(native_score, 4)
                 b.confidence_source = "native_text_score"
                 if b.bbox and len(b.bbox) >= 4:
@@ -495,6 +499,13 @@ class ProcessPageUseCase:
                                 b.block_type = res[1]
                         except Exception as e:
                             logger.warning("Page %d layout classification failed for fallback native block: %s", page_num, e)
+
+        t_retry_start = time.perf_counter()
+        retry_record = retry_diacritic_blocks(self, page_num, blocks, candidates_for_fallback, suspicious_lines)
+        fallback_duration += time.perf_counter() - t_retry_start
+        fallback_count += retry_record["improved"]
+        if self.config.get("diacritic_retry") or retry_record["suspect_lines"]:
+            meta["diacritic_retry"] = retry_record
 
         # 5. Extract tables (doc_page already obtained during content analysis)
         self._apply_layout_model(doc_page, page_num, blocks, regions, meta,

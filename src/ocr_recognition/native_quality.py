@@ -2,6 +2,7 @@ import re
 import unicodedata
 from typing import Dict, Any, List
 from ocr_text.unicode_normalizer import UnicodeNormalizer
+from ocr_text.vietnamese_diacritics import diacritic_suspicions
 
 class NativeQualityEvaluator:
     """
@@ -101,4 +102,8 @@ class NativeQualityEvaluator:
         if meta.get("is_full_page_image", False):
             score -= 0.15
 
+        # Keep a mostly clean page eligible for native extraction (MIXED),
+        # while its suspect lines retain their own review flags and raw text.
+        if diacritic_suspicions(text):
+            score = min(score, 0.85)
         return max(0.0, min(1.0, round(score, 4)))

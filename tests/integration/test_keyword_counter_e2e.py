@@ -1,4 +1,5 @@
-from process_test_helpers import historical_profiles
+from tests.unit.process_test_helpers import historical_profiles
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -10,7 +11,7 @@ import pytest
 
 from src.ocr.application.convert_document import ConvertDocumentUseCase
 from src.ocr.application.count_keywords import CountKeywordsUseCase
-from src.ocr.cli.batch_runner import BatchOCRRunner
+from benchmark.baselines.legacy_cli.batch_runner import BatchOCRRunner
 from src.ocr.infrastructure.export.completion import verify_completed
 from src.ocr.infrastructure.export.result_reader import load_document_json
 
@@ -107,13 +108,29 @@ def test_batch_counts_custom_keywords_and_refreshes_cached_outputs(tmp_path, wor
 
 
 def test_count_only_command_runs_from_another_directory(tmp_path):
-    directory = tmp_path / "annual"
-    directory.mkdir()
-    (directory / "result.md").write_text("ĐỔI MỚI, đổi mới.", encoding="utf-8")
+    # Simulated extraction receipts exercise the public analysis CLI, never
+    # establish GPU inference. The source must be verified and read-only.
+    from ocr_pipeline.batch import process_batch
+    from tests.unit.test_v63_pipeline import KEYWORDS, processor_factory, setup_inputs
+    source, extraction = setup_inputs(tmp_path, count=1)
+    report = process_batch(source, extraction, {"mode": "integration-test-double"}, KEYWORDS, processor_factory([]))
+    assert report["documents"][0]["outcome"] == "SUCCEEDED"
+    directory = extraction / "a"
+    def hashes():
+        return {p.relative_to(directory).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                for p in directory.rglob("*") if p.is_file()}
+    before = hashes()
     keywords = tmp_path / "keywords.txt"
-    keywords.write_text("Đổi mới", encoding="utf-8")
+    keywords.write_text("Internet di động", encoding="utf-8")
+    analysis = tmp_path / "analysis"
     result = subprocess.run([sys.executable, str(ROOT / "scripts/run_count_only.py"), str(directory),
-                             "--keywords-file", str(keywords)], cwd=tmp_path,
+                             "--keywords-file", str(keywords), "--output", str(analysis),
+                             "--keyword-set-version", "integration-v1"], cwd=tmp_path,
                             capture_output=True, text=True, encoding="utf-8", timeout=30)
     assert result.returncode == 0, result.stderr
-    assert _excel_counts(directory) == {"Đổi mới": 2}
+    assert _excel_counts(analysis / "a") == {"Internet di động": 2}
+    batch = json.loads((analysis / "batch_report.json").read_text(encoding="utf-8"))
+    assert batch["documents"][0]["outcome"] == "SUCCEEDED"
+    assert batch["documents"][0]["counts"] == [2]
+    assert verify_completed(analysis / "a")
+    assert hashes() == before

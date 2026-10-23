@@ -1,4 +1,4 @@
-from process_test_helpers import historical_profiles
+from tests.unit.process_test_helpers import historical_profiles
 import pytest
 from pathlib import Path
 from src.ocr.application.convert_document import ConvertDocumentUseCase

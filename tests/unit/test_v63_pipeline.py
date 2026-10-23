@@ -20,7 +20,7 @@ from src.ocr.infrastructure.pdf.ocr_bridge import ocr_bridge
 from src.ocr.runtime.atomic_io import atomic_write_json, atomic_write_bytes
 from src.ocr.runtime.gpu_scheduler import sha256, GPULease
 from src.ocr.runtime.paths import PROJECT_ROOT
-from document_test_helpers import make_doc, block
+from tests.unit.document_test_helpers import make_doc, block
 
 KEYWORDS = PROJECT_ROOT/"config/keywords.txt"
 

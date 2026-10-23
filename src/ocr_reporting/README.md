@@ -8,4 +8,4 @@ Xuất workbook từng tài liệu/ma trận từ số đếm đã có; đọc l
 - Không tự đếm lại hoặc ghi SQLite. `FAILED_DOCUMENT`/pending giữ ô trống, không đổi thành số 0. So workbook bằng giá trị/cấu trúc, không byte XLSX có metadata ZIP biến thiên.
 - Thay layout Excel không làm mất hiệu lực extraction; kiểm publication recovery ở `tests/unit/test_v63_pipeline.py` bằng môi trường app.
 
-Quy trình phát triển và CI: [hướng dẫn chung](../../docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md).
+[Cài đặt, cách chạy và kiểm thử](../../README.md).

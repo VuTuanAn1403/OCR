@@ -9,4 +9,4 @@ Supervisor/document owner CPU: CLI, backend, batch/SQLite, điều phối worker
 - Analysis xác minh extraction gốc, không tin provenance tự khai. Tài liệu nguồn thiếu file giữ hàng `FAILED_DOCUMENT`, counts `null`.
 - Wheel hỗ trợ analysis CPU; backend V6.3 GPU cần checkout và hai runtime được khóa.
 
-Batch/resume, closure và publication recovery: [hướng dẫn chung](../../docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md).
+[Cài đặt, cách chạy và kiểm thử](../../README.md).

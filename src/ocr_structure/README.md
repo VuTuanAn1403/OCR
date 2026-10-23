@@ -8,4 +8,4 @@ Docling client, PDF bridge và ánh xạ bảng/công thức/sơ đồ lên ch�
 - Giữ `raster-plus-gpu-text-v1`: cấu trúc phải bám text evidence/GPU bridge, không sao chép text layer native để vượt validator. Confidence chưa đo là `null`.
 - Mã chỉ pha B thay đổi cần dùng lại pha A, chạy lại B và downstream; kiểm bằng stage call counter cùng receipt upstream.
 
-Quy trình model/lock, closure và baseline: [hướng dẫn chung](../../docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md).
+[Cài đặt, cách chạy và kiểm thử](../../README.md).

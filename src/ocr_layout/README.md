@@ -8,4 +8,4 @@ Adapter model layout và các bước áp layout lên bằng chứng trang. Pack
 - Adapter mới chuẩn hóa capability/bbox/hệ tọa độ, không bịa confidence. Layout trên trang xoay phải có phép biến đổi xác minh được.
 - Kiểm stage closure khi thêm dynamic import/model mới; sửa layout ảnh hưởng những pha thật sự đọc nó.
 
-Quy trình adapter/fingerprint/benchmark: [hướng dẫn chung](../../docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md).
+[Cài đặt, cách chạy và kiểm thử](../../README.md).

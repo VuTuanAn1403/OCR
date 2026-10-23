@@ -1,6 +1,6 @@
 """Compatibility aliases and import hygiene of the module migration.
 
-docs/architecture/module_map.json records every moved module. The old path
+config/module_map.json records every moved module. The old path
 must resolve to the very same module object, so `mock.patch` on either name
 patches the code that runs.
 """
@@ -13,7 +13,7 @@ from unittest import mock
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-MOVES = json.loads((ROOT / "docs/architecture/module_map.json").read_text(encoding="utf-8"))["moves"]
+MOVES = json.loads((ROOT / "config/module_map.json").read_text(encoding="utf-8"))["moves"]
 CODE_DIRS = [ROOT / "src", ROOT / "scripts", ROOT / "tests", ROOT / "benchmark"]
 
 
@@ -55,7 +55,7 @@ def test_no_double_import_names():
 
 
 def test_new_packages_do_not_import_legacy_namespace():
-    exceptions = set(json.loads((ROOT / "docs/architecture/module_map.json").read_text(
+    exceptions = set(json.loads((ROOT / "config/module_map.json").read_text(
         encoding="utf-8")).get("temporary_legacy_imports", {}))
     offenders = []
     for path in (ROOT / "src").glob("ocr_*/**/*.py"):

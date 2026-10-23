@@ -7,4 +7,4 @@ Inspect/render/crop PDF và chuyển đổi tọa độ; không nhận dạng ch
 - Test: `python -m pytest tests/unit/pdf_io tests/unit/test_region_cropper.py -q -p no:cacheprovider`.
 - Fixture phải kiểm cropbox lệch gốc, các góc xoay, chain affine khả nghịch và bbox cùng hệ tọa độ. Giữ PDF nguồn; không làm lẫn text layer native vào policy GPU OCR.
 
-Quy trình dependency, baseline và CI: [hướng dẫn chung](../../docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md).
+[Cài đặt, cách chạy và kiểm thử](../../README.md).

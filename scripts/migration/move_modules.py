@@ -7,7 +7,7 @@ becomes a `sys.modules` alias of the new module (same object, so imports,
 `mock.patch` targets and isinstance checks keep working). Imports of moved
 modules are rewritten to their new names inside `src/ocr_*`; legacy files keep
 their old imports and resolve through the aliases. Every move is recorded in
-docs/architecture/module_map.json, which the alias tests read.
+config/module_map.json, which the alias tests read.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
-MAP = ROOT / "docs" / "architecture" / "module_map.json"
+MAP = ROOT / "config" / "module_map.json"
 
 ALIAS = '''"""Compatibility alias: this module moved to `{new}` (migration {stage}).
 

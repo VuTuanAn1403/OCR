@@ -121,9 +121,8 @@ output/*
 /examples/*.pdf
 /*.pdf
 
-# Excluded documentation, notes, and local reports. Architecture docs are tracked.
-/docs/*
-!/docs/architecture/
+# Excluded local documentation, notes, and reports.
+/docs/
 reports/
 research_notes/
 CLAUDE.md

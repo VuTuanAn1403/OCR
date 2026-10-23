@@ -159,7 +159,7 @@ def test_legacy_exclusions_are_documented():
     actual = {edge.replace(" ", "")
               for contract in config["tool"]["importlinter"]["contracts"]
               for edge in contract.get("ignore_imports", [])}
-    documented = json.loads((ROOT / "docs/architecture/module_map.json").read_text(encoding="utf-8"))
+    documented = json.loads((ROOT / "config/module_map.json").read_text(encoding="utf-8"))
     assert actual == set(documented["temporary_legacy_imports"])
     assert all(documented["temporary_legacy_imports"].values())
 
@@ -221,7 +221,7 @@ def private_cross_imports(src):
 
 
 def test_packages_use_only_public_names_of_other_packages():
-    documented = json.loads((ROOT / "docs/architecture/module_map.json").read_text(encoding="utf-8"))
+    documented = json.loads((ROOT / "config/module_map.json").read_text(encoding="utf-8"))
     exceptions = documented["private_import_exceptions"]
     assert private_cross_imports(ROOT / "src") == set(exceptions)
     assert all(exceptions.values())

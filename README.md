@@ -385,13 +385,12 @@ OCR/
 ├── scripts/                  # Setup, preflight, kiểm thử, benchmark
 ├── tests/                    # Unit, scientific, integration, golden
 ├── benchmark/                # Metric, protocol, evidence chọn lọc
-├── docs/architecture/        # Thiết kế và hướng dẫn phát triển
 └── kaggle/                   # Notebook
 ```
 
 Luồng V6.3: **PDF → worker nhận dạng GPU → kết thúc pha A → worker Docling GPU → export CPU → đếm keyword → Excel riêng → xác nhận ma trận → PDF tiếp theo**. Hai pha GPU chạy tuần tự và phải kết thúc cây tiến trình trước khi bàn giao tài nguyên.
 
-Tài liệu chi tiết: [kiến trúc](docs/architecture/README.md), [phát triển module](docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md), [cấu hình/dữ liệu](docs/architecture/CAU_HINH_VA_DU_LIEU.md), [migration và bằng chứng](docs/architecture/MIGRATION_PLAN.md).
+Hướng dẫn từng package: [pipeline và CLI](src/ocr_pipeline/README.md), [runtime và cấu hình](src/ocr_runtime/README.md), [đếm từ khóa](src/ocr_keywords/README.md), [xuất Excel](src/ocr_reporting/README.md).
 
 ### Kiểm thử
 
@@ -445,12 +444,12 @@ Nếu đang dùng checkout từ repository cũ và `origin` đã tồn tại:
 git remote set-url origin https://github.com/VuTuanAn1403/OCR.git
 ```
 
-[.gitignore](.gitignore) loại venv, cache, `inputs/`, `output/`, `scratch/`, `tmp/`, log, biến môi trường và trọng số (`.pth`, `.pt`, `.onnx`, `.safetensors`...). Cấu hình model/registry và font kèm giấy phép vẫn là tài nguyên cần thiết của mã nguồn. Các fixture/evidence chọn lọc trong `tests/` và `benchmark/` phục vụ kiểm thử.
+[.gitignore](.gitignore) loại venv, cache, `inputs/`, `output/`, `scratch/`, `tmp/`, `docs/`, log, biến môi trường và trọng số (`.pth`, `.pt`, `.onnx`, `.safetensors`...). Cấu hình model/registry và font kèm giấy phép vẫn là tài nguyên cần thiết của mã nguồn. Các fixture/evidence chọn lọc trong `tests/` và `benchmark/` phục vụ kiểm thử.
 
 Khi cập nhật dự án, kiểm danh sách staged trước khi commit/push:
 
 ```powershell
-git add README.md .gitignore pyproject.toml setup.py MANIFEST.in .gitattributes .github src config requirements scripts tests benchmark docs/architecture kaggle assets run_ocr.py run_batch.py pytest.ini requirements*.txt
+git add README.md .gitignore pyproject.toml setup.py MANIFEST.in .gitattributes .github src config requirements scripts tests benchmark kaggle assets run_ocr.py run_batch.py pytest.ini requirements*.txt
 git diff --cached --stat
 git diff --cached --check
 git commit -m "docs: update setup and usage instructions"

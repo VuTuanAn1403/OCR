@@ -8,4 +8,4 @@ Ghép trang, reading order/furniture, ID ổn định, Markdown/JSON và validat
 - Renderer/processor mới nhận contracts và metadata nguồn, không điều khiển OCR. Đổi Markdown có thể đổi vector keyword, nên kiểm cả baseline chữ/số/nguồn/bbox và đếm khi cần.
 - Đổi schema cần policy đọc/từ chối fixture cũ rõ ràng; không sửa receipt/output cũ để làm test qua.
 
-Quy trình schema, cache và baseline: [hướng dẫn chung](../../docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md).
+[Cài đặt, cách chạy và kiểm thử](../../README.md).

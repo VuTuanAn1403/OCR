@@ -8,4 +8,4 @@ Paths/config, registry/model/dependency lock, fingerprint, GPU lease, process tr
 - Không resolve symlink Python venv thành interpreter hệ thống. Không sync runtime đang được batch dùng. Hash model phải chọn đúng file engine nạp, kể cả model nằm ngoài checkout.
 - Khi đổi fingerprint, kiểm coverage mã coordinator/worker và stage invalidation bằng call counter, không chỉ chuỗi hash.
 
-[Cấu hình/precedence/sao lưu](../../docs/architecture/CAU_HINH_VA_DU_LIEU.md); [hướng dẫn phát triển](../../docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md).
+[Cài đặt, cách chạy và kiểm thử](../../README.md).

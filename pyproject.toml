@@ -70,8 +70,7 @@ include-package-data = false
 # Read statically from the file (setuptools AST), never imported under this name.
 version = { attr = "ocr_document.manifest_exporter.PIPELINE_VERSION" }
 
-# Module boundaries (docs/architecture/PROMPTS_TAI_CAU_TRUC_MODULE_OCR_PDF.md,
-# "Quy tắc phụ thuộc"). Run: lint-imports (from the repository root).
+# Module boundaries (config/module_map.json). Run: lint-imports (from the repository root).
 # Each internal package absent from the table's allowed-dependency column is
 # forbidden, including packages introduced after the original contract. Keep
 # the controlled violation tests in tests/unit/test_import_contracts.py in sync.
@@ -205,7 +204,7 @@ name = "ocr_workers run one GPU phase: no keywords, reporting, ledger or pipelin
 type = "forbidden"
 source_modules = ["ocr_workers"]
 forbidden_modules = ["src", "ocr_keywords", "ocr_reporting", "ocr_pipeline", "openpyxl"]
-# Temporary (docs/architecture/module_map.json "temporary_legacy_imports").
+# Temporary (config/module_map.json "temporary_legacy_imports").
 ignore_imports = ["ocr_workers.phase_text -> src.ocr.application.process_page",
                   "ocr_workers.phase_export -> src.ocr.application.export_document"]
 

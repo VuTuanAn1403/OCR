@@ -9,4 +9,4 @@ Entry point pha A/B/export, Docling server và factory engine. Mỗi pha có vò
 - Ngoại lệ legacy còn giữ: pha A V6.2 dùng `ProcessPageUseCase`, hook export V6.2 finalize cũ. Lý do và điều kiện gỡ nằm trong `module_map.json`; V6.3 không dùng các hook đó.
 - Khi patch model trong test factory, patch `ocr_workers.page_engines.<Class>` tại nơi tra cứu, tránh nạp model thật ngoài dự kiến.
 
-Protocol/adapter/runtime/fingerprint: [hướng dẫn chung](../../docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md).
+[Cài đặt, cách chạy và kiểm thử](../../README.md).

@@ -8,4 +8,4 @@ Detector/recognizer, đánh giá chữ, routing và các bước inference. Khô
 - Adapter mới phải khai báo capability, nguồn chữ và placement đo được. Không tạo confidence hoặc nhãn GPU cho dữ liệu không đo.
 - Thay code/model pha A phải làm mất hiệu lực các stage downstream; giữ nguyên baseline khi chỉ di chuyển mã.
 
-Hướng dẫn adapter, schema, model/lock và nghiệm thu: [hướng dẫn chung](../../docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md).
+[Cài đặt, cách chạy và kiểm thử](../../README.md).

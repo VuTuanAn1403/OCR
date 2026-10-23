@@ -8,4 +8,4 @@
 - Giữ nguyên `literal_v1`: NFC + casefold, đếm chuỗi con không chồng lấn trên Markdown đã xuất. Semantics mới cần policy/version mới và fixture tương thích.
 - Thay keyword/reporting không được gọi OCR. Analysis chỉ nhận extraction đã kiểm receipt/provenance; không tự chứng thực nguồn bằng snapshot từ điển.
 
-Quy trình fixture, schema, closure/cache và CI: [hướng dẫn chung](../../docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md).
+[Cài đặt, cách chạy và kiểm thử](../../README.md).

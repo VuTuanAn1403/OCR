@@ -2,10 +2,12 @@ import pytest
 from pathlib import Path
 from src.ocr.application.convert_document import ConvertDocumentUseCase
 
-def test_clw_benchmark_four_pages(tmp_path):
+def test_clw_benchmark_four_pages(tmp_path, monkeypatch):
     pdf_path = "inputs/CLW_Baocaothuongnien_2020.pdf"
     if not Path(pdf_path).exists():
         pytest.skip(f"Benchmark PDF {pdf_path} not found")
+    # The page cache and Docling job files stay with the test, not in the checkout's .cache.
+    monkeypatch.setenv("OCR_CACHE_DIR", str(tmp_path / "cache"))
 
     converter = ConvertDocumentUseCase()
     out_dir = tmp_path / "output"

@@ -1,5 +1,10 @@
-"""Versioned artifact inventory; absence of metadata does not imply V6 output."""
-OUTPUT_CONTRACT_VERSION = "output-v6.1"
-V6_ARTIFACTS = ("extraction.json", "structure.json", "document.json", "document.md")
-OUTPUT_MODES = ("legacy", "compact")
-RESULT_INDEX_SCHEMA = "result-index-v1"
+"""Compatibility alias: this module moved to `ocr_document.output_contract` (migration P08).
+
+The object registered under this name is `ocr_document.output_contract` itself, so imports,
+`mock.patch` targets and isinstance checks behave as before.
+"""
+import sys
+
+import ocr_document.output_contract as _module
+
+sys.modules[__name__] = _module

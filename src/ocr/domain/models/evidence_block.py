@@ -1,37 +1,10 @@
-from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
-from src.ocr.domain.models.confidence import ConfidenceModel
-from src.ocr.domain.models.region import ContentType
+"""Compatibility alias: this module moved to `ocr_contracts.evidence_block` (migration P02).
 
+The object registered under this name is `ocr_contracts.evidence_block` itself, so imports,
+`mock.patch` targets and isinstance checks behave as before.
+"""
+import sys
 
-class EvidenceBlock(ConfidenceModel):
-    """
-    V3.1.2 Evidence-Preserving intermediate representation (spec §3).
+import ocr_contracts.evidence_block as _module
 
-    Markdown is only generated AFTER EvidenceBlocks are complete.
-    Each block carries its provenance (source, confidence, content_type)
-    so the merge/reading-order stage can make informed decisions.
-    """
-    page: int
-    block_id: str = ""
-    region_id: Optional[str] = None
-    bbox: List[float] = Field(default_factory=list)  # [x0, y0, x1, y1]
-    bbox_original: List[float] = Field(default_factory=list)
-    bbox_normalized: List[float] = Field(default_factory=list)
-    text: str = ""
-    content_type: ContentType = ContentType.TEXT
-    source: Literal["native", "ocr", "vector", "image"] = "native"
-    orientation: Optional[float] = None
-    rotation: float = 0.0
-    column_id: Optional[int] = None
-    table_id: Optional[str] = None
-    image_id: Optional[str] = None
-    reading_order: int = -1
-    parent_region: Optional[str] = None
-    transform_matrix: List[float] = Field(default_factory=list)
-    status: str = "UNRESOLVED"
-    failure_reason: Optional[str] = None
-    quality_score: Optional[float] = None
-    block_type: str = "paragraph"
-    is_bold: Optional[bool] = None
-    font_size: Optional[float] = None
+sys.modules[__name__] = _module

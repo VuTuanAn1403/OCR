@@ -32,14 +32,14 @@ def mock_use_case():
         "fallback_enabled": False,
         "orientation_fallback_enabled": False,
     }
-    with patch("src.ocr.application.process_page.PDFInspector"), \
-         patch("src.ocr.application.process_page.PDFRenderer"), \
-         patch("src.ocr.application.process_page.NativeTextExtractor"), \
-         patch("src.ocr.application.process_page.VietnameseSeq2SeqEngine"), \
-         patch("src.ocr.application.process_page.OCRQualityEvaluator"), \
-         patch("src.ocr.application.process_page.DocumentLayoutEngine"), \
-         patch("src.ocr.application.process_page.PageContentAnalyzer"), \
-         patch("src.ocr.application.process_page.FallbackEngine"), \
+    with patch("ocr_workers.page_engines.PDFInspector"), \
+         patch("ocr_workers.page_engines.PDFRenderer"), \
+         patch("ocr_workers.page_engines.NativeTextExtractor"), \
+         patch("ocr_workers.page_engines.VietnameseSeq2SeqEngine"), \
+         patch("ocr_workers.page_engines.OCRQualityEvaluator"), \
+         patch("ocr_workers.page_engines.DocumentLayoutEngine"), \
+         patch("ocr_workers.page_engines.PageContentAnalyzer"), \
+         patch("ocr_workers.page_engines.FallbackEngine"), \
          patch("src.ocr.application.process_page.ReocrRegionUseCase"):
         uc = ProcessPageUseCase(mock_doc, config, "test_hash")
     return uc

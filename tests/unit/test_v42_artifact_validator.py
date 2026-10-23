@@ -12,14 +12,19 @@ from src.ocr.domain.models.table import TableStructure, TableCell
 @pytest.fixture
 def doc_dir():
     root = Path.cwd() / "output" / "v42_validation" / "validator_unit"
-    root.mkdir(parents=True, exist_ok=True)
     directory = root / f"case-{uuid4().hex}"
-    directory.mkdir()
+    directory.mkdir(parents=True)
     assert directory.resolve().is_relative_to(Path.cwd().resolve())
     try:
         yield directory
     finally:
         shutil.rmtree(directory)
+        # Leave no empty validator_unit/v42_validation behind; a parent that is not empty stays.
+        for parent in (root, root.parent):
+            try:
+                parent.rmdir()
+            except OSError:
+                break
 
 
 def _make_minimal_document(root):

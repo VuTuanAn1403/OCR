@@ -1,0 +1,7 @@
+# Transitive pins of the CPU app lock: the versions already installed in .venv
+# (P10 keeps dependency versions; change only with a recorded reason).
+pydantic-core==2.46.5
+annotated-types==0.8.0
+typing-extensions==4.16.0
+typing-inspection==0.4.4
+et-xmlfile==2.0.0

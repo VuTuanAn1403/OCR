@@ -1,0 +1,19 @@
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, Field
+from ocr_contracts.page import ExtractedPage
+from ocr_contracts.quality import DocumentQualityReport
+
+class ExtractedDocument(BaseModel):
+    document_id: str
+    file_path: str
+    file_hash: str
+    total_pages: int
+    selected_pages: List[int] = Field(default_factory=list)
+    profile: str = "balanced"
+    pages: List[ExtractedPage] = Field(default_factory=list)
+    quality: DocumentQualityReport
+    manifest: Dict[str, Any] = Field(default_factory=dict)
+    full_markdown: str = ""
+    accuracy: Optional[Any] = None
+    # startup / pages / export / document latency (proposal 6.1); filled after export.
+    timing: Dict[str, Any] = Field(default_factory=dict)

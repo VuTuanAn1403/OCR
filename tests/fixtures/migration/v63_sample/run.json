@@ -1,0 +1,135 @@
+{
+ "source": "examples/sample.pdf",
+ "generation": "b4573fa6e12828c538ada14914d91acebfbe703bc7a50af646ed3ccb29a7656e",
+ "pdf_sha256": "1e1a3fa175738fc7cf5ea5ecb076b73d422554b713a5496b5f7a3a427b796b4e",
+ "config": {
+  "profile": "unified_gpu_full_ocr",
+  "device": "cuda",
+  "native_first": false,
+  "ocr_scope": "all_pages",
+  "ocr_source_policy": "gpu_ocr_only_v1",
+  "bridge_policy": "raster-plus-gpu-text-v1",
+  "document_layout": {
+   "method": "region_tree_graph_v1",
+   "furniture": {
+    "method": "document_context_v3"
+   }
+  },
+  "render_dpi": 180,
+  "primary_engine": "vietocr",
+  "num_threads": 2,
+  "batch_size": 4,
+  "layout": "accurate",
+  "model_registry": "models/v62/runtime-models.json",
+  "runtime": {
+   "scheduler": "document_two_phase_v1",
+   "phase_timeout_seconds": 14400,
+   "lease_timeout_seconds": 60
+  },
+  "docling": {
+   "enabled": true,
+   "page_selection": "all",
+   "tables": true,
+   "formulas": true,
+   "table_mode": "fast",
+   "num_threads": 2,
+   "ocr": false,
+   "formula_max_tokens": 256,
+   "timeout_seconds": 360,
+   "startup_timeout_seconds": 900,
+   "on_error": "fallback",
+   "strict_gpu": true,
+   "verify_placement": true,
+   "device": "cuda",
+   "dependency_lock": "C:\\kk_2\\OCR_pdf\\requirements\\v62\\windows-docling-gpu.lock"
+  },
+  "fallback_enabled": false,
+  "min_confidence": 0.8,
+  "numeric_retry_threshold": 0.85,
+  "orientation_fallback_enabled": false,
+  "vector_table_min_native_score": 0.9,
+  "skip_vector_tables_on_restricted_pdf": true,
+  "two_up_detection_enabled": false,
+  "multi_region_detection_enabled": false,
+  "page_timeout_seconds": 180,
+  "native_quality": {
+   "reliable_threshold": 0.9,
+   "review_threshold": 0.7
+  },
+  "bridge_font": "C:\\kk_2\\OCR_pdf\\assets\\fonts\\NotoSans-Regular.ttf",
+  "text_detector": {
+   "adapter": "onnx-db-map-v1",
+   "model_path": "C:\\kk_2\\OCR_pdf\\models\\v62\\ch_PP-OCRv4_det_infer.onnx",
+   "sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+   "scope": "full_page",
+   "max_side": 1536,
+   "gpu_mem_limit_mb": 1024
+  },
+  "layout_model": {
+   "adapter": "hf_rtdetr_torch",
+   "model_path": "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-layout-heron\\snapshots\\8f39ad3c0b4c58e9c2d2c84a38465abf757272d8",
+   "on_error": "raise",
+   "render_dpi": 144
+  },
+  "backend_devices": {
+   "ocr_detection": "cuda",
+   "ocr_recognition": "cuda",
+   "layout": "cuda",
+   "docling": "cuda"
+  }
+ },
+ "text_receipt": {
+  "total_pages": 1,
+  "selected_pages": [
+   1
+  ],
+  "init_seconds": 26.847820000000866,
+  "seconds": 29.29403950000051,
+  "placement": {
+   "detector": {
+    "status": "VERIFIED_INFERENCE",
+    "expected_provider": "CUDAExecutionProvider",
+    "kernel_counts": {
+     "CUDAExecutionProvider": 328
+    },
+    "cpu_auxiliary_ops": [],
+    "profile_path": "C:\\kk_2\\OCR_pdf\\.cache\\backend-probes\\detector_2026-10-22_02-19-38.json",
+    "model_sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9"
+   },
+   "recognizer": {
+    "status": "VERIFIED_INFERENCE",
+    "device": "cuda",
+    "forward_calls": {
+     "vietocr": 2215
+    },
+    "not_exercised": [],
+    "workload": "document"
+   },
+   "layout": {
+    "status": "VERIFIED_INFERENCE",
+    "backend": "torch-rtdetr-v2",
+    "parameter_devices": [
+     "cuda"
+    ],
+    "output_device": "cuda:0"
+   }
+  }
+ },
+ "structure_receipt": {
+  "seconds": 21.90522299999975,
+  "placement": [
+   {
+    "status": "VERIFIED_INFERENCE",
+    "device": "cuda",
+    "forward_calls": {
+     "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, 'a546021ff098a625dbe8be7e0915c41e').layout_model.engine._model": 267
+    },
+    "not_exercised": [
+     "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, 'a546021ff098a625dbe8be7e0915c41e').enrichment_pipe.0.engine.actual_engine.vlm_model",
+     "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, 'a546021ff098a625dbe8be7e0915c41e').table_model.tf_predictor._model"
+    ]
+   }
+  ]
+ },
+ "note": "Real V6.3 GPU run (P01 baseline, RTX 2050). Page JSON after phase A and phase B; not ground truth."
+}

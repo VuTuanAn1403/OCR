@@ -1,65 +1,10 @@
-from typing import Dict, Any
-from src.ocr.domain.routing.page_type import PageType
+"""Compatibility alias: this module moved to `ocr_recognition.routing_policy` (migration P06).
 
-class RoutingPolicy:
-    def __init__(self, reliable_threshold: float = 0.90, review_threshold: float = 0.70):
-        self.reliable_threshold = reliable_threshold
-        self.review_threshold = review_threshold
+The object registered under this name is `ocr_recognition.routing_policy` itself, so imports,
+`mock.patch` targets and isinstance checks behave as before.
+"""
+import sys
 
-    def determine_page_type(self, meta: Dict[str, Any], native_quality_score: float) -> PageType:
-        """
-        Determines the PageType based on page geometry, image coverage, and native text quality score.
-        """
-        char_count = meta.get("char_count", 0)
-        image_coverage = meta.get("image_coverage_ratio", 0.0)
-        image_count = meta.get("image_count", 0)
-        is_full_page_image = meta.get("is_full_page_image", False)
-        table_count = meta.get("table_count", 0)
+import ocr_recognition.routing_policy as _module
 
-        # A syntactically clean but invisible OCR layer is not visible native
-        # ground truth. Reuse requires an independently validated agreement gate.
-        if meta.get("has_hidden_ocr_layer"):
-            return PageType.SCANNED_WITH_OCR_LAYER
-        if meta.get("hidden_text_only"):
-            return PageType.NATIVE_TEXT_LOW_QUALITY
-
-        # Scanned page with no or almost no text
-        if char_count < 30:
-            if image_count > 0:
-                return PageType.SCANNED_IMAGE
-            return PageType.IMAGE_ONLY
-
-        # Product showcase collage (spec §4.3):
-        # Multiple product packaging photos, minimal narrative text, no financial tables
-        if image_count >= 4 and char_count < 400 and table_count == 0:
-            return PageType.PRODUCT_SHOWCASE_COLLAGE
-
-        # High quality native text
-        if native_quality_score >= self.reliable_threshold:
-            if is_full_page_image:
-                # Could be a clean OCR layer or native text over a background image
-                return PageType.NATIVE_TEXT
-            if image_coverage > 0.40 and image_count > 0:
-                return PageType.MIXED
-            return PageType.NATIVE_TEXT
-
-        # Corrupted / low-quality native text layer (e.g. old OCR with broken accents like in CLW)
-        if native_quality_score < self.review_threshold:
-            return PageType.NATIVE_TEXT_LOW_QUALITY
-
-        # In-between: review range (0.70 <= score < 0.90)
-        if image_coverage > 0.50 or is_full_page_image:
-            return PageType.NATIVE_TEXT_LOW_QUALITY
-        return PageType.MIXED
-
-    def should_ocr(self, page_type: PageType) -> bool:
-        """
-        Returns True if the page should be processed by an OCR engine.
-        """
-        return page_type in (
-            PageType.SCANNED_IMAGE,
-            PageType.SCANNED_WITH_OCR_LAYER,
-            PageType.NATIVE_TEXT_LOW_QUALITY,
-            PageType.IMAGE_ONLY,
-            PageType.MIXED
-        )
+sys.modules[__name__] = _module

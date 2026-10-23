@@ -1,69 +1,10 @@
-from typing import Optional, List, Tuple
-import pymupdf
-import numpy as np
-import cv2
+"""Compatibility alias: this module moved to `ocr_pdf_io.pdf_renderer` (migration P05b).
 
-class PDFRenderer:
-    """
-    Renders PDF pages and regional crops into OpenCV/numpy BGR images.
-    """
-    def __init__(self, doc: pymupdf.Document):
-        self.doc = doc
+The object registered under this name is `ocr_pdf_io.pdf_renderer` itself, so imports,
+`mock.patch` targets and isinstance checks behave as before.
+"""
+import sys
 
-    def render_page(self, page_num: int, dpi: int = 180) -> np.ndarray:
-        """
-        Renders a 1-indexed page at the specified DPI. Returns a BGR numpy ndarray.
-        """
-        page = self.doc[page_num - 1]
-        pix = page.get_pixmap(dpi=dpi)
-        img = np.frombuffer(pix.samples, dtype=np.uint8).reshape((pix.h, pix.w, pix.n))
-        if pix.n == 4:
-            return cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
-        elif pix.n == 3:
-            return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        elif pix.n == 1:
-            return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        return img
+import ocr_pdf_io.pdf_renderer as _module
 
-    def render_region_crop(
-        self,
-        page_num: int,
-        bbox: List[float],
-        dpi: int = 300,
-        margin: float = 5.0
-    ) -> Tuple[np.ndarray, List[float]]:
-        """
-        Renders a specific bounding box [x0, y0, x1, y1] on a page at an upscaled DPI (e.g. 300).
-        Includes an optional margin in points.
-        Returns (cropped_image, actual_rect_bbox).
-        """
-        page = self.doc[page_num - 1]
-        page_rect = page.rect
-
-        x0 = max(0.0, bbox[0] - margin)
-        y0 = max(0.0, bbox[1] - margin)
-        x1 = min(page_rect.width, bbox[2] + margin)
-        y1 = min(page_rect.height, bbox[3] + margin)
-
-        if x1 <= x0 or y1 <= y0:
-            return np.zeros((0, 0, 3), dtype=np.uint8), [x0, y0, x1, y1]
-
-        clip_rect = pymupdf.Rect(x0, y0, x1, y1)
-        pix = page.get_pixmap(dpi=dpi, clip=clip_rect)
-        if pix.w == 0 or pix.h == 0 or not pix.samples:
-            return np.zeros((0, 0, 3), dtype=np.uint8), [x0, y0, x1, y1]
-
-        img = np.frombuffer(pix.samples, dtype=np.uint8).reshape((pix.h, pix.w, pix.n))
-        if img.size == 0:
-            return np.zeros((0, 0, 3), dtype=np.uint8), [x0, y0, x1, y1]
-
-        if pix.n == 4:
-            bgr = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
-        elif pix.n == 3:
-            bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        elif pix.n == 1:
-            bgr = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        else:
-            bgr = img
-
-        return bgr, [x0, y0, x1, y1]
+sys.modules[__name__] = _module

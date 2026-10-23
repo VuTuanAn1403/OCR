@@ -1,0 +1,405 @@
+{
+  "moves": {
+    "src.ocr.application.analysis_run": {
+      "to": "ocr_pipeline.analysis_run",
+      "stage": "P09"
+    },
+    "src.ocr.application.document_export": {
+      "to": "ocr_document.export",
+      "stage": "P08"
+    },
+    "src.ocr.application.keyword_finalization": {
+      "to": "ocr_pipeline.keyword_finalization",
+      "stage": "P09"
+    },
+    "src.ocr.application.process_batch": {
+      "to": "ocr_pipeline.batch",
+      "stage": "P09"
+    },
+    "src.ocr.application.process_document": {
+      "to": "ocr_pipeline.document",
+      "stage": "P09"
+    },
+    "src.ocr.application.publish_keyword_matrix": {
+      "to": "ocr_pipeline.publication",
+      "stage": "P09"
+    },
+    "src.ocr.application.recount_document": {
+      "to": "ocr_pipeline.recount",
+      "stage": "P09"
+    },
+    "src.ocr.application.resolve_document_furniture": {
+      "to": "ocr_document.resolve_document_furniture",
+      "stage": "P08"
+    },
+    "src.ocr.application.resolve_document_layout": {
+      "to": "ocr_document.resolve_document_layout",
+      "stage": "P08"
+    },
+    "src.ocr.application.route_page": {
+      "to": "ocr_recognition.route_page",
+      "stage": "P06"
+    },
+    "src.ocr.domain.models.accuracy": {
+      "to": "ocr_contracts.accuracy",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.confidence": {
+      "to": "ocr_contracts.confidence",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.diagram": {
+      "to": "ocr_contracts.diagram",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.document": {
+      "to": "ocr_contracts.document",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.evidence_block": {
+      "to": "ocr_contracts.evidence_block",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.formula": {
+      "to": "ocr_contracts.formula",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.keyword": {
+      "to": "ocr_contracts.keyword",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.page": {
+      "to": "ocr_contracts.page",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.processing": {
+      "to": "ocr_contracts.processing",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.quality": {
+      "to": "ocr_contracts.quality",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.region": {
+      "to": "ocr_contracts.region",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.schema": {
+      "to": "ocr_contracts.schema",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.subpage": {
+      "to": "ocr_contracts.subpage",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.table": {
+      "to": "ocr_contracts.table",
+      "stage": "P02"
+    },
+    "src.ocr.domain.models.text_block": {
+      "to": "ocr_contracts.text_block",
+      "stage": "P02"
+    },
+    "src.ocr.domain.routing.page_type": {
+      "to": "ocr_contracts.page_type",
+      "stage": "P02"
+    },
+    "src.ocr.domain.routing.routing_policy": {
+      "to": "ocr_recognition.routing_policy",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.export.artifact_validator": {
+      "to": "ocr_pipeline.artifact_validation",
+      "stage": "P09"
+    },
+    "src.ocr.infrastructure.export.completion": {
+      "to": "ocr_pipeline.completion",
+      "stage": "P09"
+    },
+    "src.ocr.infrastructure.export.contract_schema": {
+      "to": "ocr_document.contract_schema",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.export.document_contracts": {
+      "to": "ocr_document.document_contracts",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.export.document_validation": {
+      "to": "ocr_document.validation",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.export.json_exporter": {
+      "to": "ocr_document.json_exporter",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.export.keyword_exporter": {
+      "to": "ocr_reporting.document_workbook",
+      "stage": "P04"
+    },
+    "src.ocr.infrastructure.export.keyword_v63": {
+      "to": "ocr_reporting.workbooks",
+      "stage": "P04"
+    },
+    "src.ocr.infrastructure.export.keyword_validator": {
+      "to": "ocr_pipeline.keyword_validation",
+      "stage": "P09"
+    },
+    "src.ocr.infrastructure.export.manifest_exporter": {
+      "to": "ocr_document.manifest_exporter",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.export.markdown_exporter": {
+      "to": "ocr_document.markdown_exporter",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.export.output_contract": {
+      "to": "ocr_document.output_contract",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.export.result_reader": {
+      "to": "ocr_document.result_reader",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.layout.diagram_builder": {
+      "to": "ocr_structure.diagram_builder",
+      "stage": "P07"
+    },
+    "src.ocr.infrastructure.layout.dla_engine": {
+      "to": "ocr_layout.dla_engine",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.layout.docling_structure": {
+      "to": "ocr_structure.docling_client",
+      "stage": "P07"
+    },
+    "src.ocr.infrastructure.layout.document_layout_engine": {
+      "to": "ocr_structure.document_layout_engine",
+      "stage": "P07"
+    },
+    "src.ocr.infrastructure.layout.model_adapters": {
+      "to": "ocr_layout.model_adapters",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.layout.page_content_analyzer": {
+      "to": "ocr_layout.page_content_analyzer",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.layout.region_tree": {
+      "to": "ocr_document.region_tree",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.layout.torch_layout": {
+      "to": "ocr_layout.torch_layout",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.ocr.candidate_scorer": {
+      "to": "ocr_recognition.candidate_scorer",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.ocr.fallback_engine": {
+      "to": "ocr_recognition.fallback_engine",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.ocr.primary_engine": {
+      "to": "ocr_recognition.primary_engine",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.ocr.rapidocr_engine": {
+      "to": "ocr_recognition.rapidocr_engine",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.ocr.text_detector": {
+      "to": "ocr_recognition.text_detector",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.ocr.vietnamese_seq2seq_engine": {
+      "to": "ocr_recognition.vietnamese_seq2seq_engine",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.pdf.coordinate_transform": {
+      "to": "ocr_pdf_io.coordinate_transform",
+      "stage": "P05b"
+    },
+    "src.ocr.infrastructure.pdf.native_text_extractor": {
+      "to": "ocr_pdf_io.native_text_extractor",
+      "stage": "P05b"
+    },
+    "src.ocr.infrastructure.pdf.ocr_bridge": {
+      "to": "ocr_structure.ocr_bridge",
+      "stage": "P07"
+    },
+    "src.ocr.infrastructure.pdf.pdf_inspector": {
+      "to": "ocr_pdf_io.pdf_inspector",
+      "stage": "P05b"
+    },
+    "src.ocr.infrastructure.pdf.pdf_renderer": {
+      "to": "ocr_pdf_io.pdf_renderer",
+      "stage": "P05b"
+    },
+    "src.ocr.infrastructure.pdf.region_cropper": {
+      "to": "ocr_pdf_io.region_cropper",
+      "stage": "P05b"
+    },
+    "src.ocr.infrastructure.pdf.scan_image": {
+      "to": "ocr_pdf_io.scan_image",
+      "stage": "P05b"
+    },
+    "src.ocr.infrastructure.postprocessing.document_furniture": {
+      "to": "ocr_document.document_furniture",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.postprocessing.keyword_contract": {
+      "to": "ocr_keywords.contract",
+      "stage": "P03"
+    },
+    "src.ocr.infrastructure.postprocessing.keyword_counter": {
+      "to": "ocr_keywords.counter",
+      "stage": "P03"
+    },
+    "src.ocr.infrastructure.postprocessing.legacy_furniture": {
+      "to": "ocr_document.legacy_furniture",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.postprocessing.numeric_guard": {
+      "to": "ocr_text.numeric_guard",
+      "stage": "P05a"
+    },
+    "src.ocr.infrastructure.postprocessing.page_association": {
+      "to": "ocr_document.page_association",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.postprocessing.reading_order": {
+      "to": "ocr_document.reading_order",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.postprocessing.reading_order_graph": {
+      "to": "ocr_document.reading_order_graph",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.postprocessing.text_cleaner": {
+      "to": "ocr_text.text_cleaner",
+      "stage": "P05a"
+    },
+    "src.ocr.infrastructure.postprocessing.unicode_normalizer": {
+      "to": "ocr_text.unicode_normalizer",
+      "stage": "P05a"
+    },
+    "src.ocr.infrastructure.postprocessing.xy_cut": {
+      "to": "ocr_document.xy_cut",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.quality.native_quality": {
+      "to": "ocr_recognition.native_quality",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.quality.ocr_layer_agreement": {
+      "to": "ocr_recognition.ocr_layer_agreement",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.quality.ocr_quality": {
+      "to": "ocr_recognition.ocr_quality",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.quality.vietnamese_quality": {
+      "to": "ocr_recognition.vietnamese_quality",
+      "stage": "P06"
+    },
+    "src.ocr.infrastructure.state.batch_store": {
+      "to": "ocr_pipeline.batch_store",
+      "stage": "P09"
+    },
+    "src.ocr.infrastructure.structure.figures": {
+      "to": "ocr_document.figures",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.structure.ids": {
+      "to": "ocr_document.ids",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.structure.section_tree": {
+      "to": "ocr_document.section_tree",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.structure.source_identity": {
+      "to": "ocr_document.source_identity",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.table.financial_checks": {
+      "to": "ocr_document.financial_checks",
+      "stage": "P08"
+    },
+    "src.ocr.infrastructure.table.hidden_text_layer": {
+      "to": "ocr_structure.hidden_text_layer",
+      "stage": "P07"
+    },
+    "src.ocr.runtime.atomic_io": {
+      "to": "ocr_artifacts.atomic_io",
+      "stage": "P02"
+    },
+    "src.ocr.runtime.backend_probe": {
+      "to": "ocr_runtime.backend_probe",
+      "stage": "P05a"
+    },
+    "src.ocr.runtime.config": {
+      "to": "ocr_runtime.config",
+      "stage": "P05a"
+    },
+    "src.ocr.runtime.dependency_lock": {
+      "to": "ocr_runtime.dependency_lock",
+      "stage": "P05a"
+    },
+    "src.ocr.runtime.device": {
+      "to": "ocr_runtime.device",
+      "stage": "P05a"
+    },
+    "src.ocr.runtime.fingerprint": {
+      "to": "ocr_runtime.fingerprint",
+      "stage": "P05a"
+    },
+    "src.ocr.runtime.gpu_phase_worker": {
+      "to": "ocr_workers.phases",
+      "stage": "P09"
+    },
+    "src.ocr.runtime.gpu_scheduler": {
+      "to": "ocr_pipeline.scheduler",
+      "stage": "P09"
+    },
+    "src.ocr.runtime.models": {
+      "to": "ocr_runtime.models",
+      "stage": "P05a"
+    },
+    "src.ocr.runtime.paths": {
+      "to": "ocr_runtime.paths",
+      "stage": "P05a"
+    },
+    "src.ocr.runtime.process_tree": {
+      "to": "ocr_runtime.process_tree",
+      "stage": "P05a"
+    },
+    "src.ocr.runtime.structured_logging": {
+      "to": "ocr_runtime.structured_logging",
+      "stage": "P05a"
+    },
+    "src.ocr.runtime.torch_placement": {
+      "to": "ocr_runtime.torch_placement",
+      "stage": "P05a"
+    },
+    "src.ocr.runtime.v63_backend": {
+      "to": "ocr_pipeline.backend",
+      "stage": "P09"
+    },
+    "src.ocr.runtime.v63_document_worker": {
+      "to": "ocr_pipeline.document_owner",
+      "stage": "P09"
+    }
+  },
+  "temporary_legacy_imports": {
+    "ocr_workers.phase_text->src.ocr.application.process_page": "V6.2 legacy profiles (native-first, two-up, region fallback) keep the frozen ProcessPageUseCase in phase A; V6.3 uses ocr_workers.text_page since P09b. Remove with V6.2 support.",
+    "ocr_workers.phase_export->src.ocr.application.export_document": "V6.2 legacy finalize path (finalize_document=True) counts keywords in the export phase; V6.3 never takes it."
+  },
+  "private_import_exceptions": {
+    "ocr_pipeline.completion->ocr_artifacts.completion._EXCLUDED": "Keeps the attribute set of the frozen legacy module src.ocr.infrastructure.export.completion, which is an alias of ocr_pipeline.completion. Re-export only; no caller uses it. Remove with that alias, or with the next change that already alters the extraction closure (the file is part of it).",
+    "ocr_pipeline.completion->ocr_artifacts.completion._artifact_files": "Same as ocr_pipeline.completion->ocr_artifacts.completion._EXCLUDED.",
+    "ocr_pipeline.completion->ocr_artifacts.completion._sha256": "Same as ocr_pipeline.completion->ocr_artifacts.completion._EXCLUDED."
+  }
+}

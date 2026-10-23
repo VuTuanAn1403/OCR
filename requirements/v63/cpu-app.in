@@ -1,0 +1,13 @@
+# CPU app runtime (D1): batch supervisor, document owner, analysis runs,
+# keywords and reporting. No Torch, VietOCR, ONNX Runtime or Docling.
+# Must satisfy the `app` extra in pyproject.toml (tests/unit/runtime/test_packaging.py).
+# Locks: requirements/v63/{windows,linux}-cpu-app.lock, regenerated only when this file
+# or cpu-app.constraints.txt changes:
+#   uv pip compile requirements/v63/cpu-app.in -c requirements/v63/cpu-app.constraints.txt \
+#     --python-version 3.11 --python-platform {x86_64-pc-windows-msvc|x86_64-manylinux_2_28} \
+#     --generate-hashes --no-header -o requirements/v63/{windows|linux}-cpu-app.lock
+pydantic==2.13.5
+PyYAML==6.0.3
+psutil==7.2.2
+PyMuPDF==1.28.2
+openpyxl==3.1.5

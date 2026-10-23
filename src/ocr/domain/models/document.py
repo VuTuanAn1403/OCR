@@ -1,19 +1,10 @@
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
-from src.ocr.domain.models.page import ExtractedPage
-from src.ocr.domain.models.quality import DocumentQualityReport
+"""Compatibility alias: this module moved to `ocr_contracts.document` (migration P02).
 
-class ExtractedDocument(BaseModel):
-    document_id: str
-    file_path: str
-    file_hash: str
-    total_pages: int
-    selected_pages: List[int] = Field(default_factory=list)
-    profile: str = "balanced"
-    pages: List[ExtractedPage] = Field(default_factory=list)
-    quality: DocumentQualityReport
-    manifest: Dict[str, Any] = Field(default_factory=dict)
-    full_markdown: str = ""
-    accuracy: Optional[Any] = None
-    # startup / pages / export / document latency (proposal 6.1); filled after export.
-    timing: Dict[str, Any] = Field(default_factory=dict)
+The object registered under this name is `ocr_contracts.document` itself, so imports,
+`mock.patch` targets and isinstance checks behave as before.
+"""
+import sys
+
+import ocr_contracts.document as _module
+
+sys.modules[__name__] = _module

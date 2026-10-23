@@ -1,23 +1,10 @@
-"""Code fingerprint used in cache keys and run manifests (ENV-04).
+"""Compatibility alias: this module moved to `ocr_runtime.fingerprint` (migration P05a).
 
-Hashing the pipeline sources means any code edit invalidates cached pages,
-instead of silently restoring output produced by older logic.
+The object registered under this name is `ocr_runtime.fingerprint` itself, so imports,
+`mock.patch` targets and isinstance checks behave as before.
 """
-from __future__ import annotations
+import sys
 
-import hashlib
+import ocr_runtime.fingerprint as _module
 
-from src.ocr.runtime.paths import PROJECT_ROOT
-
-_SOURCE_ROOTS = ("src/ocr", "scripts/docling_structure_worker.py")
-
-
-def source_fingerprint() -> str:
-    digest = hashlib.sha256()
-    for root in _SOURCE_ROOTS:
-        path = PROJECT_ROOT / root
-        files = [path] if path.is_file() else sorted(path.rglob("*.py"))
-        for file in files:
-            digest.update(file.relative_to(PROJECT_ROOT).as_posix().encode())
-            digest.update(file.read_bytes())
-    return digest.hexdigest()[:16]
+sys.modules[__name__] = _module

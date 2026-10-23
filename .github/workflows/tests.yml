@@ -1,33 +1,302 @@
-# Unit and scientific tests on Windows and Linux (proposal V6 ENV-09).
-# CPU wheels only; Docling, GPU and the PDF-dependent integration/golden
-# tests are outside this job. Model weights download on each run.
+# P13: direct dependency isolation and explicit, opt-in model/GPU evidence.
 name: tests
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      run_models:
+        description: "Download legacy models; run full CPU regression/integration"
+        type: boolean
+        default: false
+      run_gpu:
+        description: "Use the prepared ocr-pdf-gpu Linux runner for sample fresh/resume"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONIOENCODING: utf-8
 
 jobs:
-  unit:
+  light:
+    name: Light ${{ matrix.layer }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
+        layer: [contracts, artifacts, text, keywords, reporting]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install (CPU PyTorch wheels)
+      - name: Install direct runtime dependencies and pytest only
+        env:
+          LAYER: ${{ matrix.layer }}
+        shell: python
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
-          python -m pip install -e ".[test]" --extra-index-url https://download.pytorch.org/whl/cpu
-      - name: Models
+          import os, subprocess, sys
+          deps = ["pytest>=8.0.0,<=9.1.1"]
+          if os.environ["LAYER"] != "text":
+              extra = ".[reporting]" if os.environ["LAYER"] == "reporting" else "."
+              deps.extend(["-e", extra])
+          subprocess.run([sys.executable, "-m", "pip", "install", *deps], check=True)
+      - name: Prove application/OCR dependencies are absent
+        env:
+          LAYER: ${{ matrix.layer }}
+        shell: python
         run: |
-          python scripts/setup_models.py
+          import importlib.util, os
+          modules = ("torch", "vietocr", "onnxruntime", "docling", "cv2", "numpy", "pymupdf", "yaml", "psutil")
+          found = [name for name in modules if importlib.util.find_spec(name) is not None]
+          assert not found, f"Unexpected dependencies in lightweight job: {found}"
+          if os.environ["LAYER"] == "text":
+              assert importlib.util.find_spec("pydantic") is None
+      - name: Test selected packages
+        env:
+          LAYER: ${{ matrix.layer }}
+        shell: python
+        run: |
+          import os, subprocess, sys
+          tests = ["tests/unit/" + os.environ["LAYER"]]
+          subprocess.run([sys.executable, "-m", "pytest", *tests, "-q", "-p", "no:cacheprovider",
+                          "--junitxml=ci-results/light.xml"], check=True)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: light-${{ matrix.layer }}-${{ matrix.os }}
+          path: ci-results/
+          if-no-files-found: warn
+
+  cpu:
+    name: CPU document/pipeline (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install -e ".[app]" "pytest>=8.0.0,<=9.1.1"
+      - name: Fixtures, analysis provenance and publication recovery
+        run: >-
+          python -m pytest tests/unit/document tests/unit/runtime
+          tests/unit/test_v63_pipeline.py tests/unit/test_analysis_run.py
+          tests/unit/test_migration_digest_baseline.py tests/unit/test_migration_v63_export_baseline.py
+          tests/unit/test_kaggle_v63_notebook.py
+          tests/unit/structure/test_docling_model_env.py
+          -q -p no:cacheprovider --junitxml=ci-results/cpu.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cpu-${{ matrix.os }}
+          path: ci-results/
+          if-no-files-found: warn
+
+  contracts:
+    name: Import/subprocess contracts (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install -e ".[app,dev]" "pytest>=8.0.0,<=9.1.1"
+      - name: JSON protocol, identity, cache, process cleanup and real Linux venv symlinks
+        run: >-
+          python -m pytest tests/unit/test_import_contracts.py tests/unit/test_worker_protocol.py
+          tests/unit/test_v63_worker_acceptance.py tests/unit/test_v62_gpu_scheduler.py
+          tests/unit/test_stage_cache.py tests/unit/test_model_identity.py
+          tests/unit/test_venv_interpreter_paths.py tests/unit/test_migration_code_roots.py
+          -k "not test_real_forward_detects_wrong_torch_device and not test_uncalled_backend_is_explicit"
+          -q -p no:cacheprovider --junitxml=ci-results/contracts.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contracts-${{ matrix.os }}
+          path: ci-results/
+          if-no-files-found: warn
+
+  wheel:
+    name: Installed wheel (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip wheel . --no-deps --wheel-dir dist
+      - name: Install core/reporting/app in separate venvs outside checkout
+        shell: python
+        run: |
+          import os, pathlib, subprocess, sys
+          wheel, = pathlib.Path("dist").glob("ocr_pdf-*.whl")
+          work = pathlib.Path(os.environ["RUNNER_TEMP"]) / "ocr-pdf-wheel-check"
+          subprocess.run([sys.executable, "scripts/ci/check_wheel.py", "--wheel", str(wheel),
+                          "--work-dir", str(work), "--output", "ci-results/wheel.json"], check=True)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wheel-${{ matrix.os }}
+          path: |
+            ci-results/
+            dist/*.whl
+          if-no-files-found: warn
+
+  legacy:
+    # The full software regression stays on every push/PR (it ran there before
+    # P13). It needs no downloaded weights: engines are doubles, and the legacy
+    # fast smoke uses the models packaged with rapidocr-onnxruntime.
+    name: Legacy facade and full CPU regression (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install -e ".[legacy,test]" --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Unit, scientific, legacy smoke and native integration; no model download
+        run: >-
+          python -m pytest tests/unit tests/scientific tests/legacy_compat
+          tests/integration/test_keyword_counter_e2e.py
+          -q -ra -p no:cacheprovider --junitxml=ci-results/legacy.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: legacy-${{ matrix.os }}
+          path: ci-results/
+          if-no-files-found: warn
+
+  model-integration:
+    name: CPU model regression/integration (${{ matrix.os }})
+    if: github.event_name == 'workflow_dispatch' && inputs.run_models
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install CPU legacy and evaluation dependencies
+        run: |
+          python -m pip install -e ".[legacy,test]" --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Prepare legacy models
+        run: |
           python scripts/setup_vietocr_model.py
-      - name: Tests
-        run: python -m pytest tests/unit tests/scientific -q -p no:cacheprovider
+          python scripts/setup_models.py
+      - name: Full software regression and available integration fixtures
+        run: >-
+          python -m pytest tests/unit tests/scientific tests/legacy_compat tests/integration tests/golden
+          -q -ra -p no:cacheprovider --junitxml=ci-results/model-integration.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: model-integration-${{ matrix.os }}
+          path: ci-results/
+          if-no-files-found: warn
+
+  gpu:
+    name: V6.3 real GPU sample fresh/resume
+    if: github.event_name == 'workflow_dispatch' && inputs.run_gpu
+    # Register a prepared dedicated runner before selecting run_gpu.
+    # Runtime/model variables must point outside this disposable checkout.
+    runs-on: [self-hosted, linux, x64, ocr-pdf-gpu]
+    timeout-minutes: 30
+    env:
+      SUPERVISOR_PYTHON: ${{ vars.OCR_GPU_SUPERVISOR_PYTHON }}
+      GPU_ENV_ROOT: ${{ vars.OCR_GPU_ENV_ROOT }}
+      GPU_SAMPLE_PDF: ${{ vars.OCR_GPU_SAMPLE_PDF }}
+      OCR_MODELS_DIR: ${{ vars.OCR_GPU_MODELS_DIR }}
+      OCR_GPU_LEASE_DIR: ${{ vars.OCR_GPU_LEASE_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: source
+      - name: Verify prepared paths and run a bounded GPU sample
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${SUPERVISOR_PYTHON:?Configure OCR_GPU_SUPERVISOR_PYTHON}"
+          : "${GPU_ENV_ROOT:?Configure OCR_GPU_ENV_ROOT}"
+          : "${GPU_SAMPLE_PDF:?Configure OCR_GPU_SAMPLE_PDF to a single-page PDF}"
+          : "${OCR_MODELS_DIR:?Configure OCR_GPU_MODELS_DIR}"
+          : "${OCR_GPU_LEASE_DIR:?Configure a machine-shared OCR_GPU_LEASE_DIR}"
+          export PYTHONPATH="$PWD/src:$PWD"
+          export VIETOCR_MODEL_DIR="$OCR_MODELS_DIR/vietocr"
+          "$SUPERVISOR_PYTHON" -B -c 'import os,pathlib; root=pathlib.Path.cwd(); paths=[pathlib.Path(os.environ[k]) for k in ("SUPERVISOR_PYTHON","GPU_ENV_ROOT","GPU_SAMPLE_PDF","OCR_MODELS_DIR","OCR_GPU_LEASE_DIR")]; assert all(p.is_absolute() and not p.is_relative_to(root) for p in paths)'
+          "$SUPERVISOR_PYTHON" -B scripts/ci/check_gpu_sample.py \
+            --sample "$GPU_SAMPLE_PDF" \
+            --env-root "$GPU_ENV_ROOT" \
+            --output-dir "$RUNNER_TEMP/ocr-pdf-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/output" \
+            --cache-dir "$RUNNER_TEMP/ocr-pdf-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/cache" \
+            --report ci-results/gpu.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpu-sample
+          path: |
+            source/ci-results/
+            ${{ runner.temp }}/ocr-pdf-${{ github.run_id }}-${{ github.run_attempt }}/output/
+            ${{ runner.temp }}/ocr-pdf-${{ github.run_id }}-${{ github.run_attempt }}/output-stage-resume/
+          if-no-files-found: warn
+
+  evidence-status:
+    name: Evidence scope (not an acceptance gate)
+    if: always()
+    needs: [light, cpu, contracts, wheel, legacy, model-integration, gpu]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record optional checks without converting skips into passes
+        env:
+          MODEL_RESULT: ${{ needs.model-integration.result }}
+          GPU_RESULT: ${{ needs.gpu.result }}
+        shell: python
+        run: |
+          import os, pathlib
+          def status(value):
+              return "NOT_RUN" if value == "skipped" else value.upper()
+          message = ("## Evidence scope\n\n"
+              f"CPU model/integration job: {status(os.environ['MODEL_RESULT'])}.\n\n"
+              f"GPU sample job: {status(os.environ['GPU_RESULT'])}.\n\n"
+              "A test double, readiness check or skipped job does not establish GPU inference. "
+              "Missing PDF/prediction fixtures remain skipped in JUnit. "
+              "Accuracy on independent human ground truth: NOT_EVALUATED. "
+              "Kaggle, Docker and long batch acceptance require separate evidence.\n")
+          pathlib.Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(message, encoding="utf-8")

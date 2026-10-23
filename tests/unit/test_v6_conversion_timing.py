@@ -76,7 +76,8 @@ def test_timings_in_exported_json_agree_and_cache_timers_stay_historical(tmp_pat
 
 @pytest.mark.parametrize("regional_confidence", ["native_only", None, 0.0, .8])
 def test_page_confidence_is_unavailable_until_a_recognizer_measures_it(monkeypatch, regional_confidence):
-    monkeypatch.setattr(process_page, "RapidOCREngine", Mock())
+    from ocr_workers import page_engines  # engines are built there (P09b)
+    monkeypatch.setattr(page_engines, "RapidOCREngine", Mock())
     with pymupdf.open() as source:
         source.new_page().insert_text((30, 40), "Native body text with no OCR measurement")
         processor = process_page.ProcessPageUseCase(source, {

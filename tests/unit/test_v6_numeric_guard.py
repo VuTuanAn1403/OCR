@@ -48,7 +48,8 @@ def test_numeric_cleanup_review_survives_fast_pipeline_and_evidence(monkeypatch)
     engine.predict_image.return_value = [{"bbox": [10, 20, 150, 45], "text": "Năm 2025 năm 2025 năm 2025",
                                          "confidence": .98, "text_raw": "Năm 2025 năm 2025 năm 2025",
                                          "needs_review": True, "review_reason": "numeric_cleanup_rejected"}]
-    monkeypatch.setattr(process_page, "RapidOCREngine", Mock(return_value=engine))
+    from ocr_workers import page_engines  # engines are built there (P09b)
+    monkeypatch.setattr(page_engines, "RapidOCREngine", Mock(return_value=engine))
     with pymupdf.open() as source:
         source.new_page(width=595, height=842)
         processor = process_page.ProcessPageUseCase(source, {

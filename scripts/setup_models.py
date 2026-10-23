@@ -62,7 +62,7 @@ def main():
     print("=" * 60)
     if ok_rapid and ok_viet:
         print("ALL OCR MODELS ARE READY FOR INFERENCE!")
-        print("You can now run: python run_ocr.py examples/sample.pdf --profile balanced")
+        print("You can now run: python run_ocr.py inputs/bao_cao.pdf --backend legacy --profile local")
         print("=" * 60)
         sys.exit(0)
     else:

@@ -1,431 +1,462 @@
-# Pipeline Trích Xuất PDF Sang Markdown & JSON Tiếng Việt (V6.1.0)
+# OCR — Xử lý PDF tiếng Việt và thống kê từ khóa
 
-[![Python 3.10 | 3.11 | 3.12](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-pytest-blue.svg)](tests/)
-[![Architecture: Clean Architecture](https://img.shields.io/badge/architecture-Clean%20Architecture-orange.svg)](src/ocr/)
+Chuyển PDF tiếng Việt thành **Markdown, JSON và Excel từ khóa**, dành cho báo cáo thường niên, báo cáo tài chính và tài liệu có bảng biểu.
 
-Hệ thống xử lý tài liệu thông minh (**Intelligent Document Processing - IDP**) và trích xuất chuyên sâu dành cho tài liệu, báo cáo thường niên, báo cáo tài chính tiếng Việt từ PDF sang Markdown chuẩn hóa cùng hệ thống hợp đồng dữ liệu JSON bảo toàn triệt để nguồn gốc dữ liệu (provenance).
+Repository: [VuTuanAn1403/OCR](https://github.com/VuTuanAn1403/OCR) · Phiên bản mã nguồn: **`6.3.0.dev1`** (đang phát triển).
 
-Hệ thống áp dụng kiến trúc **Clean Architecture**, cơ chế định tuyến lai **Native-first / OCR-fallback**, tích hợp mô hình cấu trúc bảng và công thức toán học **Docling TableFormer & CodeFormula**, cùng hệ thống rào chắn bất biến số liệu tài chính (**Numeric Guard**) và cây mục phân cấp toàn tài liệu (**Section Tree**).
+Pipeline mặc định V6.3 nhận dạng toàn bộ trang trên GPU, dựng cấu trúc bằng Docling, xuất kết quả từng PDF và cập nhật ma trận từ khóa có trạng thái SQLite. Máy không có NVIDIA CUDA có thể sử dụng backend `legacy` trên CPU.
 
----
+## Mục lục
 
-## 1. Trạng thái triển khai V6.1.0
+- [1. Chọn cách chạy](#1-chọn-cách-chạy)
+- [2. Yêu cầu](#2-yêu-cầu)
+- [3. Clone và tạo môi trường](#3-clone-và-tạo-môi-trường)
+- [4. Chạy thử trên CPU](#4-chạy-thử-trên-cpu)
+- [5. Thiết lập V6.3 GPU](#5-thiết-lập-v63-gpu)
+- [6. Chạy một PDF hoặc cả thư mục](#6-chạy-một-pdf-hoặc-cả-thư-mục)
+- [7. Từ khóa và đếm lại kết quả](#7-từ-khóa-và-đếm-lại-kết-quả)
+- [8. Chạy trên Kaggle](#8-chạy-trên-kaggle)
+- [9. Kết quả đầu ra](#9-kết-quả-đầu-ra)
+- [10. Cấu trúc và phát triển](#10-cấu-trúc-và-phát-triển)
+- [11. Lỗi thường gặp](#11-lỗi-thường-gặp)
+- [12. Quản lý mã nguồn trên GitHub](#12-quản-lý-mã-nguồn-trên-github)
 
-Phiên bản **V6.1.0** bổ sung các sửa lỗi hợp đồng dữ liệu, công cụ GT và bộ đo nghiên cứu. **Chưa nghiệm thu chất lượng V6:** chưa có GT do người gán nhãn, splits theo công ty, B0 và các ngưỡng được chốt. Kiểm thử fixture và smoke chạy thực tế xác minh hành vi phần mềm; chúng không chứng minh đạt CER/WER/TEDS hoặc các ngưỡng CPU của đề xuất.
+## 1. Chọn cách chạy
 
-- Confidence chưa đo mặc định `null`; số 0 đo được giữ nguyên. Báo cáo có số mẫu/trang mang điểm và cách tổng hợp.
-- Validator kiểm đủ bốn artifact V6, schema structure, nguồn/ID/spans/cells và nội dung/hash Markdown. Thiếu artifact V6 gây `FAIL`; bộ output legacy không khai báo V6 vẫn theo policy cũ.
-- Ô bảng dùng bbox cả bảng được ghi `localization=coarse`, `bbox_source=table_fallback` và cần review.
-- Wheel đóng gói profile và worker từ nguồn chính; `config/profiles.yaml` không còn bản sao phải sửa riêng trong mã nguồn.
-- `ocrpdf-collect` thu metadata/hash PDF, khóa splits theo công ty và tạo draft `.pending` chưa gán nhãn. Xem [hướng dẫn GT](benchmark/ground_truth_tools/ANNOTATION_V6.md).
-- Layout evaluation dùng **pycocotools**, tách bảng điểm tập nhãn chung và bộ 11 nhãn bắt buộc. Bootstrap lấy mẫu theo công ty trên dữ liệu paired; công cụ ma trận giữ đủ F/A1–A6/V1 và hiệu chỉnh Holm.
-- Batch hỗ trợ `--workers` và `--threads-per-worker`. Worker sở hữu PDF/model client; Docling client có thể được dùng qua nhiều tài liệu cùng cấu hình. Mặc định vẫn 1 worker; workload native nhỏ có thể chậm hơn với pool.
-- Scan có lớp chữ ẩn chưa xác minh được đưa qua OCR. Nhận diện ngôn ngữ lưu phương pháp/bằng chứng và giữ `unknown` khi thiếu tín hiệu.
-- `--output-mode compact` xuất `result-index-v1`: `result.json` tham chiếu các file JSON từng trang thay vì lặp toàn bộ nội dung. Mặc định `legacy` giữ cấu trúc cũ; bốn hợp đồng V6 và Markdown giữ đầy đủ. Batch, pool/resume, validator và các script Excel đọc được cả hai chế độ.
-- Thí nghiệm bảng scan A/B giữ cùng bộ dòng OCR trước khi bảng hấp thụ chữ; lưu PDF dẫn xuất và predictions của A. Kiểm chữ ẩn round-trip đúng từng từ, báo thiếu/lặp từ theo ô; chưa có GT L5 thì không kết luận chất lượng.
-- Đường lấy ảnh nhúng từ chối trang có chữ hiển thị phủ trên ảnh; lỗi decode quay về render và ghi lý do. DPI scale không hữu hạn bị từ chối.
+| Nhu cầu | Cách chạy | Cài đặt |
+| --- | --- | --- |
+| Thử nhanh một vài trang bằng CPU | `--backend legacy --profile fast --device cpu` | Extra `legacy`; không cần Docling |
+| OCR tiếng Việt bằng VietOCR trên CPU | `--backend legacy --profile local --device cpu` | Extra `legacy` và trọng số VietOCR |
+| OCR toàn bộ tài liệu trên GPU | Backend mặc định V6.3 | Extra `app`, hai worker GPU và model đã khóa |
+| Chạy trên GPU của Kaggle | Notebook `ocr_pdf_v63_kaggle.ipynb` | Bật GPU, Internet và thêm dataset PDF |
+| Đếm từ khóa trên output V6.3 đã có | `--analysis-from` | Extra `app`; không chạy lại OCR |
+| Chỉ đếm từ output legacy đã có | `scripts/run_count_only.py` | Extra `reporting` |
 
-Các tính năng từ nền V6 trước đó:
+**V6.3 yêu cầu CUDA và xử lý nguyên tài liệu với một worker.** Các tùy chọn `--pages`, `--limit`, `--files`, `--shard` và nhiều worker thuộc CLI legacy. Chọn `--output-mode legacy` chỉ thay định dạng JSON, không chuyển backend.
 
-- **Hợp Đồng Dữ Liệu Cấp Toàn Tài Liệu (Document Contracts):**
-  - Xuất song song định dạng Markdown theo trang truyền thống (`result.md`, `pages/page-NNNN.md`) và Markdown cấp toàn tài liệu (`document.md`).
-  - Hệ thống JSON hợp đồng chuẩn hóa tuân thủ **JSON Schema Draft 2020-12**:
-    - `extraction.json`: Chi tiết từng phần tử bóc tách theo trang kèm tọa độ bounding box, `text_raw`, `text_corrected`, nguồn gốc sửa đổi và chuỗi biến đổi hình học.
-    - `structure.json`: Cây mục phân cấp (H1, H2, H3, H4) và quan hệ cha-con của tài liệu.
-    - `document.json`: Mô hình tri thức hoàn chỉnh cấp tài liệu tích hợp sections, chunks, tables với spans định vị chính xác xuyên trang và định danh ổn định (`doc_sha16:pNNNN:kindNNNN`).
-    - `COMPLETED.json`: Chứng thực hoàn tất xử lý nguyên tử kèm mã băm PDF, cấu hình, mã nguồn và trọng số mô hình.
-- **Rào Chắn Số Liệu Tài Chính (Numeric Evidence Guard):**
-  - Kiểm tra các con số, dấu âm/dương (`-`, `−`, `+`), ngoặc kế toán biểu thị số âm `(1.234.567)`, phân cách hàng nghìn/thập phân, tỷ lệ `%`, ngày tháng, mã số văn bản và đơn vị tiền tệ liền kề (`đồng`, `VND`, `USD`, `tỷ`, `triệu`...).
-  - Từ chối candidate OCR lại/hậu sửa khi numeric guard phát hiện thay đổi token số; vẫn cần GT để đo lỗi số của nhận dạng ban đầu.
-- **Cây Mục Phân Cấp Toàn Tài Liệu (Document Section Tree):**
-  - Tự động nhận diện cấu trúc tiêu đề từ mục lục (TOC), đặc trưng font chữ và mẫu đánh số phân cấp.
-  - Hỗ trợ tiêu đề song ngữ Anh - Việt, nối các đoạn văn bị ngắt qua trang mà vẫn bảo toàn ngữ nghĩa phục vụ phân đoạn (chunking) cho RAG.
-- **Độ Tin Cậy Trung Thực (Honest Confidence):**
-  - Loại bỏ hoàn toàn giá trị gán cứng `0.90`. Đối với các mô hình không cung cấp độ tin cậy phân phối (như TableFormer hoặc trang native không qua OCR), hệ thống ghi nhận `confidence = null` đi kèm `confidence_source = "unavailable"`.
-- **Bộ Điều Hợp Bố Cục Độc Lập (ONNX Layout Adapters):**
-  - Cung cấp adapter chuẩn cho cả **Raw YOLO** (hỗ trợ NMS theo lớp) và **RT-DETR / Heron** (không dùng NMS), chuẩn hóa phép biến đổi ngược tọa độ từ ảnh pixel về điểm tọa độ PDF gốc.
-- **Hỗ Trợ Xử Lý Phân Mảnh Lô (Deterministic Sharding):**
-  - Hỗ trợ tham số `--shard I/N` và `--merge-shards N` trong công cụ xử lý lô, cho phép phân chia công việc tất định giữa nhiều máy tính/tiến trình mà không gây xung đột checkpoint hay báo cáo.
-- **Quản Lý Cấu Hình & Thiết Bị Tập Trung:**
-  - `config/profiles.yaml` là nguồn cấu hình duy nhất. Hỗ trợ tùy chọn thiết bị `--device cpu|cuda|auto` và quản lý linh hoạt chế độ lưu ảnh trích xuất qua `--assets none|jpeg|png`.
-- **Môi Trường Docling Cách Ly (Worker Isolation):**
-  - Docling 2.137.0 chạy độc lập trong môi trường con `.venv-docling` giao tiếp qua IPC JSON-lines, loại bỏ hoàn toàn xung đột thư viện giữa VietOCR (PyTorch) và Docling.
+## 2. Yêu cầu
 
----
+| Thành phần | Yêu cầu |
+| --- | --- |
+| Python | Khuyến nghị **3.11**. Metadata hỗ trợ `>=3.10,<3.13`; lock GPU yêu cầu Python 3.11 |
+| Git | Dùng để clone và cập nhật mã nguồn |
+| CPU | Backend legacy; có thể thử trước mà không cần GPU |
+| GPU V6.3 | NVIDIA CUDA, driver phù hợp với wheel CUDA 12.6; `nvidia-smi` hoạt động |
+| Hệ điều hành GPU | Có lock cho Windows và Linux; macOS không hỗ trợ backend NVIDIA CUDA này |
+| Internet và dung lượng | Cần tải dependency, trọng số và cache nhiều GB; dung lượng thực tế tùy bộ model/PDF |
 
-## 2. Kiến Trúc Hệ Thống (Clean Architecture)
+Trọng số, PDF đầu vào và output thực tế **không đi kèm repository**. Người dùng tự chuẩn bị PDF; các ví dụ dưới dùng tên `inputs/bao_cao.pdf`.
 
-```text
-                                 Tài liệu PDF Đầu Vào
-                                          │
-                                          ▼
-                               ┌─────────────────────┐
-                               │    PDF Inspector    │
-                               └──────────┬──────────┘
-                                          │
-                     ┌────────────────────┴────────────────────┐
-                     ▼                                         ▼
-            [Trang Native Tốt]                        [Trang Scan / Kém]
-                     │                                         │
-                     ▼                                         ▼
-         Trích xuất Text Vector                      Render ảnh (180 DPI)
-         (0.05 - 0.15s / trang)                                │
-                     │                                         ▼
-                     │                             ┌────────────────────────┐
-                     │                             │  RapidOCR DBNet Detect │ (~0.3s)
-                     │                             └───────────┬────────────┘
-                     │                                         ▼
-                     │                             ┌────────────────────────┐
-                     │                             │ VietOCR Seq2Seq Batch  │ (~0.09s/dòng)
-                     │                             └───────────┬────────────┘
-                     │                                         ▼
-                     │                             ┌────────────────────────┐
-                     │                             │ Cổng Đánh Giá Dấu &    │
-                     │                             │ Fallback OCR Vùng      │ (Có Numeric Guard)
-                     │                             └───────────┬────────────┘
-                     └────────────────────┬────────────────────┘
-                                          │
-                                          ▼
-                               ┌─────────────────────┐
-                               │  Layout & Bảng Biểu │
-                               │  Heuristic / Docling│ (TableFormer & CodeFormula)
-                               └──────────┬──────────┘
-                                          │
-                                          ▼
-                               ┌─────────────────────┐
-                               │  Section Tree &     │
-                               │  Reading Order      │ (Dựng cây mục & thứ tự đọc)
-                               └──────────┬──────────┘
-                                          │
-                                          ▼
-                               ┌─────────────────────┐
-                               │  Export & Contract  │
-                               │  Validator          │
-                               └──────────┬──────────┘
-                                          │
-                ┌─────────────────────────┴─────────────────────────┐
-                ▼                                                   ▼
-     [Định dạng Legacy]                                     [Hợp đồng V6 Cấp Tài Liệu]
-     - result.md                                            - document.md
-     - result.json                                          - document.json
-     - quality.json                                         - extraction.json
-     - pages/page-NNNN.{md,json}                            - structure.json
-     - structures/tables/*.html                             - COMPLETED.json
-```
+Test phần mềm và validator kiểm hành vi/hợp đồng dữ liệu. Độ chính xác OCR trên ground truth độc lập và khả năng chạy tải dài 500 PDF chưa được nghiệm thu. Kết quả cần kiểm tra có thể mang trạng thái `NEEDS_REVIEW`.
 
----
+## 3. Clone và tạo môi trường
 
-## 3. Cấu Trúc Thư Mục Dự Án
+### Windows — PowerShell
 
-```text
-OCR_pdf/
-├── config/
-│   └── profiles.yaml                   # Cấu hình xử lý (fast, local, balanced, accuracy)
-├── src/ocr/
-│   ├── domain/                         # Domain Entities & Models (Pydantic v2)
-│   │   ├── models/                     # TextBlock, TableStructure, Region, Schema...
-│   │   └── routing/                    # RoutingPolicy, PageType
-│   ├── application/                    # Use Cases nghiệp vụ
-│   │   ├── convert_document.py         # Use case điều phối toàn tài liệu
-│   │   ├── process_page.py             # Pipeline xử lý từng trang tài liệu
-│   │   ├── export_document.py          # Xuất dữ liệu đa định dạng & validation
-│   │   ├── route_page.py               # Đánh giá native text và phân luồng
-│   │   └── reocr_region.py             # OCR lại vùng cục bộ
-│   ├── infrastructure/                 # Adapters kỹ thuật ngoại vi
-│   │   ├── pdf/                        # PyMuPDF: trích xuất text, renderer, cropper
-│   │   ├── ocr/                        # VietOCR (vgg_seq2seq), RapidOCR, Fallback
-│   │   ├── layout/                     # DLA engine, Docling IPC client, model_adapters
-│   │   ├── structure/                  # Section tree builder, Stable IDs
-│   │   ├── postprocessing/             # Numeric guard, reading order, unicode NFC
-│   │   ├── quality/                    # Native quality & Vietnamese diacritic gate
-│   │   ├── export/                     # Markdown exporter, Document contracts, Validator
-│   │   └── cache/                      # ArtifactCache quản lý băm SHA-256
-│   ├── runtime/                        # Runtime paths, device, model fingerprint, atomic IO
-│   └── cli/                            # run_ocr.py (tài liệu đơn), batch_runner.py (xử lý lô)
-├── workers/
-│   └── docling/                        # Worker Docling 2.137 chạy độc lập
-├── scripts/
-│   ├── docling_structure_worker.py     # Worker tiến trình phụ nhận lệnh qua IPC
-│   ├── setup_models.py                 # Tải và xác thực trọng số RapidOCR
-│   ├── setup_vietocr_model.py          # Tải và cấu hình VietOCR
-│   ├── setup_docling.ps1               # Khởi tạo môi trường ảo .venv-docling
-│   ├── setup.sh                        # Cài đặt tự động trên Linux / Colab
-│   ├── check_installation.py           # Kiểm tra môi trường hệ thống
-│   └── smoke_test.py                   # Smoke test kiểm tra toàn trình
-├── benchmark/
-│   ├── ground_truth/                   # Tập dữ liệu nhãn chuẩn
-│   ├── scientific_evaluation/          # Bộ đo khoa học (CER, WER, DER_VN_v1, NumAcc, TEDS...)
-│   └── perf/                           # Công cụ đo độ trễ, RAM, throughput (run_perf.py)
-├── tests/
-│   ├── unit/                           # Kiểm thử đơn vị và hồi quy
-│   ├── scientific/                     # Kiểm thử giao thức đánh giá khoa học
-│   ├── integration/                    # Kiểm thử tích hợp tài liệu thực
-│   └── golden/                         # Kiểm thử so khớp chuẩn vàng
-├── pyproject.toml                      # Cấu hình dự án & entry points
-└── requirements.txt                    # Thư viện phụ thuộc chính
-```
-
----
-
-## 4. Yêu Cầu Hệ Thống & Cài Đặt
-
-### Yêu Cầu Kỹ Thuật
-- **Hệ điều hành:** Windows 10/11, Ubuntu 20.04+, macOS
-- **Python:** Khuyên dùng **Python 3.11**
-- **RAM:** Tối thiểu 4 GB (khuyên dùng 8–16 GB khi xử lý tài liệu lớn hoặc chạy lô)
-- **Thiết bị:** Tối ưu hóa sâu cho **CPU** đa nhân thông thường; hỗ trợ tăng tốc **CUDA GPU** khi có sẵn.
-
----
-
-### Hướng Dẫn Cài Đặt (Từng Bước)
-
-#### 1. Môi trường chính cho OCR Pipeline
-```bash
-# Clone repository
+```powershell
 git clone https://github.com/VuTuanAn1403/OCR.git
 cd OCR
-
-# Khởi tạo môi trường ảo Python 3.11
-python -m venv .venv
-
-# Kích hoạt môi trường (Windows PowerShell)
+py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-# Hoặc trên Linux / macOS:
-# source .venv/bin/activate
-
-# Cài đặt thư viện phụ thuộc
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# Tải trọng số mô hình OCR (RapidOCR và VietOCR)
-python scripts/setup_models.py
-python scripts/setup_vietocr_model.py
+python -m pip install --upgrade pip
 ```
 
-#### 2. Cấu hình môi trường cách ly cho Docling (Bảng & Công thức toán)
-Do Docling sử dụng các gói phụ thuộc đặc thù xung đột với VietOCR, Docling chạy trong môi trường ảo riêng biệt:
+Nếu PowerShell chặn kích hoạt venv, có thể gọi trực tiếp `.\.venv\Scripts\python.exe` thay cho `python`. Với phần GPU, `uv` cũng cần có trong `PATH` hoặc được gọi bằng đường dẫn `.\.venv\Scripts\uv.exe`.
+
+### Linux — Bash
+
+```bash
+git clone https://github.com/VuTuanAn1403/OCR.git
+cd OCR
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+```
+
+Tiếp tục với **mục 4 cho CPU** hoặc **mục 5 cho GPU**. Chạy các lệnh từ thư mục gốc repository. Không dùng Python 3.13 trở lên cho dự án này.
+
+## 4. Chạy thử trên CPU
+
+### 4.1. Cài và xử lý trang đầu
+
 ```powershell
-# Trên Windows:
-powershell -ExecutionPolicy Bypass -File scripts/setup_docling.ps1
-
-# Kiểm tra worker Docling hoạt động offline
-.\.venv\Scripts\python.exe scripts/smoke_docling_structures.py
+python -m pip install -e ".[legacy]"
+python -c "from pathlib import Path; Path('inputs').mkdir(exist_ok=True)"
 ```
 
-#### 3. Kiểm tra cài đặt và smoke test
-```bash
-# Kiểm tra môi trường
-python scripts/check_installation.py
+Chép PDF của bạn thành `inputs/bao_cao.pdf`, rồi chạy:
 
-# Chạy smoke test toàn trình
-python scripts/smoke_test.py
+```powershell
+python run_ocr.py inputs/bao_cao.pdf --backend legacy --profile fast --device cpu --pages 1 --assets none --output output/quickstart
 ```
 
-#### 4. Google Colab GPU
+Đọc `output/quickstart/bao_cao/result.md`, `validation.json` và `count_keywords.xlsx`. Profile `fast` dùng RapidOCR CPU với model trong package; không cần tải VietOCR hoặc Docling cho bước này. Với PDF có text layer đủ chất lượng, backend legacy ưu tiên trích xuất chữ có sẵn.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/VuTuanAn1403/OCR/blob/main/notebooks/colab_v6.ipynb)
+### 4.2. Dùng VietOCR cho tiếng Việt
 
-Mở [notebook Colab](notebooks/colab_v6.ipynb), chọn **Runtime → Change runtime type → GPU**, rồi chạy các ô từ trên xuống. Notebook cài Python 3.11 và hai môi trường cách ly, kiểm tra VietOCR thực sự dùng CUDA và chạy thử một trang trước khi xử lý cả lô.
-
-- Up PDF vào `MyDrive/ocr_pdf/data/raw/` trên Google Drive; không cần đưa PDF/model lên GitHub.
-- Mặc định `PROFILE = "balanced"` dùng VietOCR + Docling TableFormer/CodeFormula. Chọn `"local"` nếu chỉ cần VietOCR GPU cùng bảng heuristic/vector.
-- Sau smoke, đặt `RUN_FULL_BATCH = True` và chạy ô xử lý lô. Mặc định một worker, một shard bao phủ toàn bộ đầu vào; kết quả/model/cache/log lưu trên Drive.
-- Notebook dùng đúng repo này, ghi SHA nguồn và phiên bản môi trường. Không cần thư mục `docs` để cài hoặc chạy.
-
-Xem [hướng dẫn Colab](notebooks/README.md). Đã kiểm tra schema/cú pháp notebook và giải dependency Python 3.11/Linux/CUDA; **chưa chạy trực tiếp trong phiên Google Colab**.
-
----
-
-## 5. Hướng Dẫn Sử Dụng (CLI)
-
-### 5.1. Xử Lý Một Tài Liệu (`run_ocr.py`)
-
-Cú pháp:
-```bash
-python run_ocr.py <ĐƯỜNG_DẪN_PDF> [TÙY_CHỌN]
+```powershell
+python scripts/setup_vietocr_model.py
+python run_ocr.py inputs/bao_cao.pdf --backend legacy --profile local --device cpu --pages 1-3 --output output/local
 ```
 
-**Các tham số chính:**
-| Tham số | Giá trị | Mặc định | Ý nghĩa |
-|---|---|---|---|
-| `input` | Chuỗi | *Bắt buộc* | Đường dẫn file PDF (tự động tìm tại thư mục hiện hành, `inputs/`, `examples/`) |
-| `--profile` | `fast`, `local`, `balanced`, `accuracy` | `balanced` | Hồ sơ xử lý |
-| `--device` | `cpu`, `cuda`, `auto` | Theo profile | Thiết bị tính toán |
-| `--pages` | Ví dụ `1-3`, `1,5,10` | Toàn bộ | Chỉ định các trang cần xử lý |
-| `--output` | Chuỗi | `output` | Thư mục lưu kết quả xuất ra |
-| `--assets` | `none`, `jpeg`, `png` | `png` | Chế độ trích xuất và lưu file ảnh vùng đồ họa |
-| `--output-mode` | `legacy`, `compact` | `legacy` | Lặp pages trong `result.json` hoặc dùng index có version trỏ tới JSON từng trang |
-| `--benchmark` | Cờ bật | `false` | Hiển thị bảng chi tiết thời gian đo đạc |
-| `--resume` | Cờ bật | `false` | Bỏ qua các trang đã có trong cache an toàn |
-| `--config` | Chuỗi | `config/profiles.yaml` | Đường dẫn file cấu hình tùy biến |
+Trọng số được chuẩn bị trong `models/vietocr/`; lần tải đầu cần Internet. Có thể kiểm tra đầy đủ stack legacy bằng `python scripts/setup_models.py` và `python scripts/check_installation.py`.
 
-**Ví dụ thực tế:**
-```bash
-# Xử lý nhanh trang 1 của file mẫu, không xuất file ảnh crop
-python run_ocr.py sample.pdf --profile fast --pages 1 --assets none
+### 4.3. Chạy lô CPU
 
-# Xử lý báo cáo với profile balanced, đo benchmark chi tiết
-python run_ocr.py inputs/ADP_Baocaothuongnien_2025.pdf --profile balanced --benchmark
-
-# Chạy trang 1-10 với chế độ accuracy cao nhất
-python run_ocr.py inputs/BSI_Baocaothuongnien_2025.pdf --profile accuracy --pages 1-10
-
-# Xuất gọn, giữ đầy đủ hợp đồng V6 và dữ liệu từng trang
-python run_ocr.py sample.pdf --profile fast --output-mode compact --assets none
+```powershell
+python run_batch.py --backend legacy --input inputs --output output/legacy_batch --profile local --device cpu --workers 1 --limit 3
+python run_batch.py --backend legacy --help
 ```
 
----
+Profile legacy `balanced` và `accuracy` bật Docling, cần thiết lập thêm môi trường Docling riêng. Để thử trên CPU, bắt đầu bằng `fast` hoặc `local`. Tên profile `accuracy` không phải chứng nhận độ chính xác.
 
-### 5.2. Xử Lý Hàng Loạt & Phân Mảnh Lô (`run_batch.py`)
+## 5. Thiết lập V6.3 GPU
 
-Cú pháp:
-```bash
-python run_batch.py --input inputs --output output [TÙY_CHỌN]
+### 5.1. Tách supervisor và hai worker
+
+| Môi trường | Vai trò |
+| --- | --- |
+| `.venv` | CLI, điều phối CPU, SQLite, đếm từ khóa và xuất Excel |
+| `.venv-v62/text` | Detector ONNX CUDA, VietOCR và layout |
+| `.venv-v62/docling` | Docling TableFormer/CodeFormula trên CUDA |
+
+Tên `.venv-v62` được giữ vì V6.3 tái sử dụng runtime GPU V6.2. Supervisor không cần cài Torch hoặc Docling. Hai worker phải dùng dependency lock riêng; không cài lẫn `onnxruntime`, `onnxruntime-gpu` và `rapidocr-onnxruntime` trong chúng.
+
+```powershell
+python -m pip install -e ".[app]" uv
+nvidia-smi
+python scripts/setup_v62.py --python 3.11 --env-root .venv-v62
 ```
 
-**Các tham số chạy lô:**
-| Tham số | Giá trị | Ý nghĩa |
-|---|---|---|
-| `--input` | Thư mục | Thư mục chứa các file PDF đầu vào |
-| `--output` | Thư mục | Thư mục lưu kết quả toàn bộ tài liệu |
-| `--profile` | `fast`, `local`, `balanced`, `accuracy` | Hồ sơ xử lý áp dụng cho cả lô |
-| `--shard` | `I/N` (ví dụ `0/2`, `1/2`) | Chia lô theo phân mảnh tất định |
-| `--merge-shards` | Số nguyên $N$ | Gộp báo cáo tổng hợp từ $N$ phân mảnh |
-| `--force` | Cờ bật | Bỏ qua cache, buộc xử lý lại toàn bộ |
-| `--output-mode` | `legacy`, `compact` | Chọn cấu trúc result.json; resume chỉ nhận output cùng chế độ |
-| `--limit` | Số nguyên | Giới hạn số lượng tài liệu xử lý |
+Script dùng `uv`, chọn lock Windows/Linux trong [requirements/v62](requirements/v62), kiểm hash package và chạy phép toán CUDA. Nếu lượt cài trước dang dở, chạy lại với `--sync`. Tùy chọn `--http1-downloads` hỗ trợ tải qua wheelhouse có kiểm hash khi proxy gây lỗi.
 
-**Ví dụ chạy song song nhiều phân mảnh:**
-```bash
-# Worker 1 xử lý nửa đầu danh sách tài liệu
-python run_batch.py --input inputs --output output/v6 --profile balanced --shard 0/2
+Dependency supervisor được mô tả trong [pyproject.toml](pyproject.toml); lock CPU theo hệ điều hành ở [requirements/v63](requirements/v63). `pip install -e ".[app]"` ở trên cài theo khoảng phiên bản của extra, không tự áp dụng lock CPU.
 
-# Worker 2 xử lý nửa sau danh sách tài liệu
-python run_batch.py --input inputs --output output/v6 --profile balanced --shard 1/2
+### 5.2. Tải trọng số đúng revision
 
-# Gộp báo cáo sau khi cả 2 shard hoàn thành
-python run_batch.py --output output/v6 --merge-shards 2
+Nguồn chuẩn là [models/v62/runtime-models.json](models/v62/runtime-models.json): đường dẫn, revision và SHA-256 từng file. Git chỉ giữ cấu hình/registry, không giữ trọng số.
+
+```powershell
+python scripts/setup_vietocr_model.py
+python -m pip download --no-deps --only-binary=:all: rapidocr-onnxruntime==1.4.4 --dest scratch/model-wheels
 ```
 
----
-
-### 5.3. Đo Lường Hiệu Năng Nghiên Cứu (`run_perf.py`)
-
-Công cụ đo đạc độc lập đo lường độ trễ chi tiết (p50, mean, p95), mức tiêu hao RAM/VRAM và xuất file `perf.json`:
-```bash
-python -m benchmark.perf.run_perf --pdf inputs/ADP_Baocaothuongnien_2025.pdf --pages 1-3 --profile balanced --device cpu --assets none --repeat 3 --output scratch/perf-adp
-```
-
-Thêm `--output-mode compact` để đo dung lượng theo chế độ gọn. Báo cáo ghi chế độ xuất; so hồi quy chỉ nhận cùng chế độ, workload và phần cứng. So sánh dung lượng giữa hai chế độ phải báo riêng, không suy thành cải thiện OCR.
-
-Consumer Python đọc cả legacy và compact bằng:
+Lệnh `pip download` chỉ lấy wheel để trích detector, không cài RapidOCR CPU vào worker GPU. Lưu đoạn Python sau thành **`scratch/download_gpu_models.py`**:
 
 ```python
-from src.ocr.infrastructure.export.result_reader import load_document_json
-result = load_document_json("output/sample/result.json")
-pages = result["pages"]
+import hashlib
+import json
+from pathlib import Path
+from zipfile import ZipFile
+
+from huggingface_hub import snapshot_download
+
+root = Path.cwd()
+registry = json.loads((root / "models/v62/runtime-models.json").read_text(encoding="utf-8"))
+wheels = list((root / "scratch/model-wheels").glob("rapidocr_onnxruntime-1.4.4-*.whl"))
+if len(wheels) != 1:
+    raise RuntimeError("Can dung mot wheel RapidOCR 1.4.4 trong scratch/model-wheels")
+with ZipFile(wheels[0]) as archive:
+    candidates = [name for name in archive.namelist()
+                  if name.endswith("/ch_PP-OCRv4_det_infer.onnx")]
+    if len(candidates) != 1:
+        raise RuntimeError("Khong tim thay duy nhat detector trong wheel")
+    detector = root / registry["text_detector"]["model_path"]
+    detector.parent.mkdir(parents=True, exist_ok=True)
+    detector.write_bytes(archive.read(candidates[0]))
+
+hub = root / "models/docling/huggingface/hub"
+for role, model in registry["snapshots"].items():
+    snapshot_download(model["repo"], revision=model["revision"], cache_dir=str(hub))
+    ref = hub / ("models--" + model["repo"].replace("/", "--")) / "refs"
+    ref = ref / ("v2.3.0" if role == "table" else "main")
+    ref.parent.mkdir(parents=True, exist_ok=True)
+    ref.write_text(model["revision"], encoding="utf-8")
+
+for relative, expected in registry["files"].items():
+    path = root / relative
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != expected:
+        raise RuntimeError(f"Model hash mismatch: {relative}")
+print("All locked model files verified")
 ```
 
-Đầu ra gọn vẫn cần thư mục `pages/`; không chia sẻ riêng file index. Tham chiếu hỏng, sai trang, schema không hỗ trợ hoặc đường dẫn ra ngoài thư mục đều là lỗi.
-
----
-
-## 6. So Sánh Các Hồ Sơ Xử Lý (Profiles)
-
-| Tiêu chí | Fast | Local | Balanced | Accuracy |
-|---|:---:|:---:|:---:|:---:|
-| **Engine OCR chính** | RapidOCR (CPU) | VietOCR (Seq2Seq, CUDA/CPU tự chọn) | VietOCR (Seq2Seq) | VietOCR (Seq2Seq) |
-| **Độ phân giải Render** | 150 DPI | 180 DPI | 180 DPI | 180 DPI |
-| **Docling TableFormer + Formula** | Tắt | Tắt | Bật | Bật |
-| **Fallback vùng** | Tắt | Khi cần review, tối đa 5 vùng/15% | Khi cần review, tối đa 5 vùng/15% | Thích ứng, tối đa 30 vùng/25% |
-| **Luồng CPU / batch nhận dạng** | Theo runtime / 16 | 2 / 4 | Theo runtime / 8 | Theo runtime / 8 |
-| **Phù hợp sử dụng** | Trích text nhanh, đo tải RapidOCR | Máy cá nhân cần đọc tiếng Việt có dấu | Máy lab cần bảng/công thức bằng Docling | Máy lab cần thêm lượt xử lý vùng khó |
-
-`local` giữ cấu hình nhận dạng của `balanced` bản 4.3 (commit `bcf9f23`): native-first, RapidOCR dò dòng + VietOCR đọc chữ, 180 DPI và đọc lại vùng khó. Cấu trúc bảng theo heuristic/vector vẫn hoạt động; bảng scan phức tạp và công thức cần `balanced`/`accuracy`. VietOCR nhận dấu từ ảnh, không tự bổ sung dấu vào văn bản bằng từ điển. Chưa có đối chứng cùng PDF/ground truth để khẳng định độ chính xác ngang hoặc cao hơn 4.3.
-
-`local` đặt `device: auto`: VietOCR dùng CUDA khi PyTorch nhận được GPU, nếu không dùng CPU. RapidOCR dò dòng, render PDF và xuất kết quả vẫn chạy CPU. Ngân sách 2 luồng/backend và batch 4 giữ nguyên trên cả hai thiết bị. `--device cpu` ép CPU để đối chiếu; `--device cuda` yêu cầu GPU và báo lỗi khi CUDA không sẵn sàng. Hardware profile `cpu_local` cũng ép CPU nếu được truyền tường minh.
-
-Script đo CPU/RAM mặc định dùng `local`, một worker. Có thể chọn ít file trước:
-
-```bash
-python scripts/run_batch_test_with_monitoring.py --profile local --limit 1 --output output/local_test
-# Yêu cầu VietOCR dùng GPU; log in tên GPU và VRAM thực tế.
-python scripts/run_batch_test_with_monitoring.py --profile local --device cuda --limit 1 --output output/local_gpu
-# Đối chứng CPU cùng cấu hình nhận dạng.
-python scripts/run_batch_test_with_monitoring.py --profile local --device cpu --limit 1 --output output/local_cpu
-# Chọn riêng file cần đối chiếu; --force tránh dùng kết quả cache.
-python scripts/run_batch_test_with_monitoring.py --profile local --files TEN_FILE.pdf --output output/local_test --force
-# Máy lab: giữ Docling; thiết bị CUDA chỉ chọn khi đã cài runtime/model tương thích.
-python scripts/run_batch_test_with_monitoring.py --profile balanced --output output/lab_test
-```
-
-CLI single/batch vẫn mặc định `balanced`; chọn `--profile local` khi chạy trên máy cá nhân. `--threads-per-worker` và `--batch-size` trong script đo tải ghi đè giới hạn của profile. Số luồng là ngân sách cho backend, không phải giới hạn tổng luồng hệ điều hành. VietOCR chia nhỏ batch theo giới hạn này và giữ thứ tự dòng/xác suất. Luồng suy luận được tái sử dụng trong một tài liệu; timeout OCR hiện vẫn là timeout mềm, phải đợi lời gọi native kết thúc trước khi dùng lại model.
-
-Thời gian và RAM phụ thuộc PDF, phần cứng, cache, số vùng đọc lại và trạng thái sleep của máy; đo trên cùng bộ đầu vào trước khi so sánh profile.
-
-Trên Windows, PyTorch bản CPU không thể dùng CUDA dù máy có NVIDIA GPU. Cặp phiên bản CUDA đã chọn cho môi trường Python 3.11 hiện tại là `torch==2.12.1+cu126` và `torchvision==0.27.1+cu126`, từ [kho wheel PyTorch chính thức](https://download.pytorch.org/whl/cu126). Với môi trường đã có đủ dependency, có thể thay riêng hai gói bằng uv:
+Chạy bằng Python của **worker Docling**, nơi đã có `huggingface_hub`:
 
 ```powershell
-uv pip install --python .venv/Scripts/python.exe --default-index https://download.pytorch.org/whl/cu126 --no-deps torch==2.12.1+cu126 torchvision==0.27.1+cu126
-.\.venv\Scripts\python.exe -c "import torch; print(torch.__version__, torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+# Windows
+.\.venv-v62\docling\Scripts\python.exe scratch/download_gpu_models.py
 ```
-
-Giữ torch/torchvision theo cặp tương thích khi thay phiên bản. Cài CUDA cho môi trường chính không đổi môi trường Docling riêng `.venv-docling`; `local` tiếp tục tắt Docling.
-
-Đã kiểm chứng RTX 2050 bằng cùng PDF scan và cùng cấu hình CPU/CUDA: OCR chính tăng tốc 2,49 lần, toàn tài liệu 1,65 lần trong smoke ba bản sao một trang. Có một vị trí khác dấu giữa hai thiết bị, các fragment số đối chiếu giống nhau; chưa có GT để kết luận độ chính xác. Xem [evidence GPU](benchmark/evidence/local_cuda_20261015.json).
-
----
-
-## 7. Cấu Trúc Kết Quả Xuất Ra
-
-Sau khi xử lý file `<DOC_ID>.pdf`, hệ thống tạo cấu trúc kết quả tại thư mục `output/<DOC_ID>/`:
-
-```text
-output/<DOC_ID>/
-├── document.md               # Markdown cấp toàn tài liệu đã dựng cây mục chuẩn
-├── document.json             # Hợp đồng V6: sections, chunks, tables kèm spans và block IDs
-├── extraction.json           # Dữ liệu trích xuất chi tiết từng trang kèm text_raw / text_corrected
-├── structure.json            # Cây mục phân cấp (H1, H2, H3, H4) của tài liệu
-├── COMPLETED.json            # Chứng nhận xử lý hợp lệ kèm hash mã nguồn, model và cấu hình
-├── result.md                 # Markdown truyền thống theo từng trang (# Trang N)
-├── result.json               # Dữ liệu dòng chữ và bounding box legacy
-├── quality.json              # Báo cáo đánh giá chất lượng native/OCR và trạng thái review
-├── manifest.json             # Metadata tài liệu, phiên bản pipeline, hash SHA-256
-├── validation.json           # Báo cáo kiểm định hợp đồng dữ liệu của artifact validator
-├── pages/                    # Kết quả chi tiết theo từng trang riêng lẻ
-│   ├── page-0001.md
-│   ├── page-0001.json
-│   └── ...
-└── structures/               # Kết quả trích xuất từ Docling
-    ├── tables/               # File HTML lưu trữ cấu trúc bảng có rowspan / colspan
-    │   └── p0010_table_1.html
-    └── formulas/             # Công thức toán học định dạng LaTeX
-        └── p0005_formula_1.tex
-```
-
----
-
-## 8. Đảm Bảo Chất Lượng & Kiểm Thử Khoa Học
-
-Bộ kiểm thử bao phủ domain, pipeline, hợp đồng, runtime, notebook Colab và protocol nghiên cứu. Lần chạy ngày **15/10/2026**: **627 passed, 3 skipped, 1 warning**; ba ca bỏ qua cần PDF BHN/CLW hoặc golden prediction CLW chưa có.
 
 ```bash
-# Chạy toàn bộ kiểm thử đơn vị và khoa học
-python -m pytest tests -q
+# Linux
+.venv-v62/docling/bin/python scratch/download_gpu_models.py
 ```
 
-Kết quả:
+Các snapshot layout, bảng và công thức có thể chiếm nhiều GB. Script xác minh file theo registry hiện có; nếu hash không khớp, kiểm tra đúng file/revision và tải lại. `scripts/prepare_v62_models.py` chỉ ghi registry từ các model đã có, không tải model; tạo lại registry làm thay đổi nhận dạng runtime và cần output batch mới.
+
+### 5.3. Kiểm tra trước khi chạy
+
+```powershell
+python scripts/preflight_v62.py --device cuda --env-root .venv-v62 --output scratch/gpu-preflight.json
+```
+
+Preflight kiểm môi trường CUDA/provider. Nó không thay thế inference trên PDF thật hoặc phép đo độ chính xác. V6.3 cần chạy từ checkout/editable install; wheel độc lập chưa hỗ trợ backend GPU này.
+
+## 6. Chạy một PDF hoặc cả thư mục
+
+Sau khi hoàn tất mục 5:
+
+```powershell
+# Một PDF, xử lý toàn bộ trang.
+python run_ocr.py inputs/bao_cao.pdf --output output/mot_tai_lieu
+
+# Mọi PDF nằm trực tiếp trong inputs/.
+python run_batch.py --input inputs --output output/v63
+
+# Giảm dung lượng ảnh xuất ra.
+python run_batch.py --input inputs --output output/v63_no_assets --assets none
+```
+
+V6.3 nhận `.pdf`/`.PDF`, không quét thư mục con. Stem tên PDF phải khác nhau sau chuẩn hóa Unicode và hoa/thường. Cùng nội dung PDF có thể có hàng riêng, với metadata `duplicate_of`.
+
+Sau khi cài editable, `ocrpdf` và `ocrpdf-batch` tương đương hai script; `ocrpdf-gpu` là alias của CLI một PDF.
+
+### Tiếp tục hoặc thử lại
+
+```powershell
+python run_batch.py --input inputs --output output/v63 --resume
+python run_batch.py --input inputs --output output/v63 --resume --retry-failed
+python run_batch.py --input inputs --output output/v63 --resume --force-ocr
+```
+
+Batch khóa input, cấu hình, keyword, mã nguồn và runtime/model ở lần đầu. Khi resume, giữ nguyên chúng và truyền lại tùy chọn đã dùng như `--assets none` hoặc `--env-root`. `--force-ocr` không thay `--retry-failed` đối với tài liệu đã lỗi. Thêm PDF, đổi code/model hoặc đổi cấu hình thì chọn output mới.
+
+| Tùy chọn V6.3 | Mặc định / ý nghĩa |
+| --- | --- |
+| `--backend` | `gpu_two_phase` |
+| `--config` | `config/profiles-v63.yaml` |
+| `--profile` | `unified_gpu_full_ocr` |
+| `--device` | `cuda` |
+| `--env-root` | `.venv-v62` trong repository |
+| `--output` | `output/v63` trong repository |
+| `--workers` | `1` |
+| `--max-attempts` | `2`, cho lỗi worker được phân loại có thể thử lại |
+| `--assets` | `png`; có thể chọn `jpeg` hoặc `none` |
+| `--output-mode` | `compact`; `legacy` nhúng toàn bộ trang trong `result.json` |
+
+Xem toàn bộ tham số bằng `python run_batch.py --help` và `python run_ocr.py --help`. Nên ghi rõ `--backend legacy` khi dùng profile/lệnh CPU cũ.
+
+## 7. Từ khóa và đếm lại kết quả
+
+Bộ mặc định [config/keywords.txt](config/keywords.txt) có **88 vị trí hiển thị, 87 cụm từ duy nhất**: `Internet di động` xuất hiện hai lần. Hai vị trí này có cùng số đếm.
+
+Chính sách `literal_v1` đọc `result.md`, chuẩn hóa NFC và `casefold`, sau đó đếm chuỗi con chính xác, không chồng lấn trong từng keyword. Nó giữ dấu và khoảng trắng, không fuzzy, stemming, LLM hoặc tự gộp `hóa` với `hoá`. Toàn bộ Markdown, kể cả tiêu đề, bảng và đường dẫn ảnh, thuộc nguồn đếm.
+
+Excel riêng giữ 88 dòng keyword; ma trận có 88 cột keyword và một cột tên PDF. Tổng theo keyword duy nhất (`total_canonical_matches`) có thể khác tổng theo vị trí hiển thị (`total_display_matches`).
+
+### Dùng bộ từ khóa riêng
+
+Tạo file UTF-8, mỗi dòng một cụm từ, rồi đặt version khác `v1`:
+
+```powershell
+python run_batch.py --input inputs --output output/custom_keywords --keywords-file config/tu_khoa_rieng.txt --keyword-set-version custom-v1
+```
+
+### Đếm lại batch V6.3 với bộ keyword đã khóa
+
+```powershell
+python run_batch.py --output output/v63 --recount
+```
+
+Lệnh giữ OCR hợp lệ nhưng kiểm nhận dạng runtime/source và có thể cần phục hồi artifact. Giữ PDF gốc và môi trường cũ; nếu code đã đổi, dùng analysis run dưới đây.
+
+### Đổi keyword trên output V6.3, không OCR lại
+
+```powershell
+python run_batch.py --analysis-from output/v63 --output output/analysis_moi --keywords-file config/tu_khoa_rieng.txt --keyword-set-version custom-v1
+```
+
+Analysis run cần extra `app`, không cần worker/model GPU. Nguồn có thể là thư mục batch, tài liệu hoặc analysis run trước. Lệnh kiểm receipt/hash và bằng chứng hoàn tất, giữ nguyên thư mục nguồn, xuất bộ kết quả mới cùng `source.json` ghi nguồn gốc. Output nguồn phải còn đầy đủ artifact; một file Markdown rời không đủ cho đường này.
+
+### Chỉ đếm từ output legacy
+
+```powershell
+python -m pip install -e ".[reporting]"
+python scripts/run_count_only.py output/quickstart/bao_cao
+```
+
+Nếu target khai báo V6.3, script chuyển sang recount toàn batch với snapshot đã khóa.
+
+## 8. Chạy trên Kaggle
+
+- GPU V6.3: [kaggle/ocr_pdf_v63_kaggle.ipynb](kaggle/ocr_pdf_v63_kaggle.ipynb).
+- Legacy/CPU: [kaggle/ocr_pdf_kaggle.ipynb](kaggle/ocr_pdf_kaggle.ipynb).
+
+Với notebook V6.3:
+
+1. Import notebook vào Kaggle, bật **Internet** và chọn **GPU**.
+2. Add Input dataset PDF; kiểm tra `INPUT_ROOT`, `PDF_FILES` và `FILE_LIMIT` ở cell cấu hình.
+3. Giữ `REPO_URL = "https://github.com/VuTuanAn1403/OCR.git"`, `REPO_REF = "main"`.
+4. Lần đầu nên đặt `FILE_LIMIT = 1` và chọn `RESULTS_DIR` riêng để thử một tài liệu; chạy các cell từ đầu theo thứ tự.
+5. Để chạy đủ dataset, đặt `FILE_LIMIT = None`, `PDF_FILES = []`, `RUN_FULL_BATCH = True` và chọn thư mục kết quả mới.
+6. Tải ZIP hoặc Save Version trước khi phiên kết thúc.
+
+Notebook tự chuẩn bị runtime/model. Kết quả mặc định ở `/kaggle/working/ocr_pdf_v63_results/`; batch và ma trận ở thư mục con `documents/`; ZIP là `/kaggle/working/ocr_pdf_v63_results.zip`. Runtime/model nằm ngoài ZIP. Notebook dùng một GPU/worker, không tự chia qua hai GPU.
+
+`STAGED_INPUT` được tạo khi cell chọn input thành công. Nếu gặp `NameError`, chạy lại từ cell cấu hình bằng **Run All** và xử lý lỗi chọn PDF trước. Khi đổi code, dùng `REFRESH_SOURCE = True` với output mới; batch cũ khóa nhận dạng mã nguồn. Resume qua lúc Kaggle xóa runtime chưa được bảo đảm.
+
+## 9. Kết quả đầu ra
+
 ```text
-627 passed, 3 skipped, 1 warning in 51.27s
+output/v63/
+├── batch_state.sqlite
+├── batch_input_manifest.json
+├── batch_config.json
+├── keyword_dictionary.snapshot.json
+├── batch_report.json
+├── MA_TRAN_DEM_TU_KHOA_<N>_FILES.xlsx
+├── logs/
+└── <ten_pdf>/
+    ├── result.md                    # Nguồn đếm từ khóa
+    ├── result.json                  # Chỉ mục trang hoặc dữ liệu đầy đủ
+    ├── document.md
+    ├── extraction.json              # Phần tử, tọa độ, nguồn/bằng chứng
+    ├── structure.json               # Cây mục
+    ├── document.json                # Sections, chunks, bảng, tham chiếu
+    ├── quality.json
+    ├── validation.json
+    ├── manifest.json
+    ├── ocr_receipt.json
+    ├── keyword_counts.json
+    ├── keyword_validation.json
+    ├── keyword_receipt.json
+    ├── count_keywords.xlsx
+    ├── COMPLETED.json
+    ├── pages/
+    ├── images/
+    └── structures/
 ```
 
-### Các nhóm kiểm thử trọng tâm:
-1. **Kiểm thử hợp đồng & schema V6:** Kiểm tra tính toàn vẹn của `document.json`, `extraction.json`, kiểm tra ràng buộc spans, tính duy nhất của ID ổn định (`test_v6_structure.py`, `test_v6_honest_outputs.py`).
-2. **Kiểm thử rào chắn số liệu (Numeric Guard):** Bảo đảm không biến đổi các định dạng số âm, ngoặc kế toán, tỷ lệ %, mã văn bản và đơn vị tiền tệ (`test_v6_numeric_guard.py`).
-3. **Kiểm thử bộ điều hợp bố cục (Layout Adapters):** Kiểm tra tính đúng đắn về hình học và ma trận chuyển đổi tọa độ của YOLO và RT-DETR (`test_v6_layout_adapters.py`).
-4. **Kiểm thử phân mảnh & Runtime:** Kiểm tra phân chia shard, merge shard và ghi nguyên tử (`test_v6_runtime.py`, `test_v6_conversion_timing.py`).
-5. **Kiểm thử đo lường khoa học:** Phân biệt tường minh `MEASURED`, `NOT_EVALUATED`, và phạt tối đa đối với `MISSING_OUTPUT` (`test_v6_evaluation_protocol.py`).
+Ma trận có các sheet `Ma trận từ khóa`, `Trạng thái`, `Tệp lỗi`, `Tổng quan`, `Thông tin`.
 
----
+| Trạng thái / giá trị | Ý nghĩa |
+| --- | --- |
+| `PENDING`, ô trống | Chưa công bố kết quả |
+| `FAILED_DOCUMENT`, ô trống | Tài liệu lỗi; xem sheet lỗi/log |
+| `SUCCEEDED`, số `0` | Đã đếm, không tìm thấy keyword đó |
+| `validation: PASS` | Artifact hợp lệ theo validator |
+| `validation: NEEDS_REVIEW` | Có vùng/chất lượng cần kiểm tra |
+| `quality_acceptance: NOT_EVALUATED` | Chưa nghiệm thu trên ground truth độc lập |
+
+Sau mỗi tài liệu, pipeline ghi và đọc kiểm Excel rồi xác nhận revision SQLite trước khi xử lý PDF kế tiếp. Lỗi xuất workbook chặn batch; đóng file Excel đang mở trước khi resume. Nếu Docling fallback, kết quả được giữ cùng trạng thái cần review.
+
+Sao lưu cả thư mục batch, gồm SQLite, receipt và manifest, khi không còn tiến trình ghi. Không chỉ sao chép file Excel nếu cần resume hoặc kiểm nguồn gốc.
+
+## 10. Cấu trúc và phát triển
+
+```text
+OCR/
+├── run_ocr.py / run_batch.py   # CLI
+├── pyproject.toml             # Package, extras, import contracts
+├── src/
+│   ├── ocr_contracts/         # Model/schema/protocol
+│   ├── ocr_artifacts/         # Hash, ghi nguyên tử, completion
+│   ├── ocr_text/              # Unicode và numeric guard
+│   ├── ocr_keywords/          # Từ điển và đếm literal
+│   ├── ocr_reporting/         # Excel
+│   ├── ocr_runtime/           # Config, paths, model/runtime identity
+│   ├── ocr_pdf_io/            # Inspect, render, crop PDF
+│   ├── ocr_recognition/       # Detector, VietOCR, chất lượng chữ
+│   ├── ocr_layout/            # Layout adapters
+│   ├── ocr_structure/         # Docling client, bảng/công thức
+│   ├── ocr_document/          # Ghép trang, cấu trúc, export
+│   ├── ocr_pipeline/          # Supervisor CPU, batch, analysis
+│   ├── ocr_workers/           # Các pha GPU và Docling server
+│   └── ocr/                   # Legacy và alias src.ocr.*
+├── config/                   # Profile và keyword
+├── models/                   # Cấu hình/registry; trọng số cục bộ
+├── assets/fonts/             # Font tiếng Việt cho PDF trung gian
+├── requirements/v62/         # Lock hai worker GPU
+├── requirements/v63/         # Lock CPU app
+├── scripts/                  # Setup, preflight, kiểm thử, benchmark
+├── tests/                    # Unit, scientific, integration, golden
+├── benchmark/                # Metric, protocol, evidence chọn lọc
+├── docs/architecture/        # Thiết kế và hướng dẫn phát triển
+└── kaggle/                   # Notebook
+```
+
+Luồng V6.3: **PDF → worker nhận dạng GPU → kết thúc pha A → worker Docling GPU → export CPU → đếm keyword → Excel riêng → xác nhận ma trận → PDF tiếp theo**. Hai pha GPU chạy tuần tự và phải kết thúc cây tiến trình trước khi bàn giao tài nguyên.
+
+Tài liệu chi tiết: [kiến trúc](docs/architecture/README.md), [phát triển module](docs/architecture/HUONG_DAN_PHAT_TRIEN_MODULE.md), [cấu hình/dữ liệu](docs/architecture/CAU_HINH_VA_DU_LIEU.md), [migration và bằng chứng](docs/architecture/MIGRATION_PLAN.md).
+
+### Kiểm thử
+
+```powershell
+# Package nhẹ và reporting; không cần model/GPU.
+python -m pip install -e ".[reporting]" pytest
+python scripts/run_pytest_scratch.py tests/unit/contracts tests/unit/artifacts tests/unit/text tests/unit/keywords tests/unit/reporting -q
+
+# Pipeline/analysis dùng fixture, không inference GPU.
+python -m pip install -e ".[app,dev]" pytest
+python scripts/run_pytest_scratch.py tests/unit/document tests/unit/runtime tests/unit/test_v63_pipeline.py tests/unit/test_analysis_run.py tests/unit/test_import_contracts.py -q
+
+# Regression đầy đủ: cần stack legacy/test.
+python -m pip install -e ".[legacy,test]"
+python scripts/run_pytest_scratch.py tests/unit tests/scientific tests/legacy_compat -q -ra
+```
+
+Wrapper đặt log, JUnit và thư mục tạm dưới `scratch/runs/<run_id>/`. Integration/golden phụ thuộc PDF/prediction có thể được skip khi thiếu dữ liệu. Xem [workflow CI](.github/workflows/tests.yml): kiểm CPU/package/wheel trên Windows và Ubuntu; model integration và GPU runner cần chọn riêng qua `workflow_dispatch`. GPU runner phải cấu hình `OCR_GPU_SAMPLE_PDF` tới PDF một trang có sẵn ngoài checkout, cùng runtime/model được chuẩn bị trước; CI không tải kèm tài liệu đầu vào.
+
+Công cụ [run_scientific_benchmark.py](scripts/run_scientific_benchmark.py) và [scientific_evaluation](benchmark/scientific_evaluation) hỗ trợ đánh giá OCR, số, bảng, layout và thứ tự đọc. Cần ground truth độc lập và protocol rõ ràng trước khi công bố chỉ số chất lượng.
+
+## 11. Lỗi thường gặp
+
+| Hiện tượng | Cách xử lý |
+| --- | --- |
+| Cài lỗi với Python 3.13/3.14 | Tạo venv Python 3.11 |
+| Không nhận `uv` | Kích hoạt `.venv` hoặc gọi `.venv/Scripts/uv.exe` trên Windows |
+| `Missing locked GPU environment` | Chạy `setup_v62.py`, kiểm `--env-root` và hai worker |
+| `Torch CUDA unavailable`, thiếu `CUDAExecutionProvider` | Kiểm driver, `nvidia-smi`, lock và preflight; loại dependency ORT CPU cài nhầm trong worker |
+| `MODEL_LOCK_MISMATCH`, thiếu snapshot | Kiểm path/revision/hash trong registry, tải đúng model |
+| `IdentityMismatch`, `Source changed`, `INPUT_CHANGED` | Giữ môi trường/input cũ để resume, hoặc tạo output mới cho phiên bản mới |
+| `Batch already exists` | Thêm `--resume` với cấu hình cũ hoặc chọn output mới |
+| Lỗi ghi/replace Excel | Đóng workbook đang mở; kiểm quyền và dung lượng rồi resume |
+| `GPU_LEASE_BUSY` hoặc batch bị khóa | Kiểm tiến trình đang chạy GPU/output trước khi chạy lại |
+| Không nhận `--pages`/`--limit` | Dùng `--backend legacy` và profile CPU tương ứng |
+| Không thấy PDF trong thư mục con | Đặt PDF trực tiếp vào input; notebook Kaggle có bước chọn đệ quy riêng |
+| Linux báo thiếu `torch` dù đã setup worker | Cập nhật source/notebook, dùng output mới và kiểm đúng Python trong venv worker |
+
+## 12. Quản lý mã nguồn trên GitHub
+
+Remote chính của dự án là `https://github.com/VuTuanAn1403/OCR.git`. Sau khi clone, kiểm tra bằng:
+
+```powershell
+git remote -v
+git status --short
+```
+
+Nếu đang dùng checkout từ repository cũ và `origin` đã tồn tại:
+
+```powershell
+git remote set-url origin https://github.com/VuTuanAn1403/OCR.git
+```
+
+[.gitignore](.gitignore) loại venv, cache, `inputs/`, `output/`, `scratch/`, `tmp/`, log, biến môi trường và trọng số (`.pth`, `.pt`, `.onnx`, `.safetensors`...). Cấu hình model/registry và font kèm giấy phép vẫn là tài nguyên cần thiết của mã nguồn. Các fixture/evidence chọn lọc trong `tests/` và `benchmark/` phục vụ kiểm thử.
+
+Khi cập nhật dự án, kiểm danh sách staged trước khi commit/push:
+
+```powershell
+git add README.md .gitignore pyproject.toml setup.py MANIFEST.in .gitattributes .github src config requirements scripts tests benchmark docs/architecture kaggle assets run_ocr.py run_batch.py pytest.ini requirements*.txt
+git diff --cached --stat
+git diff --cached --check
+git commit -m "docs: update setup and usage instructions"
+git push origin main
+```
+
+Chỉ commit các file thuộc thay đổi định đưa lên. File đã được Git theo dõi từ trước không tự bị loại khi thêm quy tắc `.gitignore`; với dữ liệu/trọng số đã tracked, cần xử lý danh sách tracked trước khi publish. GitHub có thể yêu cầu đăng nhập hoặc token để push.
+
+Phần keyword được tích hợp có chọn lọc từ [OCR_pdf_backup](https://github.com/nkatu0704dataengineer/OCR_pdf_backup/tree/05d396763e0c1a099d87adb93661b3f1c9ab48b8). Giấy phép thư viện, model và font theo nguồn tương ứng; repository không gắn nhãn giấy phép khi chưa có file giấy phép dự án.

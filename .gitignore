@@ -5,6 +5,11 @@
 # Virtual Environments
 .venv/
 .venv-docling/
+.venv-v62-gpu/
+.venv-v62/
+.venv-v62-clean/
+.venv-cpu-benchmark/
+.pytest_tmp/
 models/docling/
 venv/
 ENV/
@@ -91,10 +96,13 @@ secrets.*
 *.bin
 *.onnx
 *.weights
+*.safetensors
+*.download
 models/vietocr/*.pth
 
 # Temporary & Local Scratch
 scratch/
+/tmp/
 debug/
 logs/
 *.log
@@ -102,24 +110,23 @@ _clone_test/
 backup-final-before-v31-rollback/
 
 # Runtime Inputs & Outputs
-# Keep benchmark sample and golden evaluation predictions, ignore batch runs
+# Keep local input documents out of the published source tree.
 inputs/*
-!inputs/CLW_Baocaothuongnien_2020.pdf
-!inputs/FPT_Baocaothuongnien_2022.pdf
 !inputs/README.md
 !inputs/.gitkeep
 
 output/*
+/output_finsbd/
 !output/.gitkeep
-!examples/**
-!sample.pdf
+/examples/*.pdf
+/*.pdf
 
-# Excluded documentation, notes, and local reports
-docs/
+# Excluded documentation, notes, and local reports. Architecture docs are tracked.
+/docs/*
+!/docs/architecture/
 reports/
 research_notes/
 CLAUDE.md
-CLEANUP_REPORT.md
 CLEANUP_RESPORT.md
 .claude/
 Noi dung nghien cuu.pdf

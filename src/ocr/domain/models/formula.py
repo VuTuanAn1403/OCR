@@ -1,17 +1,10 @@
-"""Recognized display formulas with explicit, unverified model provenance."""
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+"""Compatibility alias: this module moved to `ocr_contracts.formula` (migration P02).
 
+The object registered under this name is `ocr_contracts.formula` itself, so imports,
+`mock.patch` targets and isinstance checks behave as before.
+"""
+import sys
 
-class Formula(BaseModel):
-    formula_id: str
-    page: int
-    latex: str
-    bbox: List[float] = Field(default_factory=list)
-    engine: str = "docling_codeformula"
-    confidence: Optional[float] = None
-    status: str = "NEEDS_REVIEW"
-    provenance: Dict[str, Any] = Field(default_factory=dict)
+import ocr_contracts.formula as _module
 
-    def to_markdown(self) -> str:
-        return "$$\n" + self.latex.strip() + "\n$$"
+sys.modules[__name__] = _module

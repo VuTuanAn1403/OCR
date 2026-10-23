@@ -1,21 +1,10 @@
-from typing import Dict, Any, Tuple
-from src.ocr.domain.routing.page_type import PageType
-from src.ocr.domain.routing.routing_policy import RoutingPolicy
-from src.ocr.infrastructure.quality.native_quality import NativeQualityEvaluator
+"""Compatibility alias: this module moved to `ocr_recognition.route_page` (migration P06).
 
-class RoutePageUseCase:
-    """
-    Evaluates native text quality and decides the processing route for a page.
-    """
-    def __init__(self, routing_policy: RoutingPolicy):
-        self.routing_policy = routing_policy
-        self.quality_evaluator = NativeQualityEvaluator()
+The object registered under this name is `ocr_recognition.route_page` itself, so imports,
+`mock.patch` targets and isinstance checks behave as before.
+"""
+import sys
 
-    def execute(self, meta: Dict[str, Any]) -> Tuple[PageType, float]:
-        """
-        Returns (page_type: PageType, native_text_score: float).
-        """
-        raw_text = meta.get("raw_text", "")
-        native_score = self.quality_evaluator.evaluate_text(raw_text, meta)
-        page_type = self.routing_policy.determine_page_type(meta, native_score)
-        return page_type, native_score
+import ocr_recognition.route_page as _module
+
+sys.modules[__name__] = _module

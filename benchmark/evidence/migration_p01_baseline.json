@@ -1,0 +1,71 @@
+{
+ "schema_version": "migration-baseline-v1",
+ "stage": "P01",
+ "date": "2026-10-22",
+ "baseline": {
+  "head": "e6a219024c47fa461b7900ce35d3918c18af7175",
+  "user_changes_patch_sha256": "3bcbdaf16061d6d0d152b8c648ab6df62b2d700e3834bf07adff8b99293e9f16",
+  "includes": [
+   "user local changes kept per D3",
+   "P00b acceptance gate"
+  ]
+ },
+ "tests": {
+  "before_migration": "tests/unit tests/scientific: 823 passed, 1 skipped",
+  "after_P00b": "tests/unit tests/scientific: 850 passed, 1 skipped",
+  "legacy_compat": "13 passed (includes a real legacy fast CPU run of examples/sample.pdf page 1)"
+ },
+ "sources": [
+  {
+   "name": "v63_sample real GPU run",
+   "kind": "real_inference",
+   "input": "examples/sample.pdf",
+   "input_sha256": "1e1a3fa175738fc7cf5ea5ecb076b73d422554b713a5496b5f7a3a427b796b4e",
+   "device": "NVIDIA GeForce RTX 2050 4 GB",
+   "generation": "b4573fa6e12828c538ada14914d91acebfbe703bc7a50af646ed3ccb29a7656e",
+   "placement": {
+    "detector": "VERIFIED_INFERENCE/CUDAExecutionProvider",
+    "recognizer": "VERIFIED_INFERENCE/cuda",
+    "layout": "VERIFIED_INFERENCE/torch-rtdetr-v2",
+    "docling": [
+     "VERIFIED_INFERENCE"
+    ]
+   },
+   "validation": "NEEDS_REVIEW",
+   "keyword_totals": {
+    "canonical": 2,
+    "display": 2
+   },
+   "artifact_sha256": {
+    "result.md": "da24b8ed1f6cc612347b3ddfadeccb5da280d4bc4ed4fabe6d33350d671585f5",
+    "document.md": "84062d347bace9151217ab1453d1d397aea1e2c9c183f056aec4f61b3eb80310",
+    "extraction.json": "e2ef0767d6a671adfbb375dbbe50c17d36bc6e499928c7a8b5b7cd031ff33b83",
+    "structure.json": "fabed42963425bd2e07b929ce69380dcf66d010ef1937abd32d33ce88c8b0721",
+    "document.json": "815bdd7b7f9ce3d69e958e1f41997f8b05e64b1426db69dd0b5971a1d3b14660",
+    "pages/page-0001.json": "c3603a381e51f1863be381116b9f18e999aac044a9ed1719e1095b8a70b80960",
+    "keyword_counts.json": "27ed307229c992be53fa5e57fd6bf7106c62d2f546d882f32de5f36a80e96b5d"
+   },
+   "phase_seconds": {
+    "text": 38.609,
+    "structure": 28.765,
+    "export": 4.266
+   },
+   "fixture": "tests/fixtures/migration/v63_sample (phase A/B page JSON); export re-run reproduces every artifact above byte for byte"
+  },
+  {
+   "name": "digest baseline",
+   "kind": "fixture",
+   "test": "tests/unit/test_migration_digest_baseline.py"
+  },
+  {
+   "name": "acceptance gate doubles",
+   "kind": "mock",
+   "test": "tests/unit/test_v63_worker_acceptance.py",
+   "note": "Simulated workers; never GPU evidence"
+  }
+ ],
+ "not_run": {
+  "ground_truth_accuracy": "No human ground truth; quality_acceptance stays NOT_EVALUATED",
+  "integration_and_golden": "Not part of the P01 baseline run (need specific PDFs/outputs)"
+ }
+}

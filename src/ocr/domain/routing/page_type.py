@@ -1,12 +1,10 @@
-from enum import Enum
+"""Compatibility alias: this module moved to `ocr_contracts.page_type` (migration P02).
 
-class PageType(str, Enum):
-    NATIVE_TEXT = "NATIVE_TEXT"
-    SCANNED_IMAGE = "SCANNED_IMAGE"
-    SCANNED_WITH_OCR_LAYER = "SCANNED_WITH_OCR_LAYER"
-    MIXED = "MIXED"
-    NATIVE_TEXT_LOW_QUALITY = "NATIVE_TEXT_LOW_QUALITY"
-    IMAGE_ONLY = "IMAGE_ONLY"
-    TABLE_HEAVY = "TABLE_HEAVY"
-    DIAGRAM_HEAVY = "DIAGRAM_HEAVY"
-    PRODUCT_SHOWCASE_COLLAGE = "PRODUCT_SHOWCASE_COLLAGE"
+The object registered under this name is `ocr_contracts.page_type` itself, so imports,
+`mock.patch` targets and isinstance checks behave as before.
+"""
+import sys
+
+import ocr_contracts.page_type as _module
+
+sys.modules[__name__] = _module

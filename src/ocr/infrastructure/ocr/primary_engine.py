@@ -1,29 +1,10 @@
-from abc import ABC, abstractmethod
-from typing import List, Dict, Any
-import numpy as np
+"""Compatibility alias: this module moved to `ocr_recognition.primary_engine` (migration P06).
 
-class BaseOCREngine(ABC):
-    """
-    Abstract base interface for OCR engines.
-    """
-    @abstractmethod
-    def predict_image(self, img_bgr: np.ndarray) -> List[Dict[str, Any]]:
-        """
-        Runs OCR on a single image.
-        Returns a list of dicts:
-        [
-            {
-                "bbox": [x0, y0, x1, y1],
-                "text": str,
-                "confidence": float
-            }, ...
-        ]
-        """
-        pass
+The object registered under this name is `ocr_recognition.primary_engine` itself, so imports,
+`mock.patch` targets and isinstance checks behave as before.
+"""
+import sys
 
-    @abstractmethod
-    def predict_batch(self, images: List[np.ndarray]) -> List[List[Dict[str, Any]]]:
-        """
-        Runs batch prediction on a list of images.
-        """
-        pass
+import ocr_recognition.primary_engine as _module
+
+sys.modules[__name__] = _module

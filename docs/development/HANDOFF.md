@@ -1,6 +1,6 @@
 # Bàn giao
 
-Cập nhật 06/11/2026, Asia/Bangkok. HEAD `a95c806965118b53b3afc28d2ebbff37dec0cfc7`, dirty. Triển khai tài liệu 14 đã kiểm cục bộ; Kaggle thật và quality GT chưa nghiệm thu. [Phiên Alias/Kaggle](../../scratch/dev_sessions/20261106-alias-rules-kaggle/session.md).
+Cập nhật 06/11/2026, Asia/Bangkok. HEAD `ad39fcd`, sạch sau đẩy main. Fix CI GitHub Actions (Light text & Legacy e2e 2-sheet), hồi quy full pass. [Phiên CI/V7.0](../../scratch/dev_sessions/20261106-alias-rules-kaggle/session.md).
 
 **Giữ v1 86/86 key đúng bảng/thứ tự người dùng; bỏ bộ v2 và key độc lập điện toán, Internet di động một lần.** keywords.txt SHA `63737b33…0b9800`; bản 88/87 nguyên byte ở keywords-v1-original.txt. Không chạy helper nhập key cũ hoặc sửa receipt/output lịch sử. Wheel 7ac3219e… STALE, chưa phát hành wheel/commit mới.
 
@@ -8,7 +8,7 @@ Cập nhật 06/11/2026, Asia/Bangkok. HEAD `a95c806965118b53b3afc28d2ebbff37dec
 
 - **Global Alias Rules**: seed có ngữ cảnh cho alias ngắn; 3 luồng literal/alias/Pending. Occurrence reject/revoke ưu tiên hơn rule. Rules snapshot + hash trong identity; đổi rule dùng analysis/output mới, không OCR. Companion v3/queue/ma trận/SQLite đọc kiểm trước acknowledge. Bản nháp 14 đã bỏ khẳng định accuracy/90%/99%/ba phút chưa đo và sửa notebook/detector.
 - CPU final `output/analysis_global_alias_final_20261106`: 9 PDF/938 trang, **165 literal, 15 alias chấp nhận, 3 loại trừ, 5 Pending/4 biến thể**. Oracle literal/rule độc lập khớp JSON/XLSX/SQLite revision 9, MD khớp nguồn. `analysis_global_alias_rules_20261106` là seed đầu 16 alias/4 Pending, STALE so seed có ngữ cảnh hiện tại; không sửa lại output đó. [Đọc kiểm cuối](../../scratch/dev_sessions/20261106-alias-rules-kaggle/real-analysis-readback-final.json).
-- Hồi quy hiện tại **2.236 pass/1 skip/7 warning** (`20261106-bridge-frozen-source-regression`), 545 file source/config/test giữ hash. Kiểm cùng replay 9/938 và 14 trang dẫn xuất. Chặn formula/boolean/cột thừa ở sheet mới; tài liệu lỗi giữ alias/Pending null. Không dùng test pass làm accuracy.
+- Hồi quy hiện tại **2.245 pass/1 skip/7 warning** (full CPU + e2e 2-sheet, `20261106-201321-368e886d`), 545 file source/config/test giữ hash. Kiểm cùng replay 9/938 và 14 trang dẫn xuất. Chặn formula/boolean/cột thừa ở sheet mới; tài liệu lỗi giữ alias/Pending null. Không dùng test pass làm accuracy.
 - Notebook chuẩn `kaggle/ocr_pdf_kaggle.ipynb`; v63 là link cũ. ZIP **379 file**, SHA `da5d819a…07fd2b`, ở phiên Alias/Kaggle; loader/CPU roundtrip đã kiểm, **ZIP STALE sau sửa section/TOC**. ZIP không có model/PDF/output. `SOURCE_ARCHIVE`/SHA và restore kết quả hỗ trợ test bản chưa phát hành. **Chưa chạy Kaggle thật/100–1.000 PDF**.
 
 ## Nhận dạng và cấu trúc còn mở

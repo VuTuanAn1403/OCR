@@ -10,7 +10,7 @@ calibrated confidence. A Docling failure keeps the existing extraction
 import logging
 import re
 
-from ocr_contracts.geometry import block_is_covered
+from ocr_contracts.geometry import block_is_covered, is_oriented_line_candidate
 from ocr_contracts.page_type import PageType
 from ocr_contracts.region import BoundingBox, ContentType, Region
 from ocr_contracts.text_block import TextBlock
@@ -19,7 +19,8 @@ from ocr_structure.docling_client import DoclingStructureError
 logger = logging.getLogger(__name__)
 
 
-def enrich_structures(extractor, doc_page, page_num, page_type, blocks, tables, regions, meta):
+def enrich_structures(extractor, doc_page, page_num, page_type, blocks, tables, regions, meta, *,
+                      bridge_unplaced_indices=None):
     fingerprint = extractor.cache_fingerprint() if extractor.enabled else None
     meta["docling_structure"] = {"status": "DISABLED", "cache_fingerprint": fingerprint}
     if not extractor.enabled:
@@ -58,14 +59,16 @@ def enrich_structures(extractor, doc_page, page_num, page_type, blocks, tables, 
     meta["docling_structure"] = {**result["metadata"], "cache_fingerprint": fingerprint}
     model_tables = result["tables"] if options.get("tables", True) else []
     formulas = result["formulas"] if options.get("formulas", True) else []
+    vertical = {index for index, block in enumerate(blocks) if is_oriented_line_candidate(block.recognition_provenance)}
+    unplaced = vertical if bridge_unplaced_indices is None else bridge_unplaced_indices
     # Populate empty cell text from high-accuracy native or VietOCR blocks
     for table in model_tables:
         for cell in table.cells:
             if not cell.text.strip() and cell.bbox and len(cell.bbox) == 4:
                 cx0, cy0, cx1, cy1 = cell.bbox
                 matched = [
-                    b.text.strip() for b in blocks
-                    if len(b.bbox) == 4 and cx0 <= (b.bbox[0] + b.bbox[2]) / 2.0 <= cx1
+                    b.text.strip() for index, b in enumerate(blocks)
+                    if index not in vertical and len(b.bbox) == 4 and cx0 <= (b.bbox[0] + b.bbox[2]) / 2.0 <= cx1
                     and cy0 <= (b.bbox[1] + b.bbox[3]) / 2.0 <= cy1
                     and b.text.strip()
                 ]
@@ -76,8 +79,8 @@ def enrich_structures(extractor, doc_page, page_num, page_type, blocks, tables, 
     tables = [table for table in tables if not block_is_covered(table.bbox, model_tables, 0.5)] + model_tables
     # Freeze formula ownership at the point where the original text is
     # replaced. LaTeX need not equal the OCR transcription byte-for-byte.
-    for block in blocks:
-        if re.fullmatch(r"\(\d+(?:\.\d+)*\)", block.text.strip()):
+    for index, block in enumerate(blocks):
+        if index in vertical or re.fullmatch(r"\(\d+(?:\.\d+)*\)", block.text.strip()):
             continue  # equation labels are independent visible evidence
         owners = [formula for formula in formulas if block_is_covered(block.bbox, [formula])]
         if len(owners) == 1 and block.source_id:
@@ -85,9 +88,10 @@ def enrich_structures(extractor, doc_page, page_num, page_type, blocks, tables, 
             if block.source_id not in parents:
                 parents.append(block.source_id)
             owners[0].provenance["source_mapping_method"] = "docling-formula-absorption-v1"
-    blocks = [block for block in blocks if not block_is_covered(block.bbox, model_tables)
-              and (re.fullmatch(r"\(\d+(?:\.\d+)*\)", block.text.strip())
-                   or not block_is_covered(block.bbox, formulas))]
+    blocks = [block for index, block in enumerate(blocks) if index in unplaced or (
+        not block_is_covered(block.bbox, model_tables)
+        and (index in vertical or re.fullmatch(r"\(\d+(?:\.\d+)*\)", block.text.strip())
+             or not block_is_covered(block.bbox, formulas)))]
     for structure in model_tables + formulas:
         is_formula = hasattr(structure, "latex")
         region_id = f"p{page_num}_docling_{'formula' if is_formula else 'table'}_{len(regions)}"
@@ -112,7 +116,7 @@ def drop_blocks_inside_tables(blocks, tables, layout_engine):
     if tables:
         heuristic_tables = [t for t in tables if t.engine != "docling_tableformer"]
         model_tables = [t for t in tables if t.engine == "docling_tableformer"]
-        blocks = [b for b in blocks if not (
+        blocks = [b for b in blocks if is_oriented_line_candidate(b.recognition_provenance) or not (
             (heuristic_tables and layout_engine.is_block_inside_any_table(b.bbox, heuristic_tables))
             or block_is_covered(b.bbox, model_tables))]
     return blocks

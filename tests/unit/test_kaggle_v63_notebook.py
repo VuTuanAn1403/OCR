@@ -182,6 +182,7 @@ def test_setup_refreshes_failed_checkout_before_batch_and_freezes_it_after_ledge
     (repo / "config").mkdir()
     (repo / "config/profiles.yaml").touch()
     (repo / "config/keywords.txt").write_text("fixture", encoding="utf-8")
+    (repo / "config/alias_rules.json").write_bytes((ROOT / "config/alias_rules.json").read_bytes())
     python = repo / ".venv/bin/python"
     python.parent.mkdir(parents=True)
     python.touch()
@@ -226,14 +227,14 @@ def verify(output, ids, summary):
                           env={**os.environ, "PYTHONIOENCODING": "utf-8"}, capture_output=True, text=True, encoding="utf-8")
 
 
-def test_verification_matches_sqlite_receipts_and_88_column_matrix(tmp_path):
+def test_verification_matches_sqlite_receipts_and_current_86_key_matrix(tmp_path):
     output, result = completed_fixture_batch(tmp_path)
     summary = tmp_path / "summary.json"
     check = verify(output, [row["id"] for row in result["documents"]], summary)
     assert check.returncode == 0, check.stdout + check.stderr
     payload = json.loads(summary.read_text(encoding="utf-8"))
     assert payload["revision"] == 2
-    assert payload["display_keywords"] == 88 and payload["canonical_keywords"] == 87
+    assert payload["display_keywords"] == 86 and payload["canonical_keywords"] == 86
     assert len(payload["documents"]) == 2
     assert payload["quality_acceptance"] == "NOT_EVALUATED"
 

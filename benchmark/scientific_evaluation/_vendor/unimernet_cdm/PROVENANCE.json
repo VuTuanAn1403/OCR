@@ -1,0 +1,231 @@
+{
+  "repository": "https://github.com/opendatalab/UniMERNet",
+  "revision": "5a2c80d96b1d2dba447ff18d873e5fb73ba03c35",
+  "files": [
+    {
+      "path": "LICENSE",
+      "git_blob_sha1": "13269eeae919f31be79812ff00edb029ba6c73ea",
+      "sha256": "974f8af8e77f0e7b3149a75e8b7870407abf760ca449ce3d792b76691887c271",
+      "bytes": 11342,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/LICENSE"
+    },
+    {
+      "path": "latex_processor.py",
+      "git_blob_sha1": "07117bcf59b911e8cc33ed4016f39c13625358e4",
+      "sha256": "2d966d30aa1e38f5fc3a1ec0dc485f7435fd9b136d7423a83ed7fa1ea15a10ca",
+      "bytes": 29538,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/latex_processor.py"
+    },
+    {
+      "path": "tokenize_latex/preprocess_formula.js",
+      "git_blob_sha1": "7929bc3862f1c0824565d0aff5d6a75cbb3376da",
+      "sha256": "ce665d496ad3d5e2cc407ae0ea3377f4748024ea9ae159123bc4dc8197651c38",
+      "bytes": 10703,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/preprocess_formula.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/README.md",
+      "git_blob_sha1": "bc74abab4cb911fd6ac07e0d0e0f642226a1b39f",
+      "sha256": "530b9a6887a68180e4c58e1d19eb0537d05299bb94d771e2857957f82d7b7cd1",
+      "bytes": 60,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/README.md"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/README.md",
+      "git_blob_sha1": "31cf658d8eb680407693ce5e3d79168250f32bac",
+      "sha256": "872dba87526d934b49f2669690254a223d4f2abb6e8e557f19e7c13ddb7dc83a",
+      "bytes": 3689,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/README.md"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/katex.js",
+      "git_blob_sha1": "4d64606bf521fabb63cce5e203274aec1356cf31",
+      "sha256": "5f5cfe142d6fd82dc66d75915553d6638e9b9bfd2e3c6e9a5c57b3b08022c344",
+      "bytes": 2223,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/katex.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/package.json",
+      "git_blob_sha1": "ba3c940588191dd92962301e9c325addab6a266c",
+      "sha256": "1f63a7e66777b87f949685d6222e7ad225ab5edbe519f713cd2d9c5525f4d0de",
+      "bytes": 2473,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/package.json"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/Lexer.js",
+      "git_blob_sha1": "5cb8d3d4e53ada85806717bb26ca49a89b867d83",
+      "sha256": "adbc8d80749fc18fda4333a79edb6dd629664a52af905857bd4fe0433c81e126",
+      "bytes": 5300,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/Lexer.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/Options.js",
+      "git_blob_sha1": "39ff37bfc17cf508db6e01f9a5eca3ba9d29ed50",
+      "sha256": "7610a3fb533a67824e947cf1abaad1840a5aa104fc7622410ab89caef827abec",
+      "bytes": 4911,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/Options.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/ParseError.js",
+      "git_blob_sha1": "320f0bd6974d9aaeba3947e9a84c15611ec779d9",
+      "sha256": "960a87d6d81dc5f117a8ae10bd34b501a10623350fc6edfb5c814a2032f80941",
+      "bytes": 1322,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/ParseError.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/Parser.js",
+      "git_blob_sha1": "efd45f03f26c20053fea8a879d60d14b9db3c5ab",
+      "sha256": "35c352f7abeba980a66f0e1a9e9afea31d997ff91f36fe4a8c3df2651d5ba620",
+      "bytes": 26372,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/Parser.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/Settings.js",
+      "git_blob_sha1": "6440145047ff5ff8a3954aa192785cf10902c7b6",
+      "sha256": "acefdb0cd200c37363c6878a48a9662b1de92a845cdc8d91cfc8993811f7a545",
+      "bytes": 783,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/Settings.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/Style.js",
+      "git_blob_sha1": "10e5ef2cc98bc6dca710d58168a49071ce3a9ea2",
+      "sha256": "903a2193270fbbc767cdef1abfeca9f664fe0cdc18032380306c794cd1d14731",
+      "bytes": 3199,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/Style.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/buildCommon.js",
+      "git_blob_sha1": "b60e1860a227ae840d1e591235e4673dc45d5c63",
+      "sha256": "a9f03956efd5be0ac4c9b0c827295b7a906c7314936d4df4142f56d13933db5d",
+      "bytes": 14362,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/buildCommon.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/buildHTML.js",
+      "git_blob_sha1": "42c33a6c4c7026a5970163923594412a36d7148b",
+      "sha256": "6e24921eef1c832cfa7fc48099cfe47de3d5dc85a48e0aa2f4be0e18edc376b0",
+      "bytes": 49168,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/buildHTML.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/buildMathML.js",
+      "git_blob_sha1": "7bf38e86ab56117e05322652eb6ece77cfd3055e",
+      "sha256": "5765f135c03eb19158bde0d9ddfbc517beacaca71bf83d6cfb7cd3a08f38643e",
+      "bytes": 14472,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/buildMathML.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/buildTree.js",
+      "git_blob_sha1": "4a8c2aeda5b7176e5780b8c4d3ac32b133a99829",
+      "sha256": "00b655bdaf571c05baa2440081a53595478e7a769b020760856e3df3ba8b9a37",
+      "bytes": 1090,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/buildTree.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/delimiter.js",
+      "git_blob_sha1": "168319d41f21b528c02a8c24fdfb2d1e4da20955",
+      "sha256": "88843f5bcb2f9459561ea270ece8637f1058577357f1d3e87cb3186a6ed89ea7",
+      "bytes": 18988,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/delimiter.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/domTree.js",
+      "git_blob_sha1": "e0d8e925a618b5127ebc23a96dc8962640fd9e58",
+      "sha256": "165b6608810d03d1e8c4e26abee226ab8357768d62dff2e2f4fa22e8a61f7455",
+      "bytes": 7224,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/domTree.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/environments.js",
+      "git_blob_sha1": "01d62b5e599b01d28109bd3cc1103b457d03b892",
+      "sha256": "9750de96882687c58575dc109b16678b63daca51e42d685b10812a152a3d221e",
+      "bytes": 8512,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/environments.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/fontMetrics.js",
+      "git_blob_sha1": "db9e44bfa9b43f958076452e906bd422aa8d6785",
+      "sha256": "1dd63ccb25f1c1afefd683ee7b3c7a14c360fa82ba8c3007c6ad5bd4b3ab1dd7",
+      "bytes": 4274,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/fontMetrics.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/fontMetricsData.js",
+      "git_blob_sha1": "957f55b87fc89401ef636857ef98c66c592d64f4",
+      "sha256": "8a1f79c6b985593a098b1df2108ff247c3c9fe01c06a372d95b3f8fe517e45fe",
+      "bytes": 67282,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/fontMetricsData.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/functions.js",
+      "git_blob_sha1": "806f6982d0eddb6c6ac010e27d8acdb022b14d25",
+      "sha256": "09f1a112783b31a8fa907d49f1aa282aa18196e446bdc95a5979c3d5774633ab",
+      "bytes": 16828,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/functions.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/mathMLTree.js",
+      "git_blob_sha1": "86e63562c6d732980326b852fbfd7cabcc891997",
+      "sha256": "24774c40bd1d6489f29641a764a27cebd2c218886df5e69dbde2ab857a6c60d8",
+      "bytes": 2694,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/mathMLTree.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/parseData.js",
+      "git_blob_sha1": "be8dd67f442319f115946e8a0029cf3341c43e42",
+      "sha256": "4c06877062b589509ed47d434dd9f409c6c46ed7cdcc7e31a39388814cdfe591",
+      "bytes": 221,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/parseData.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/parseTree.js",
+      "git_blob_sha1": "3adba824890d869e796d24524d1896294a12e697",
+      "sha256": "e907efd38b626a6e7d8c7781e887fdea5e26a26f584aed0df9ce133a5585f73f",
+      "bytes": 377,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/parseTree.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/symbols.js",
+      "git_blob_sha1": "9a2b130d16b18c5d14bb9f054f5ee16e91e5544b",
+      "sha256": "45cc9b477b545f6c6c597e12bfda4586fc8a3449ec4b7322a7e876f1d47cc663",
+      "bytes": 33147,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/symbols.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/katex/src/utils.js",
+      "git_blob_sha1": "f9e57cc65642e18e47b27e329d7ce6913a5f7a10",
+      "sha256": "8270441f5182ec6c396fcf85ed1b9a93c9977ae4c87b346e860443d0c207bcc7",
+      "bytes": 2330,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/katex/src/utils.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/match-at/README.md",
+      "git_blob_sha1": "69083d16567567db48e3c95de42153f8bae7603c",
+      "sha256": "1b5abd56bf0259e6d5542249efe45435b2447ac666ee897e26b30efc341e9d65",
+      "bytes": 125,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/match-at/README.md"
+    },
+    {
+      "path": "tokenize_latex/third_party/match-at/lib/matchAt.js",
+      "git_blob_sha1": "6e6b57e28b41a999cc54ddc9a1738523b4270a28",
+      "sha256": "305c0808c43546a852fc35c37db60e4eaba41135cef65fb9558ef8fb8ad14da6",
+      "bytes": 1309,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/match-at/lib/matchAt.js"
+    },
+    {
+      "path": "tokenize_latex/third_party/match-at/package.json",
+      "git_blob_sha1": "3e9e997d8d906c83074f6e26ac5b848a09bd8820",
+      "sha256": "d088e0bb87f9144744a6fccb21e0d6221d8dab0b092f7de88e8cb3a6cd461356",
+      "bytes": 1328,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/tokenize_latex/third_party/match-at/package.json"
+    },
+    {
+      "path": "visual_matcher.py",
+      "git_blob_sha1": "6c48ac16119627224f9af17187faade2a06c8c7c",
+      "sha256": "6c51325e6d7ad7047d85db0c653f6fa730ae717e219cb18253c0473a825c3257",
+      "bytes": 7123,
+      "url": "https://raw.githubusercontent.com/opendatalab/UniMERNet/5a2c80d96b1d2dba447ff18d873e5fb73ba03c35/cdm/modules/visual_matcher.py"
+    }
+  ],
+  "changes": "None to listed upstream files. Shell-based entry points are omitted. The project adapter is separate."
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": "alias-rules-v1",
+  "updated_at_utc": "2026-11-06T07:00:00Z",
+  "curator": "User-provided document 14, 2026-11-06; seed rules, not independent ground truth",
+  "normalization_policy": "NFC_CASEFOLD",
+  "approved_global_aliases": {
+    "Chuyển đổi số": ["chuyển đối số"],
+    "thương mại điện tử": ["thương mai điện tử"],
+    "Trí tuệ nhân tạo": ["trí tuệ nhận tạo"],
+    "An ninh mạng": ["an ninh mang"],
+    "Đổi mới": [
+      {"alias": "đồi mới", "required_after": "tài sản"},
+      {"alias": "đồi mới", "required_before": "sáng tạo"},
+      {"alias": "đối mới", "required_after": "tài sản"}
+    ]
+  },
+  "disallowed_false_positives": {
+    "Đổi mới": ["đời mới", "đổi môi"],
+    "tài chính số": ["tài chính so"]
+  }
+}

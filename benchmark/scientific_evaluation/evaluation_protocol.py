@@ -2,6 +2,7 @@
 from typing import Any, Dict, Iterable, Optional
 
 from .ocr_metric import compute_cer_detailed, compute_wer_detailed, compute_der_detailed
+from .diacritic_acceptance import uncomposed_vietnamese_marks
 
 
 def text_metrics(reference: str, prediction: str, *, missing: bool = False,
@@ -18,6 +19,8 @@ def text_metrics(reference: str, prediction: str, *, missing: bool = False,
         "wer": details["wer"]["wer"],
         "der": details["der"]["der"],
         "details": details,
+        "diacritic_marks": {"uncomposed_reference_marks": uncomposed_vietnamese_marks(reference),
+                            "uncomposed_prediction_marks": uncomposed_vietnamese_marks(prediction)},
     }
 
 
@@ -29,8 +32,8 @@ def aggregate_text_metrics(records: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
         details = [record["details"][name] for record in records]
         if name == "der":
             denominator = sum(detail["ref_diacritics"] for detail in details)
-            # No GT diacritics means this page does not enter the DER aggregate.
-            errors = sum(detail["diacritic_errors"] for detail in details if detail["ref_diacritics"] > 0)
+            # Retain inserted marks from unaccented GT units in a marked corpus.
+            errors = sum(detail["diacritic_errors"] for detail in details)
         else:
             denominator = sum(detail["reference_length"] for detail in details)
             # Retain insertion counts from blank annotated pages in a nonempty

@@ -114,6 +114,7 @@ class FallbackEngine:
 
         orig_cand_score = self.scorer.score_candidate(original_text, original_conf)
         numeric_disagreement = False
+        image_candidates = []
         best_cand = {
             "text": original_text,
             "confidence": original_conf,
@@ -130,6 +131,10 @@ class FallbackEngine:
             known = [c["confidence"] for c in cands_c if c.get("confidence") is not None]
             conf_c = sum(known) / len(known) if known else None
             score_c = self.scorer.score_candidate(text_c, conf_c)
+            image_candidates.append({"variant": "high_dpi", "text": text_c, "confidence": conf_c,
+                                     "candidate_score": score_c,
+                                     "numeric_evidence_preserved": preserves_numeric_evidence(original_text, text_c),
+                                     "safe_replacement": self._safe_replacement(original_text, text_c, diacritic_only=diacritic_only)})
             if score_c > best_cand["score"] + 0.015 and self._safe_replacement(original_text, text_c, diacritic_only=diacritic_only):
                 best_cand = {
                     "text": text_c,
@@ -149,8 +154,9 @@ class FallbackEngine:
                 "quality_score": best_q_score,
                 "candidate_score": best_cand["score"],
                 "improved": True,
+                "image_candidates": image_candidates,
                 "needs_review": numeric_disagreement or needs_review,
-                "review_reason": ("OCR candidates disagree on numeric text" if numeric_disagreement
+                "review_reason": ("OCR candidates disagree on protected numbers or financial codes" if numeric_disagreement
                                   else "; ".join(reasons) or None),
             }
 
@@ -164,6 +170,10 @@ class FallbackEngine:
                 known = [c["confidence"] for c in cands_b if c.get("confidence") is not None]
                 conf_b = sum(known) / len(known) if known else None
                 score_b = self.scorer.score_candidate(text_b, conf_b)
+                image_candidates.append({"variant": "clahe", "text": text_b, "confidence": conf_b,
+                                         "candidate_score": score_b,
+                                         "numeric_evidence_preserved": preserves_numeric_evidence(original_text, text_b),
+                                         "safe_replacement": self._safe_replacement(original_text, text_b, diacritic_only=diacritic_only)})
                 if score_b > best_cand["score"] + 0.015 and self._safe_replacement(original_text, text_b, diacritic_only=diacritic_only):
                     best_cand = {
                         "text": text_b,
@@ -181,7 +191,8 @@ class FallbackEngine:
             "quality_score": best_q_score if best_cand["improved"] else orig_q_score,
             "candidate_score": best_cand["score"],
             "improved": best_cand["improved"],
+            "image_candidates": image_candidates,
             "needs_review": numeric_disagreement or needs_review,
-            "review_reason": ("OCR candidates disagree on numeric text" if numeric_disagreement
+            "review_reason": ("OCR candidates disagree on protected numbers or financial codes" if numeric_disagreement
                               else "; ".join(reasons) or None),
         }

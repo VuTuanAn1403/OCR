@@ -57,6 +57,21 @@ def test_native_copy_normalizes_marks_split_across_font_spans():
     assert NativeQualityEvaluator().evaluate_text(raw, {}) >= 0.90
 
 
+@pytest.mark.parametrize("raw", ["  Hội ồng 020  ", "Œuvre 3,1%", "\x19iều hành"])
+def test_native_copy_preserves_unverified_font_mapping(raw):
+    block, = native_blocks([raw])
+    assert block.text_raw == block.text == raw
+    assert "native_font_mapping_suspect" in block.review_reason_codes
+    assert not block.reviewed and block.correction_source is None
+
+
+def test_ocr_format_normalization_preserves_unverified_words_and_codes():
+    from ocr_text.unicode_normalizer import UnicodeNormalizer
+
+    raw = unicodedata.normalize("NFD", "Œuvre, Hội ồng 020 và chuyển đổi số")
+    assert UnicodeNormalizer.normalize_ocr_text(raw) == "Œuvre, Hội ồng 020 và chuyển đổi số"
+
+
 def owner_for_retry(results, **settings):
     engine = Mock()
     engine.predict_image.side_effect = results
@@ -77,13 +92,33 @@ def test_retry_uses_image_candidate_and_retains_raw_ocr_text_and_geometry():
     owner = owner_for_retry([[{"text": RIGHT, "confidence": 0.91}]])
     candidates, suspicious = [], []
     record = retry_diacritic_blocks(owner, 1, [block], candidates, suspicious)
-    assert record == {"enabled": True, "suspect_lines": 1, "attempted": 1, "improved": 1}
+    assert {key: record[key] for key in ("enabled", "suspect_lines", "attempted", "improved")} == {
+        "enabled": True, "suspect_lines": 1, "attempted": 1, "improved": 1}
+    line, = record["lines"]
+    assert line["text_before"] == line["text_raw"] == WRONG and line["text_after"] == RIGHT
+    assert line["applied"] and line["image_candidates"][0]["text"] == RIGHT
+    assert line["image_candidates"][0]["numeric_evidence_preserved"]
+    assert block.recognition_provenance["diacritic_retry"] == line
     assert block.text == RIGHT and block.text_raw == WRONG
     assert block.bbox == [20, 30, 320, 45] and block.correction_source == "regional_reocr"
     assert block.source == "fallback_ocr" and block.confidence == 0.91
     assert block.reviewed and block.quality_score > 0.75 and not block.review_reason_codes
     assert owner._current_page_ocr_calls == 1
     assert owner.renderer.render_region_crop.call_args.kwargs["dpi"] == 300
+
+
+@pytest.mark.parametrize("angle", [0, 180])
+def test_correcting_diacritics_never_clears_an_independent_orientation_gate(angle):
+    from ocr_document.document_contracts import _block_needs_review
+    block = suspect_block()
+    block.recognition_provenance = {"method": "line-orientation-v2", "rotation_clockwise_degrees": angle}
+    block.fallback_reason = "line_orientation_unverified"
+    owner = owner_for_retry([[{"text": RIGHT, "confidence": .95}]])
+    record = retry_diacritic_blocks(owner, 1, [block], [], [])
+    assert record["improved"] == 1 and block.text == RIGHT and block.text_raw == WRONG
+    assert not block.reviewed and _block_needs_review(block)
+    assert record["lines"][0]["needs_review"]
+    assert block.recognition_provenance["rotation_clockwise_degrees"] == angle
 
 
 def test_native_disagreement_keeps_source_spelling_and_records_image_alternative():
@@ -154,12 +189,16 @@ def test_page_pipeline_preserves_line_review_and_native_or_gpu_provenance(mode, 
     primary = {"text": WRONG, "text_raw": WRONG, "bbox": [20, 30, 320, 45], "confidence": .999}
     corrected = {"text": RIGHT, "bbox": [0, 0, 300, 15], "confidence": .95}
     predictions = iter([[primary], [corrected]] if mode == "v63" else [[corrected]])
-    engine._detector = SimpleNamespace(last_input_shape=[], last_detections=[])
+    detections = [
+        {"bbox": [20, 30, 320, 45], "polygon": [[20, 30], [320, 30], [320, 45], [20, 45]], "score": .9},
+        {"bbox": [400, 100, 420, 105], "polygon": [[400, 100], [420, 100], [420, 105], [400, 105]], "score": .8},
+    ]
+    engine._detector = SimpleNamespace(METHOD="test-detector", last_input_shape=[], last_detections=[])
 
     def predict(image):
         engine._detector.last_input_shape = list(image.shape)
         prediction = next(predictions)
-        engine._detector.last_detections = [primary] if prediction[0] is primary else []
+        engine._detector.last_detections = detections if prediction[0] is primary else []
         return prediction
 
     engine.predict_image.side_effect = predict
@@ -198,7 +237,12 @@ def test_page_pipeline_preserves_line_review_and_native_or_gpu_provenance(mode, 
             assert result.metadata["diacritic_retry"]["native_disagreements"][0]["ocr_text"] == RIGHT
     if mode == "v63":
         assert all(b.source != "native" for b in result.blocks)
-        assert processor.primary_ocr_detector == {"input_shape": [800, 600, 3], "detection_count": 1}
+        assert processor.primary_ocr_detector == {"input_shape": [800, 600, 3], "detection_count": 2}
+        snapshot = result.metadata["primary_text_detection"]
+        assert snapshot["status"] == "CAPTURED"
+        assert snapshot["input_image"]["shape"] == [800, 600, 3]
+        assert snapshot["detections"] == [{"id": f"d{i:06d}", **row} for i, row in enumerate(detections)]
+        assert len(result.blocks) == 1  # The snapshot also keeps the unrecognized detection.
         if enabled:
             assert engine._detector.last_input_shape != [800, 600, 3]
             assert engine._detector.last_detections == []

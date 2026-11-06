@@ -1,7 +1,10 @@
 """Bounded image-backed retries shared by native-first and GPU-only pages."""
 import math
+import hashlib
+import time
 
 from ocr_recognition.fallback_engine import apply_reocr_result
+from ocr_contracts.geometry import is_oriented_line_candidate
 from ocr_recognition.inference import predict_image_counted
 from ocr_text.vietnamese_diacritics import DIACRITIC_REVIEW_CODE, diacritic_suspicions, is_diacritic_only_change
 
@@ -46,17 +49,21 @@ def retry_diacritic_blocks(owner, page_num, blocks, candidates, suspicious_lines
         if len(block.bbox) == 4:
             suspect.append(block)
     budget = min(settings["max_regions_per_page"], math.ceil(len(blocks) * settings["max_region_ratio"]))
-    record = {"enabled": settings["enabled"], "suspect_lines": len(suspect), "attempted": 0, "improved": 0}
+    record = {"enabled": settings["enabled"], "suspect_lines": len(suspect), "attempted": 0,
+              "improved": 0, "lines": []}
     if not settings["enabled"]:
         return record
     for block in sorted(suspect, key=lambda b: b.quality_score if b.quality_score is not None else 0)[:budget]:
-        crop, _ = owner.renderer.render_region_crop(
+        dpi = max(settings["upscale_dpi"], owner.config.get("render_dpi", 180))
+        crop, actual = owner.renderer.render_region_crop(
             page_num=page_num, bbox=block.bbox,
-            dpi=max(settings["upscale_dpi"], owner.config.get("render_dpi", 180)),
+            dpi=dpi,
             margin=min(3.0, max(0.0, block.bbox[3] - block.bbox[1]) * 0.15))
         if crop is None or not crop.size:
             continue
         record["attempted"] += 1
+        started = time.perf_counter()
+        before = block.text
         result = owner.fallback_engine.reocr_crop(
             crop, block.text, block.confidence,
             predict_image=lambda image: predict_image_counted(owner, image), diacritic_only=True)
@@ -74,8 +81,24 @@ def retry_diacritic_blocks(owner, page_num, blocks, candidates, suspicious_lines
                 "ocr_text": result["text"], "ocr_confidence": result["confidence"]})
             result = {**result, "improved": False, "needs_review": True,
                       "review_reason": "Native text and OCR disagree on Vietnamese diacritics"}
-        if apply_reocr_result(block, result):
+        independent_codes = [code for code in block.review_reason_codes if code != DIACRITIC_REVIEW_CODE]
+        if result.get("improved") and (independent_codes or is_oriented_line_candidate(block.recognition_provenance)
+                                        or block.recognition_provenance.get("repetition")):
+            result = {**result, "needs_review": True,
+                      "review_reason": "Diacritic retry does not resolve independent orientation or source review"}
+        applied = apply_reocr_result(block, result)
+        if applied:
             record["improved"] += 1
-        if not diacritic_suspicions(block.text) and block.reviewed:
+        line = {"bbox": list(block.bbox), "text_raw": block.text_raw, "text_before": before,
+                "text_after": block.text, "dpi": dpi, "crop_bbox": list(actual),
+                "crop_shape": list(crop.shape),
+                "crop_bgr_sha256": hashlib.sha256(crop.tobytes(order="C")).hexdigest(),
+                "seconds": time.perf_counter()-started, "applied": bool(applied),
+                "needs_review": bool(result.get("needs_review")),
+                "review_reason": result.get("review_reason"),
+                "image_candidates": result.get("image_candidates", [])}
+        record["lines"].append(line)
+        block.recognition_provenance["diacritic_retry"] = line
+        if not diacritic_suspicions(block.text) and applied:
             block.review_reason_codes = [code for code in block.review_reason_codes if code != DIACRITIC_REVIEW_CODE]
     return record

@@ -1,0 +1,121 @@
+{
+ "scope": "CPU assembly and literal keyword diagnostics; not OCR accuracy acceptance",
+ "git_head": "a95c806965118b53b3afc28d2ebbff37dec0cfc7",
+ "code_sha256": {
+  "src/ocr_document/resolve_document_layout.py": "979efba55c787784870148f268d1c0be2b5f090c74afcbb58722333e09e80904",
+  "src/ocr_document/section_tree.py": "9a1646ff40e05a8dbcd7ae37ad78e7607acd009c107d47d243b966222ee5d00a",
+  "src/ocr_document/document_contracts.py": "c49e6c48846a92eae470e332385ac4c629760c6e14682e7bafd9e5367a3baa90",
+  "src/ocr_document/region_tree.py": "83f4f18d8b5324e591998aa3c45860dc4755333c007e0ce1c81e60223e547e5c",
+  "src/ocr_document/column_continuity.py": "f66e1b8926868d5efe315b39f8d983568a2703bdd5d6eaf65c00fd14052a31a3",
+  "src/ocr_keywords/counter.py": "900e5aa2797e094b1073fe02379224812ef479b6b205ddac9fe4e4f6c860ad3b",
+  "tests/unit/document/test_column_continuity.py": "d79a6f17ad35f08169c3376f279b553a9aa0dba48be623670594d06447e2d3ed",
+  "tests/unit/document/test_content_flow_contract.py": "36c2272276d0198b07207a0e4e6080bd0688b9dea551813ac2cd4eb2ca1d9e47"
+ },
+ "before_code_sha256": {
+  "src/ocr_document/resolve_document_layout.py": "5abcb92b289e8486f39cb2106867874e9cac43d0d3a051f2e89926adb1907f7b",
+  "src/ocr_document/section_tree.py": "e1acf91ed458b3cc61313d0f563933540b0e48b8b7490b7bb34abe5e4aad2b96",
+  "src/ocr_document/document_contracts.py": "1b385719d47e966a035c1cc5f45921e103fe112b66814591d033d4807ec9a778",
+  "src/ocr_document/region_tree.py": "49273af6e858224a4aa68fb9d60f3648e17238c489609cc00aba23df46335194"
+ },
+ "prior_evidence_rechecked": true,
+ "unchanged_prior_focus": {
+  "src/ocr_text/numeric_guard.py": true,
+  "src/ocr_text/vietnamese_diacritics.py": true,
+  "benchmark/scientific_evaluation/numeric_metric.py": true,
+  "src/ocr_document/export.py": true,
+  "src/ocr_recognition/vietnamese_seq2seq_engine.py": true
+ },
+ "test_run": {
+  "schema_version": "pytest-run-v1",
+  "run_id": "20261103-232400-2cff9ea4",
+  "run_directory": "C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261103-232400-2cff9ea4",
+  "cwd": "C:\\kk_2\\OCR_pdf",
+  "command": [
+   "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+   "-B",
+   "-m",
+   "pytest",
+   "tests/unit",
+   "tests/scientific",
+   "tests/legacy_compat",
+   "-q",
+   "--capture=fd",
+   "--tb=short",
+   "-p",
+   "no:cacheprovider",
+   "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261103-232400-2cff9ea4\\pytest",
+   "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261103-232400-2cff9ea4\\evidence\\junit.xml"
+  ],
+  "git_head": "a95c806965118b53b3afc28d2ebbff37dec0cfc7",
+  "started_at": "2026-11-03T23:24:00.665881+07:00",
+  "status": "FINISHED",
+  "exit_code": 0,
+  "finished_at": "2026-11-03T23:28:54.364314+07:00"
+ },
+ "junit_sha256": "2e94e2b7dc1e1d3294274152fdc12cf5e866ef22c2ea1914346ab4856939e0ea",
+ "test_summary": {
+  "tests": 1503,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 1,
+  "passed": 1502
+ },
+ "source_audit_sha256": "fe90c8e124f068e9cba9af270cd010c2d88fa1c0d27e5d621f056a3b4014dd2e",
+ "pages": 511,
+ "changed_page_vectors": [
+  {
+   "document": "AAA_Baocaothuongnien_2020",
+   "page": 125,
+   "counts": [
+    {
+     "keyword": "An ninh mạng",
+     "before": 1,
+     "after": 2
+    }
+   ]
+  },
+  {
+   "document": "VIC_Baocaothuongnien_2020",
+   "page": 37,
+   "counts": [
+    {
+     "keyword": "Trí tuệ nhân tạo",
+     "before": 2,
+     "after": 3
+    }
+   ]
+  },
+  {
+   "document": "VIC_Baocaothuongnien_2020",
+   "page": 46,
+   "counts": [
+    {
+     "keyword": "nhà thông minh",
+     "before": 1,
+     "after": 2
+    }
+   ]
+  }
+ ],
+ "inferred_column_joins": 15,
+ "all_joins_require_review": true,
+ "independent_gt": "NOT_EVALUATED",
+ "new_gpu_ocr": "NOT_RUN",
+ "visual_review": {
+  "reviewer": "Codex development diagnostic; not independent annotation",
+  "artifacts": {
+   "Test case/doi_chieu_paddle_20261103/visual_evidence/full_VIC_p037.png": "06b454f9b5e21646aba923016487538e0d76c19d846c7c2332954e70d5a301f0",
+   "Test case/doi_chieu_paddle_20261103/visual_evidence/20_VIC_p046_02.png": "60f1c08c49502fb55941eef9c2fec64059f20b76e5e56e92cdb9a471d3cbee7a",
+   "scratch/dev_sessions/20261103-keyword-continuity/visual/AAA_125.png": "5dde0b31a7a0ebcb51168368748377498fb57f7faff60f5c05629158df415e5b"
+  }
+ },
+ "artifact_sha256": {
+  "source_audit.json": "fe90c8e124f068e9cba9af270cd010c2d88fa1c0d27e5d621f056a3b4014dd2e",
+  "corpus_final/report.json": "b1da396ad1ed74aedd87c6b864af0f27293db3833e849a2fd405d0028dd865f6",
+  "baseline_v2/report.json": "c8668ac7c50af7c9a5d9a88b975fd94d79869ca53822a62703589e2a8bd66c22",
+  "candidate_v3/report.json": "b7574b17affef6c674814b031e7e8adfacc7f2dd1e76e4ca82bb2f6b558500ff",
+  "replay.py": "d2c0bb9fc479d744f3800e0e83bf79f0b9530768d5b0e9cab95aabe703c38d84",
+  "compare_corpus.py": "bae2017247dc50a0dfc6aa206bc4459ce6e2cdad868a492393a02d65d7ca0131"
+ },
+ "scratch_delivery": "Local ignored artifacts must accompany any handoff to another machine"
+}

@@ -13,6 +13,7 @@ from ocr_document.manifest_exporter import PIPELINE_VERSION
 from ocr_document.validation import validate_document
 from ocr_artifacts.completion import clear_completed
 from ocr_document.document_contracts import write_document_contracts
+from ocr_document.plain_text_exporter import markdown_plain_text
 from ocr_document.output_contract import OUTPUT_CONTRACT_VERSION, V6_ARTIFACTS, OUTPUT_MODES
 from ocr_artifacts.atomic_io import atomic_write_bytes, atomic_write_text
 
@@ -67,9 +68,11 @@ class DocumentExporter:
             requested_layout = resolved.get("settings", {"method": resolved.get("method", "legacy")})
         settings = document_layout_settings({"document_layout": requested_layout})
         from ocr_document.page_association import ALGORITHM_VERSION
+        from ocr_document.resolve_document_layout import ALGORITHM_VERSION as LAYOUT_ALGORITHM_VERSION
         modern = settings["method"] == "region_tree_graph_v1"
         if modern and (doc.manifest.get("document_layout", {}).get("method") != settings["method"]
                        or doc.manifest.get("document_layout", {}).get("settings") != settings
+                       or doc.manifest.get("document_layout", {}).get("algorithm_version") != LAYOUT_ALGORITHM_VERSION
                        or doc.manifest.get("furniture", {}).get("method") != furniture_settings(settings)["method"]
                        or doc.manifest.get("furniture", {}).get("algorithm_version") != ALGORITHM_VERSION):
             from ocr_document.resolve_document_layout import resolve_document_layout
@@ -146,7 +149,14 @@ class DocumentExporter:
 
         # 8. V6 document-level contracts (C2.4, C3.7). Additive: the files above
         # keep their format (D3); this step only reads `doc`.
-        write_document_contracts(doc, doc_dir, assets_mode)
+        table_stitch = write_document_contracts(doc, doc_dir, assets_mode)
+        if table_stitch and table_stitch["logical_tables"]:
+            doc.full_markdown = MarkdownExporter.export_document_markdown(
+                doc, include_running_headers_footers=False, assets_mode=assets_mode, table_stitch=table_stitch)
+            atomic_write_text(doc_dir / "result.md", doc.full_markdown)
+        # An additive companion of the final Markdown, after optional table
+        # projection. Keyword counting continues to read result.md unchanged.
+        atomic_write_text(doc_dir / "result.txt", markdown_plain_text(doc.full_markdown))
         markdown_path = doc_dir / "document.md"
         if markdown_path.is_file():
             doc.manifest["output_contract"]["markdown_sha256"] = hashlib.sha256(markdown_path.read_bytes()).hexdigest()

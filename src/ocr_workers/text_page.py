@@ -28,6 +28,8 @@ from ocr_pdf_io.scan_image import acquire_page_image, full_page_image_provenance
 from ocr_recognition.blocks import mark_review_regions, ocr_results_to_blocks
 from ocr_recognition.inference import predict_image_counted
 from ocr_recognition.diacritic_retry import retry_diacritic_blocks
+from ocr_recognition.short_token_retry import retry_short_token_blocks
+from ocr_recognition.detection_evidence import capture_primary_detections, input_image_identity
 from ocr_recognition.ocr_layer_agreement import page_layer_agreement
 from ocr_runtime.config import document_layout_settings, furniture_settings
 from ocr_runtime.pipeline_policy import TEXT_REQUIRED
@@ -123,6 +125,9 @@ class TextPageExtractor:
             region_type_counts = dict(Counter(r.content_type.value for r in regions))
             meta["region_count"] = len(regions)
         render_duration = time.perf_counter() - t_render_start
+        t_evidence_start = time.perf_counter()
+        primary_input = input_image_identity(img_bgr)
+        detector_evidence_duration = time.perf_counter() - t_evidence_start
         t_ocr_start = time.perf_counter()
         ocr_results = predict_image_counted(self, img_bgr)
         # Regional retries update the detector's last-call telemetry. Keep
@@ -133,6 +138,9 @@ class TextPageExtractor:
                                       "detection_count": len(detector.last_detections)}
                                      if isinstance(primary_shape, list) else None)
         ocr_duration = time.perf_counter() - t_ocr_start
+        t_evidence_start = time.perf_counter()
+        meta["primary_text_detection"] = capture_primary_detections(detector, primary_input, [page_w, page_h])
+        detector_evidence_duration += time.perf_counter() - t_evidence_start
         recognized_lines = len(ocr_results)
         recognizer_confidences = [r.get("confidence") for r in ocr_results if r.get("confidence") is not None]
         progress(f"[{page_num}/{total_pages}] primary={len(ocr_results)} lines time={ocr_duration:.2f}s", stage="ocr",
@@ -152,9 +160,12 @@ class TextPageExtractor:
                 doc_page, blocks, meta, self.config.get("ocr_layer_agreement", {}).get("sample_lines", 5))
         t_retry_start = time.perf_counter()
         retry_record = retry_diacritic_blocks(self, page_num, blocks, candidates_for_fallback, suspicious_lines)
+        short_record = retry_short_token_blocks(self, page_num, blocks, candidates_for_fallback, suspicious_lines)
         fallback_duration = time.perf_counter() - t_retry_start
         if self.config.get("diacritic_retry") or retry_record["suspect_lines"]:
             meta["diacritic_retry"] = retry_record
+        if self.config.get("short_token_retry") or short_record["suspect_lines"]:
+            meta["short_token_retry"] = short_record
         mark_review_regions(candidates_for_fallback, regions)
 
         apply_layout_model(self.content_analyzer.dla_engine, self.renderer, self.config,
@@ -209,6 +220,7 @@ class TextPageExtractor:
         total_time = round(time.perf_counter() - t0, 2)
         durations = {"inspect": inspect_duration, "native_extract": 0.0, "image_region_ocr": 0.0,
                      "render_and_refine": render_duration, "primary_ocr": ocr_duration, "fallback": fallback_duration,
+                     "primary_detector_evidence": detector_evidence_duration,
                      "table": table_duration, "docling_structure": docling_duration,
                      "layout_model": layout_model_duration, "reading_order": reading_order_duration}
         quality_report, calibrated_q = build_page_quality(

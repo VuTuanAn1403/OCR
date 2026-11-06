@@ -35,7 +35,8 @@ def test_relabel_preserves_source_and_updates_excel_without_ocr(tmp_path, monkey
     assert furniture["algorithm_version"] == ALGORITHM_VERSION
     book = openpyxl.load_workbook(destination/"count_keywords.xlsx", read_only=True, data_only=True)
     try:
-        actual = [row[1] for row in book.active.iter_rows(min_row=5, max_row=92, values_only=True)]
+        assert book.sheetnames == ["Tong_hop", "Trich_dan_chi_tiet"]
+        actual = [cell.value for cell in next(book["Tong_hop"].iter_rows(min_row=1, max_row=1))][1:]
         assert actual == load_raw_keywords(PROJECT_ROOT/"config/keywords.txt")
     finally:
         book.close()

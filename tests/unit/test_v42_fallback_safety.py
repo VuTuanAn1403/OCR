@@ -1,5 +1,6 @@
 from src.ocr.infrastructure.ocr.fallback_engine import FallbackEngine
 import numpy as np
+import pytest
 
 
 def test_address_correction_is_eligible_for_regional_retry():
@@ -26,15 +27,18 @@ def test_regional_retry_rejects_clause_loss():
     )
 
 
-def test_numeric_disagreement_requires_review_without_replacing_source():
+@pytest.mark.parametrize("source,retry", [("Doanh thu 1.235", "Doanh thu 1.234"),
+                                          ("Đơn vị tính: VND", "Đơn vị tính: vnd")])
+def test_protected_evidence_disagreement_requires_review_without_replacing_source(source, retry):
     class Engine:
         def predict_image(self, image):
-            return [{"text": "Doanh thu 1.234", "confidence": 0.98}]
+            return [{"text": retry, "confidence": 0.98}]
 
     fallback = FallbackEngine(ocr_engine=Engine())
     result = fallback.reocr_crop(
-        np.zeros((20, 100, 3), dtype=np.uint8), "Doanh thu 1.235", 0.70
+        np.zeros((20, 100, 3), dtype=np.uint8), source, 0.70
     )
-    assert result["text"] == "Doanh thu 1.235"
+    assert result["text"] == source
     assert result["improved"] is False
     assert result["needs_review"] is True
+    assert "financial codes" in result["review_reason"]

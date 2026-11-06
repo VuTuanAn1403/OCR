@@ -17,6 +17,9 @@ ROOT = Path(__file__).resolve().parent
 RESOURCES = "ocr_runtime/resources"
 BUNDLES = {
     "keywords.txt": "config/keywords.txt",
+    "alias_rules.json": "config/alias_rules.json",
+    "keywords-v1-original.txt": "config/keywords-v1-original.txt",
+    "keywords-v1-revision.json": "config/keywords-v1-revision.json",
     "profiles.yaml": "config/profiles.yaml",
     "profiles-v63.yaml": "config/profiles-v63.yaml",
     "docling_structure_worker.py": "scripts/docling_structure_worker.py",
@@ -44,4 +47,9 @@ class BuildRuntimeResources(build_py):
         ]
 
 
-setup(packages=PACKAGES, cmdclass={"build_py": BuildRuntimeResources})
+CDM_VENDOR = ROOT / "benchmark/scientific_evaluation/_vendor/unimernet_cdm"
+CDM_RESOURCES = [path.relative_to(CDM_VENDOR).as_posix() for path in sorted(CDM_VENDOR.rglob("*"))
+                 if path.is_file() and path.suffix != ".py" and "__pycache__" not in path.parts]
+
+setup(packages=PACKAGES, cmdclass={"build_py": BuildRuntimeResources},
+      package_data={"benchmark.scientific_evaluation._vendor.unimernet_cdm": CDM_RESOURCES})

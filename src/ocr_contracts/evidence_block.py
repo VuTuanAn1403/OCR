@@ -1,5 +1,5 @@
-from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
+from typing import Any, List, Optional, Literal
+from pydantic import Field, model_serializer
 from ocr_contracts.confidence import ConfidenceModel
 from ocr_contracts.region import ContentType
 
@@ -19,6 +19,8 @@ class EvidenceBlock(ConfidenceModel):
     bbox_original: List[float] = Field(default_factory=list)
     bbox_normalized: List[float] = Field(default_factory=list)
     text: str = ""
+    text_raw: Optional[str] = None
+    recognition_provenance: dict[str, Any] = Field(default_factory=dict)
     content_type: ContentType = ContentType.TEXT
     source: Literal["native", "ocr", "vector", "image"] = "native"
     orientation: Optional[float] = None
@@ -35,3 +37,12 @@ class EvidenceBlock(ConfidenceModel):
     block_type: str = "paragraph"
     is_bold: Optional[bool] = None
     font_size: Optional[float] = None
+
+    @model_serializer(mode="wrap")
+    def _serialize_optional_recognition_evidence(self, handler):
+        data = super().serialize_confidence(handler)
+        if self.text_raw is None:
+            data.pop("text_raw", None)
+        if not self.recognition_provenance:
+            data.pop("recognition_provenance", None)
+        return data

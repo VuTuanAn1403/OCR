@@ -1,8 +1,12 @@
 include config/profiles.yaml
 include config/profiles-v63.yaml
 include config/keywords.txt
+include config/alias_rules.json
+include config/keywords-v1-original.txt
+include config/keywords-v1-revision.json
 include config/hardware/*.yaml
 include scripts/docling_structure_worker.py
 include setup.py
 include assets/fonts/NotoSans-Regular.ttf
 include assets/fonts/OFL.txt
+recursive-include benchmark/scientific_evaluation/_vendor/unimernet_cdm *.js *.json *.md *.txt LICENSE

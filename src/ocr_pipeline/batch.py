@@ -17,6 +17,8 @@ def input_snapshot(path):
     if not source.exists():
         raise FileNotFoundError(source)
     paths = [source] if source.is_file() else [p for p in source.iterdir() if p.is_file() and p.suffix.casefold()==".pdf"]
+    if len(paths) > 1048574:
+        raise ValueError("Input snapshot exceeds XLSX row capacity")
     paths.sort(key=lambda p: unicodedata.normalize("NFC", p.name).casefold())
     if not paths or any(p.suffix.casefold() != ".pdf" for p in paths):
         raise ValueError("Input must contain PDF files")
@@ -31,6 +33,8 @@ def input_snapshot(path):
             checksum, error = sha256(p), None
             import pymupdf
             with pymupdf.open(p) as document:
+                if not document.is_pdf:
+                    raise ValueError("Input is not a PDF document")
                 if document.needs_pass:
                     raise ValueError("Encrypted PDF requires authentication")
                 total_pages = len(document)
@@ -42,8 +46,6 @@ def input_snapshot(path):
                         "duplicate_of":hashes.get(checksum),"counts":None})
         if checksum:
             hashes.setdefault(checksum, p.stem)
-    if len(records) > 1048574:
-        raise ValueError("Input snapshot exceeds XLSX row capacity")
     return records
 
 
@@ -60,7 +62,7 @@ def process_batch(input_path, output, config, keywords_path, processor, *, resum
     output = Path(output).resolve()
     output.mkdir(parents=True, exist_ok=True)
     with GPULease(output/"batch.lock", timeout=0):
-        snapshot = frozen_dictionary or dictionary_snapshot(keywords_path, config.get("keyword_set_version", "v1"))
+        snapshot = frozen_dictionary or dictionary_snapshot(keywords_path, config.get("keyword_set_version"))
         validate_snapshot(snapshot)
         inputs_path = output/"batch_input_manifest.json"
         if inputs_path.exists():
@@ -76,6 +78,10 @@ def process_batch(input_path, output, config, keywords_path, processor, *, resum
             else:
                 records, excluded = snapshot_inputs(input_path), []
             saved_inputs = {"documents":records,"excluded_subdirectory_pdfs":excluded}
+        if config.get("alias_rules") is not None:
+            for record in records:
+                record["analytics_enabled"] = True
+                record["analytics_rules_sha256"] = config["alias_rules"]["source_sha256"]
         identity = {"input":str(Path(input_path).resolve()),"config":config,"dictionary":snapshot["snapshot_sha256"],
                     "inputs": [{k:r[k] for k in ("id","path","pdf_sha256","size")} for r in records]}
         identity["batch_id"] = digest(identity)
@@ -108,14 +114,22 @@ def process_batch(input_path, output, config, keywords_path, processor, *, resum
                             or sha256(directory/"COMPLETED.json")!=result["completion_sha256"]):
                         raise IdentityMismatch("Worker receipt changed before ledger preparation")
                     report=json.loads(path.read_text(encoding="utf-8"))
-                    validate_report(report,snapshot,directory/"result.md",record["id"],record["pdf_sha256"])
+                    citation_source = (processor.citation_source_directory(record, directory)
+                                       if hasattr(processor, "citation_source_directory") else None)
+                    validate_report(report,snapshot,directory/"result.md",record["id"],record["pdf_sha256"],
+                                    citation_source_dir=citation_source)
                     if hasattr(processor, "verify_existing"):
                         processor.verify_existing(updated, snapshot, output)
+                    if config.get("alias_rules") is not None:
+                        from ocr_pipeline.alias_finalization import analytics_projection
+                        companion_path = directory / "keyword_two_tier.json"
+                        updated["alias_analytics"] = analytics_projection(json.loads(companion_path.read_text(encoding="utf-8")), snapshot, sha256(companion_path))
                     updated.update(counts=report["display_counts"],total_canonical_matches=report["total_canonical_matches"])
                 else:
                     # A failed replacement must not carry forward accepted
                     # counts, hashes or validation from an earlier revision.
                     updated.update(counts=None,total_canonical_matches=0,validation=None)
+                    updated.pop("alias_analytics", None)
                     for key in ("report_sha256", "completion_sha256"):
                         updated.pop(key, None)
                 return updated
@@ -161,6 +175,10 @@ def process_batch(input_path, output, config, keywords_path, processor, *, resum
                 print(f"[{len([r for r in store.records() if r.get('outcome')])}/{len(records)}] {record['name']}: {updated['outcome']}", flush=True)
             report = {"batch_id":identity["batch_id"],"published_revision":store.get("published_revision"),
                       "documents":store.records(),"matrix":str(matrix),"quality_acceptance":"NOT_EVALUATED"}
+            if config.get("alias_rules") is not None:
+                report.update(alias_rules_sha256=config["alias_rules"]["source_sha256"],
+                              new_suspicions_queue=str(output / "new_suspicions_queue.json"),
+                              new_suspicions_queue_sha256=sha256(output / "new_suspicions_queue.json"))
             atomic_write_json(output/"batch_report.json",report)
             return report
         finally:

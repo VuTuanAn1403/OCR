@@ -1,0 +1,36 @@
+{
+  "schema_version": "benchmark-component-progress-v1",
+  "pipeline_version": "7.0.0",
+  "component": "Mandatory formula scope and updated Cai Tien comparison",
+  "formula_scope": "IN_SCOPE",
+  "backend_status": "NOT_IMPLEMENTED_OR_PINNED",
+  "quality_acceptance_status": "NOT_EVALUATED",
+  "technical_trace_counts_unchanged": {
+    "VERIFIED_TEST_SUBSET": 61,
+    "NOT_EVALUATED": 4
+  },
+  "regression_passed": 1771,
+  "regression_skipped": 1,
+  "focused_passed": 30,
+  "evidence_sha256": {
+    "scratch/runs/20261104-formula-required-regression/evidence/junit.xml": "7293fd7e7b2d391095f174f151870a82b0e032a1decd5883597d2a2354706169",
+    "scratch/runs/20261104-formula-required-focused/evidence/junit.xml": "b5415a7bf7ac126e97e76bc11e1b480cfe17882006a773c4c7e2f2d9fc4094cc",
+    "scratch/dev_sessions/20261104-formula-scope-and-audit/release-build/wheel-verification.json": "364bca7a898a967f4cbc5100f0c517a0816cdedbd1bc7eebf07f22a9b8cb61e1",
+    "scratch/dev_sessions/20261104-formula-scope-and-audit/baseline-scope-proof.json": "3c5c39c97b907fc16e687b2015f48c20578720e3ed3786da8c2f8d967349e80e",
+    "scratch/dev_sessions/20261104-formula-scope-and-audit/candidate-final-scope-proof.json": "d121076ad105fb43d679f9a7156774dd2ffe2d9f8d2ba081adf66257b0f59f70",
+    "scratch/dev_sessions/20261104-formula-scope-and-audit/wheel-scope-proof.json": "d121076ad105fb43d679f9a7156774dd2ffe2d9f8d2ba081adf66257b0f59f70",
+    "scratch/dev_sessions/20261104-formula-scope-and-audit/formula-output-inventory.json": "e215dd28d43228d2bfaec9ef3f1317465e70b977a5cbc1b436caac0969c94893",
+    "scratch/dev_sessions/20261104-formula-scope-and-audit/source-use-proposal.json": "21fe003d63d350b9b0fe526d8554a154923f5adea7aa385da7bcbdb4eae1e5bf",
+    "scratch/dev_sessions/20261104-formula-scope-and-audit/technical-trace.json": "c6245c9d3c130cb906a45ae971c3c13617365e2ab3c3e01ab23ef35a1c6b710a",
+    "scratch/dev_sessions/20261104-formula-scope-and-audit/canvas-verification.json": "51a9e5ea2341749db28c738f54cc77acc797c3e80993634906a69cca5efc6b82"
+  },
+  "source_sha256": {
+    "benchmark/scientific_evaluation/protocol_preflight.py": "92c6e3769ff33d4df2aa363cbead9905c6185044d8091135f786318d3c284275",
+    "benchmark/scientific_evaluation/release_gate.py": "af3e0e85cdd4ad228b055c708e7ccc71feacc0df48aa4769b68ce825b160290d",
+    "tests/scientific/test_protocol_preflight.py": "bf4b84efe0fffa95e58fefb53e51ea5d2e62c27fae78e91953f1d9be10d225f0",
+    "tests/scientific/test_release_gate.py": "9ff11364c9641d2137bfcb355df2c778dd337a267532a6dae7b3a5e2edf38976",
+    "Cai Tien/templates/benchmark_acceptance_protocol.example.yaml": "7e910f6ae9f562b16fefa0a5ff038dfe2b2f66ca44ef7eb587e40066a814d9e0",
+    "Cai Tien/11_NGHIEM_THU_CONG_THUC_V70.md": "4056073cda336ed3094602281ca3087ed7c3a4da1be718f62c0c2e0a98a0dcba"
+  },
+  "limits": "Guard, inventory, source-use draft and comparison update only. No formula model accuracy, CDM execution, independent GT acceptance or new PDF OCR."
+}

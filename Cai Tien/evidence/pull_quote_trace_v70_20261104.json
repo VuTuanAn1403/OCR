@@ -1,0 +1,32 @@
+{
+  "schema_version": "test-trace-addendum-v1",
+  "pipeline_version": "7.0.0",
+  "tc_id": "TC_SCI_LAY_02",
+  "test_status": "VERIFIED_TEST_SUBSET",
+  "acceptance_status": "NOT_EVALUATED",
+  "trace_sha256": "b0341eb01b1fbb5002b1c65ca315b727ff2021a0f981a568a60ecb4684204ff7",
+  "prior_addendum_sha256": "34d41fd622ebdd6d1314ce29a87af66ccc3d1077714abb32e3449f6bcfd39aa9",
+  "test_counts_with_addenda": {
+    "VERIFIED_TEST_SUBSET": 61,
+    "NOT_EVALUATED": 4
+  },
+  "verification_kind": "CONTRACT_FIXTURE_AND_SAVED_LAYOUT_REPLAY",
+  "passing_test_cases": [
+    "test_shared_export_keeps_the_body_and_counts_quote_once",
+    "test_ambiguous_quotes_do_not_create_detached_flow[not_closed]",
+    "test_ambiguous_quotes_do_not_create_detached_flow[overlap]",
+    "test_ambiguous_quotes_do_not_create_detached_flow[inline]",
+    "test_ambiguous_quotes_do_not_create_detached_flow[table]"
+  ],
+  "evidence_sha256": {
+    "scratch/runs/20261104-pull-quote-export-focused/evidence/junit.xml": "f74d3c571f3d8cbf9ba184eb8c4ee9091a4e5c6a37b299566027ceaaccf37c09",
+    "scratch/runs/20261104-pull-quote-regression/evidence/junit.xml": "cb7ebda9bab6f19b98e74a88bf08cc1aeef9761395f8f49f17c7d441d124ce0e",
+    "scratch/dev_sessions/20261104-pull-quote-flow/baseline-replay.json": "bf92a5bda7ce9505ff6f43a8ae7e8a7b0545c394b7f84dc385a7031e15b0c407",
+    "scratch/dev_sessions/20261104-pull-quote-flow/candidate-replay.json": "5f0f3db30910e75c498470c06ee0d48d3278bf677957b2ddd29c470b4df1e1b7",
+    "scratch/dev_sessions/20261104-pull-quote-flow/wheel-replay.json": "5f0f3db30910e75c498470c06ee0d48d3278bf677957b2ddd29c470b4df1e1b7",
+    "scratch/dev_sessions/20261104-pull-quote-flow/body-projection-proof.json": "46bdd5915479e9f86d771cb6f918537833a0b9d2382b02a16263bddc1850d6e9",
+    "scratch/dev_sessions/20261104-pull-quote-flow/installed-export-verification.json": "1b1bc3891edb03a1234ea172482dbcfc83f89a9ea21841ea311ac6941299d902",
+    "scratch/dev_sessions/20261104-pull-quote-flow/release-build/wheel-verification.json": "e2e53c1aef32eb40e7f72960cbd920addd86029f527919d0e5bd449d2bb1a4c0"
+  },
+  "limits": "Positive behavior verified on the controlled fixture. No source-positive callout was detected in the saved 938-page replay. Independent callout precision, recall and body-text accuracy remain NOT_EVALUATED."
+}

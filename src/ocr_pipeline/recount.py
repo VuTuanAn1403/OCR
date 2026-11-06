@@ -11,5 +11,10 @@ def recount_batch(output):
     snapshot=json.loads((output/"keyword_dictionary.snapshot.json").read_text(encoding="utf-8"))
     source=Path(config["input_path"])
     backend=config["backend"]
-    return process_batch(source,output,config,None,GPUProcessor(backend,assets=config["assets"],output_mode=config["output_mode"]),
+    processor = GPUProcessor(backend,assets=config["assets"],output_mode=config["output_mode"])
+    if config.get("alias_rules") is not None:
+        from ocr_pipeline.alias_finalization import AliasFinalizingProcessor
+        from ocr_pipeline.analysis_run import AnalysisProcessor
+        processor = AliasFinalizingProcessor(processor, AnalysisProcessor(dictionary=snapshot, alias_rules_snapshot=config["alias_rules"]))
+    return process_batch(source,output,config,None,processor,
         resume=True,force_recount=True,frozen_dictionary=snapshot,identity_check=lambda:verify_runtime(backend))

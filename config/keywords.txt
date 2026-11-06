@@ -1,89 +1,86 @@
-
-Trí tuệ nhân tạo
-trí tuệ kinh doanh
-hiểu biết hình ảnh
-hệ thống hỗ trợ quyết định đầu tư
-phân tích dữ liệu thông minh
-robot thông minh
-học máy
-học sâu
-tìm kiếm ngữ nghĩa
-sinh trắc học
-nhận dạng khuôn mặt
-nhận dạng giọng nói
-xác minh danh tính
-lái xe tự động
-xử lý ngôn ngữ tự nhiên
-dữ liệu lớn
-khai thác dữ liệu
-khai thác văn bản
-trực quan hóa dữ liệu
-dữ liệu không đồng nhất
-báo cáo tín dụng
-thực tế tăng cường
-thực tế hỗn hợp
-thực tế ảo
-điện toán đám mây
-điện toán dòng
-điện toán đồ thị
-điện toán bộ nhớ
-điện toán bảo mật đa bên
-điện toán giống não
-điện toán xanh
-điện toán nhận thức
-kiến trúc hợp nhất
-đồng thời cấp tỷ
-lưu trữ cấp EB
-Internet vạn vật
-hệ thống vật lý thông tin
-blockchain
-tiền tệ số
-điện toán phân tán
-công nghệ bảo mật riêng tư vi phân
-hợp đồng tài chính thông minh
-Internet di động
-Internet công nghiệp
-Internet di động
-sức khỏe Internet
-thương mại điện tử
-thanh toán di động
-thanh toán bên thứ ba
-thanh toán NFC
-năng lượng thông minh
+An ninh mạng
 B2B
 B2C
+blockchain
+bán lẻ không người
+báo cáo tín dụng
+bảo vệ môi trường thông minh
 C2B
 C2C
-O2O
-kết nối Internet
-thiết bị đeo thông minh
-nông nghiệp thông minh
-giao thông thông minh
-y tế thông minh
-dịch vụ khách hàng thông minh
-nhà thông minh
+Chuyển đổi số
+Công nghiệp 4.0
+công nghệ bảo mật riêng tư vi phân
+công nghệ tài chính
 cố vấn đầu tư thông minh
-văn hóa du lịch thông minh
-bảo vệ môi trường thông minh
+dịch vụ khách hàng thông minh
+dữ liệu không đồng nhất
+dữ liệu lớn
+Fintech
+giao thông thông minh
+hiểu biết hình ảnh
+Hoạch định nguồn lực doanh nghiệp
+Hệ sinh thái số
+hệ thống hỗ trợ quyết định đầu tư
+hệ thống vật lý thông tin
+học máy
+học sâu
+hợp đồng tài chính thông minh
+Internet công nghiệp
+Internet di động
+Internet vạn vật
+khai thác dữ liệu
+khai thác văn bản
+kiến trúc hợp nhất
+kết nối Internet
+lái xe tự động
+lưu trữ cấp EB
 lưới điện thông minh
-tiếp thị thông minh
+ngân hàng mở
+nhà thông minh
+nhận dạng giọng nói
+nhận dạng khuôn mặt
+nông nghiệp thông minh
+năng lượng thông minh
+O2O
+phân tích dữ liệu thông minh
+Quản lý quan hệ khách hàng
+Ra quyết định dựa trên dữ liệu
+robot thông minh
+sinh trắc học
+Sản xuất thông minh
+Số hóa
+sức khỏe Internet
+thanh toán bên thứ ba
+thanh toán di động
+thanh toán NFC
+thiết bị đeo thông minh
+thương mại điện tử
+thực tế hỗn hợp
+thực tế tăng cường
+thực tế ảo
 tiếp thị số
-bán lẻ không người
+tiếp thị thông minh
+tiền tệ số
+trí tuệ kinh doanh
+Trí tuệ nhân tạo
+trực quan hóa dữ liệu
 tài chính Internet
 tài chính số
-Fintech
-công nghệ tài chính
 tài chính định lượng
-ngân hàng mở
-Chuyển đổi số
-Đổi mới
-Công nghiệp 4.0
+tìm kiếm ngữ nghĩa
 Tự động hóa
-Số hóa
-An ninh mạng
-điện toán
-Sản xuất thông minh
-Hệ sinh thái số
-Ra quyết định dựa trên dữ liệu
-Hoạch định nguồn lực doanh nghiệp
-Quản lý quan hệ khách hàng
+văn hóa du lịch thông minh
+xác minh danh tính
+xử lý ngôn ngữ tự nhiên
+y tế thông minh
+điện toán bảo mật đa bên
+điện toán bộ nhớ
+điện toán dòng
+điện toán giống não
+điện toán nhận thức
+điện toán phân tán
+điện toán xanh
+điện toán đám mây
+điện toán đồ thị
+đồng thời cấp tỷ
+Đổi mới

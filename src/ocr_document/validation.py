@@ -127,6 +127,13 @@ def _validate_document_artifacts(
     if result_path.is_file():
         markdown_files.append(result_path)
         result_markdown = result_path.read_text(encoding="utf-8")
+        # Optional for historical publications. New exports include this
+        # companion in their ordinary OCR/completion receipt file inventory.
+        text_path = doc_dir / "result.txt"
+        if text_path.is_file():
+            from ocr_document.plain_text_exporter import markdown_plain_text
+            if text_path.read_text(encoding="utf-8") != markdown_plain_text(result_markdown):
+                errors.append("result.txt differs from final result.md plain-text projection")
     else:
         errors.append("result.md is missing")
     # V6 document-level Markdown gets the same table/image checks (C3.7).

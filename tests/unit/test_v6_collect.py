@@ -4,14 +4,16 @@ import json
 import pymupdf
 import pytest
 
-from src.ocr.collect.catalog import V1_FIELDS, collect_sources, lock_company_splits, prepare_gt_drafts, read_sources
+from src.ocr.collect.catalog import (
+    V1_FIELDS, collect_sources, file_sha256, lock_company_splits, prepare_gt_drafts, read_sources,
+)
 
 
-def inventory(tmp_path):
+def inventory(tmp_path, companies=("A", "B", "C")):
     root = tmp_path / "pdf"
     root.mkdir()
     metadata = {}
-    for company in ("A", "B", "C"):
+    for company in companies:
         path = root / f"{company}.pdf"
         with pymupdf.open() as doc:
             for number in range(3):
@@ -100,3 +102,69 @@ def test_annotation_drafts_are_pending_stratified_and_exclude_test(tmp_path):
         stream.write(b"changed")
     with pytest.raises(ValueError, match="Source PDF changed"):
         prepare_gt_drafts(sources, splits, tmp_path / "changed", pages=4)
+
+
+def test_acceptance_splits_pin_audit_and_protect_calibration_and_holdout(tmp_path):
+    _, sources = inventory(tmp_path, "ABCD")
+    assignments = {"train": ["A"], "development": ["B"], "calibration": ["C"], "holdout": ["D"]}
+    audit = tmp_path / "audit.json"
+    groups = {company: company for company in "ABCD"}
+    payload = {"schema_version": "split-leakage-audit-v1", "sources_sha256": file_sha256(sources),
+               "reviewed_by": "fixture-reviewer", "holdout_custodian": "fixture-custodian",
+               "template_groups": groups, "near_duplicate_groups": groups.copy()}
+    audit.write_text(json.dumps(payload), encoding="utf-8")
+    lock = tmp_path / "splits.json"
+    result = lock_company_splits(sources, assignments, lock, audit=audit)
+    assert result["schema_version"] == "splits-v2" and result["leakage_audit_sha256"] == file_sha256(audit)
+    assert lock_company_splits(sources, assignments, lock, audit=audit) == result
+    with pytest.raises(ValueError, match="requires --audit"):
+        prepare_gt_drafts(sources, lock, tmp_path / "no-audit")
+    drafts = prepare_gt_drafts(sources, lock, tmp_path / "drafts", audit=audit)
+    assert {record["split"] for record in drafts["records"]} == {"train", "development"}
+    audit.write_text(json.dumps({**payload, "reviewed_by": "changed"}), encoding="utf-8")
+    with pytest.raises(ValueError, match="inventory changed"):
+        prepare_gt_drafts(sources, lock, tmp_path / "changed", audit=audit)
+    payload["template_groups"]["D"] = " a "
+    audit.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="Leakage across splits in template_groups"):
+        lock_company_splits(sources, assignments, lock, audit=audit)
+    assert json.loads(lock.read_text(encoding="utf-8")) == result
+
+
+def test_reviewed_source_use_blocks_pilot_reassignment_and_missing_evidence(tmp_path):
+    _, sources = inventory(tmp_path, "ABCD")
+    assignments = {"train": ["A"], "development": ["B"], "calibration": ["C"], "holdout": ["D"]}
+    groups = {company: company for company in "ABCD"}
+    audit = tmp_path / "reviewed-audit.json"
+    data = {
+        "schema_version": "split-leakage-audit-v2", "status": "REVIEWED", "sources_sha256": file_sha256(sources),
+        "reviewed_by": "fixture-reviewer", "holdout_custodian": "fixture-custodian",
+        "reviewed_at": "2020-01-01T09:00:00+07:00", "template_groups": groups, "near_duplicate_groups": groups,
+        "partition_access": {"calibration": "fixture-calibration", "holdout": "fixture-holdout"},
+        "source_dispositions": {doc: {"status": "development_only" if doc == "B" else "eligible_for_assignment",
+                                     "exposure_evidence": "fixture-exposure", "rights_evidence": "fixture-rights"}
+                                for doc in groups},
+    }
+
+    def write():
+        audit.write_text(json.dumps(data), encoding="utf-8")
+
+    write()
+    lock = tmp_path / "split.json"
+    result = lock_company_splits(sources, assignments, lock, audit=audit)
+    assert result["leakage_audit_schema"] == "split-leakage-audit-v2"
+    for partition in ("train", "calibration", "holdout"):
+        moved = {**assignments, "development": assignments[partition], partition: ["B"]}
+        with pytest.raises(ValueError, match="must stay in development"):
+            lock_company_splits(sources, moved, tmp_path / f"{partition}.json", audit=audit)
+
+    data["partition_access"]["holdout"] = " Fixture-Calibration "
+    write()
+    with pytest.raises(ValueError, match="distinct calibration and holdout"):
+        lock_company_splits(sources, assignments, lock, audit=audit)
+    data["partition_access"]["holdout"] = "fixture-holdout"
+    data["source_dispositions"]["D"]["rights_evidence"] = "unknown"
+    write()
+    with pytest.raises(ValueError, match="Source use and rights evidence"):
+        lock_company_splits(sources, assignments, lock, audit=audit)
+    assert json.loads(lock.read_text(encoding="utf-8")) == result

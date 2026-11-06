@@ -1,0 +1,24 @@
+{
+  "schema_version": "diacritic-annotation-draft-v1",
+  "status": "DRAFT",
+  "pdf_sha256": null,
+  "company_id": null,
+  "partition": null,
+  "physical_page": null,
+  "coordinate_space": "pdf_points_top_left",
+  "unit_id": null,
+  "bbox": null,
+  "table_cell_id": null,
+  "native_text_applicability": null,
+  "image_sha256": null,
+  "annotations": [
+    {"annotator_id": null, "transcription": null},
+    {"annotator_id": null, "transcription": null}
+  ],
+  "adjudication": {
+    "adjudicator_id": null,
+    "transcription": null,
+    "keyword_annotation_status": "NOT_EVALUATED",
+    "keyword_occurrences": null
+  }
+}

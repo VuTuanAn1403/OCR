@@ -6,7 +6,7 @@ Bản thiết kế ban đầu và bản Word được viết trước khi cập 
 
 ## 1 Quyết định kiến trúc
 
-Chọn pipeline toàn trang hiện có của V6.3 làm implementation chuẩn. Đây là lựa chọn từ các thành phần đã triển khai, không phải tuyên bố model đạt độ chính xác cao nhất trên ground truth. Giữ OCR GPU toàn trang, nhận dạng VietOCR, layout Heron, Docling trên bridge từ OCR, giải thứ tự đọc cấp tài liệu, numeric guard, đọc lại dấu, receipt/checkpoint và ledger SQLite. Không đưa native text vào nội dung được thống kê.
+OCR PDF v7.0 dùng pipeline toàn trang kế thừa từ V6.3. Luồng gồm OCR GPU toàn trang, nhận dạng VietOCR, layout Heron, Docling trên bridge từ OCR, giải thứ tự đọc cấp tài liệu, numeric guard, đọc lại dấu, receipt/checkpoint và ledger SQLite. Số đếm từ khóa dùng Markdown từ nguồn OCR.
 
 Một đường thực thi:
 
@@ -31,7 +31,7 @@ Hai runtime model là ranh giới dependency của cùng pipeline: `.venv-v62/te
 
 ## 2 Một cấu hình chuẩn
 
-`config/profiles.yaml` là nguồn profile duy nhất, khai báo `pipeline: v6.3`, profile `unified_gpu_full_ocr`. Giữ nguyên giá trị inference hiện có: render 180 DPI, batch dòng 4, hai thread, Heron RT DETR, TableFormer fast, formula tối đa 256 token, diacritic retry 300 DPI tối đa 5 vùng và 15 phần trăm số block. Thay cấu hình có chủ đích vẫn phải giữ invariant nguồn và thiết bị.
+`config/profiles.yaml` là nguồn profile duy nhất, khai báo `pipeline: v7.0`, profile `unified_gpu_full_ocr`. Các giá trị inference hiện có gồm render 180 DPI, batch dòng 4, hai thread, Heron RT DETR, TableFormer fast, formula tối đa 256 token và diacritic retry 300 DPI tối đa 5 vùng và 15 phần trăm số block. Alias cấu hình v6.3 còn đọc được với cùng kiểm tra profile. Tên lock, registry model và schema artifact giữ theo hợp đồng hiện hành để đọc bằng chứng lịch sử.
 
 Tên file cũ `profiles-v63.yaml` và `profiles-v62.yaml` chỉ được làm tham chiếu tới nguồn chuẩn; không chứa bộ profile thứ hai. Resolver trả đường dẫn chuẩn cuối cùng để alias không tạo batch identity khác. Phát hiện chu trình, cấu hình trộn include với profiles hoặc declaration mâu thuẫn là lỗi. Đường dẫn explicit ưu tiên `OCR_CONFIG_PATH`, rồi cấu hình chuẩn.
 
@@ -61,7 +61,11 @@ VietOCR dùng VGG19 BN và seq2seq. Crop dòng được nhóm theo tỷ lệ hì
 
 Retry dấu dùng bộ quy tắc tiếng Việt nhỏ, render lại vùng nghi ngờ 300 DPI, thử crop trực tiếp và CLAHE khi cần. Candidate score gồm confidence 0.20, chất lượng tiếng Việt 0.35, token 0.20, hình học 0.10 và ký tự 0.15. Phương án mới phải vượt điểm cũ trên 0.015 và qua guard. Giữ text_raw, correction_source và cảnh báo ở dòng. Không dùng LLM sửa câu.
 
+Retry lưu từng crop/frame/hash pixel, ứng viên và quyết định áp dụng. Sửa dấu không xóa gate hướng chữ hoặc nguồn chưa được xác minh. Ngữ cảnh kinh doanh chỉ định tuyến các token `020`/`O20`/`02O` tới crop 400 DPI và review; hypothesis `O2O` không có quyền thay số. Crop dòng dọc thử 90°/270°; dòng ngang có xác suất dưới ngưỡng cấu hình được thử thêm 180°. Mọi lựa chọn hướng có nhiều ứng viên giữ các bản đọc, bbox gốc và trạng thái cần review; xác suất chưa hiệu chuẩn không là nhãn đúng.
+
 Numeric guard so nguyên chuỗi fragment số, ngày, mã và đơn vị trước/sau thay thế. Dòng mới phải giữ chữ nền/dấu câu trong retry dấu. Guard bảo toàn không chứng minh số lần OCR đầu đúng. Confidence engine, score layout, quality heuristic và độ chính xác đo trên GT là bốn khái niệm khác nhau.
+
+Guard giữ ký hiệu/mã tiền tệ hai phía, dấu trước tiền tệ, `%`/`‰` và ngoặc kế toán có khoảng trắng/NBSP. Repetition chỉ tạo ứng viên dọn vòng lặp cuối dòng; lặp có suffix giữ nguyên. Ứng viên bị coi là noise vẫn giữ chữ thô và lý do review; cleanup làm đổi số bị từ chối. Provenance lưu ứng viên và disposition, không dùng confidence để tự nghiệm thu.
 
 ## 6 Cấu trúc bảng công thức và nguồn
 
@@ -69,11 +73,29 @@ Bridge là ảnh trang cùng lớp chữ OCR ẩn với Noto Sans; cấm block n
 
 Pha A khóa text evidence. Khi cấu trúc hấp thụ block, reconciliation yêu cầu hình học và text phù hợp hoặc quan hệ source ID công thức. Không ánh xạ được thì khôi phục dòng và gắn review. Bảng/công thức chưa có confidence được hiệu chuẩn giữ null/NEEDS_REVIEW. Lỗi Docling được phép fallback giữ extraction pha A và đánh dấu rõ; không giả nhãn TableFormer.
 
+`exact-source-occurrence-v2` ánh xạ token theo từng hàng/ô, mỗi occurrence chỉ nhận một nguồn. Chỉ bỏ marker trình bày của list khi numeric guard vẫn bảo toàn, ghi marker vào disposition và giữ raw trong text evidence. Block restored được đối soát lại; assembler không dùng tìm chuỗi con để bỏ qua quyết định ownership của document pass.
+
 Kiểm tài chính dùng Decimal và quy ước số có bằng chứng; chỉ kiểm tổng khi quan hệ cộng rõ. CONSISTENT/VIOLATION/INCONCLUSIVE không sửa số. Bảng nối nhiều trang chỉ là ứng viên, chưa tự ghép thành một bảng đã nghiệm thu.
+
+CLI ghép thử kiểm publication trên CPU rồi chiếu các mảnh bảng theo đề xuất đã ghim hash. Bản ghép nằm trong thư mục riêng, lưu quan hệ từ ô logic đến từng ô nguồn và ghi riêng tiêu đề in lại. Ô chưa quan sát và quyền sở hữu mơ hồ cần review L5 trước khi đưa kết quả ghép vào đầu ra chính thức. [Hợp đồng preview](src/ocr_document/TABLE_STITCH_V7.md).
+
+Profile chuẩn bật `table_stitch.method=auto_v1` trong export. `auto_table_stitch` lập phép chiếu logic khi hai mảnh ở trang liên tiếp, cùng section/cột, không có nội dung xen giữa, hình học cột phù hợp và tiêu đề lặp đủ bằng chứng. Hàng cắt cần nhãn chữ tiếp nối và các ô bổ sung nhau, không ghép hai giá trị số riêng. `document.json.table_stitch` giữ quyết định và toàn bộ ô nguồn; validator tính lại từ extraction. `result.md`/`document.md` hiển thị bảng logic, HTML giữ span; bản trang và bảng vật lý vẫn nguyên. Không đủ điều kiện thì giữ tách và ghi lý do. Mọi bảng tự nối vẫn cần review L5, chưa là bảng đã nghiệm thu.
+
+Role ô Docling và enum hướng bảng được giữ qua RPC vào extraction/document. Role không có giữ trạng thái chưa biết; bool quan sát không bị suy từ chữ. Nếu có role, header lặp phải được model báo là header ở cả hai mảnh. Cột nhãn có thể sau cột mã. Hướng báo khác nhau hoặc thiếu một phía chặn nối; `rot_0` có thể là mặc định Docling, không chứng minh ảnh thẳng.
+
+Bridge có thể báo bbox dòng chữ ẩn quan sát được theo `pymupdf-text-line-v1`. Ownership `exact-source-occurrence-glyph-v3` chỉ dùng khi source ID, hash chữ, góc, bbox nguồn và record bridge khớp; toàn bộ glyph phải nằm trong đúng một ô có token khớp và chưa tiêu thụ. Source bbox/raw và ô vật lý giữ nguyên. Disposition xuất proof/mapping, validator replay theo nguồn và record bridge. Thiếu proof giữ quy tắc full-source-bbox cũ; không tự bỏ protected/review hoặc suy ô từ tâm dòng. Bằng chứng glyph không chứng minh hướng/nhận dạng đúng trên ảnh.
+
+Bridge có thể ghi thêm bbox token từ ký tự thực của cùng dòng chữ ẩn (`pymupdf-text-tokens-v1`). Ownership `exact-source-occurrence-token-v4` chỉ bổ sung dòng bắc qua nhiều ô cùng hàng: từng token phải khớp chuỗi liên tiếp trong lưới và nằm trọn trong ô tương ứng ở precision xuất 2dp; toàn dòng có đúng một mapping và không dùng lại occurrence. Disposition giữ proof, `placement_granularity=TOKEN` và mapping để validator replay. Không nội suy vị trí bằng độ dài từ, chia token số, thay ô vật lý, chữ nguồn hoặc gỡ protected. Thiếu token proof vẫn dùng hợp đồng v3/legacy. Đây là kiểm bằng chứng cấu trúc, không xác nhận góc hoặc OCR accuracy.
+
+Đầu vào chữ ẩn gồm cả block visible và frozen OCR source đã rời body sau bước bảng heuristic pha A. Bridge đối soát source ID để không chèn trùng và ưu tiên transcription visible hiện tại; không đọc text layer native, sửa frozen/raw/bbox hoặc suy chữ thiếu. Pha B ghi `source_pool` nhận dạng danh sách input. Frozen-only source có thể mang proof oriented với `block_index=null`; chỉ số của nó không được dùng để truy cập body blocks. Bổ sung pool này thay byte bridge và code identity pha B; receipt/cache cũ giữ nguyên, không dùng nó làm bằng chứng Docling đã xử lý input mới.
 
 ## 7 Ghép tài liệu
 
 Region tree chia dải/cột bằng khoảng trắng, bảo vệ bảng/ảnh/công thức như node nguyên tử. Nhận diện form/mục lục và bảng không viền trước khi đọc theo cột. Đồ thị thứ tự đọc dùng topo ổn định; chu trình chỉ bỏ cạnh mềm thực sự nằm trên chu trình và ghi bằng chứng. Xung đột hard giữ review.
+
+Thuật toán `region-tree-graph-v1.3` bổ sung ứng viên gutter từ hai nhóm dòng prose khi một số bbox dài che khoảng trắng. Bảng/ảnh/công thức không bỏ phiếu cho rãnh cột; cấu trúc bắc cột giữ nguyên tử làm ranh giới dải. Không chia đôi block nguồn; gutter suy đoán có `PROVISIONAL_COLUMN_GUTTER` để review. Nối dòng có bbox chồng nhẹ chỉ trong cùng loại block/cột/article. Export kiểm phiên bản thuật toán để không tái dùng flow cũ như kết quả mới; output/receipt sản phẩm cũ không được sửa tại chỗ.
+
+`aligned-column-continuation-v1` nối hai đoạn tại đáy/đầu các cột kề nhau trong cùng trang/article khi câu còn dang dở, dòng đầu viết thường, độ rộng/chiều cao/phạm vi cột tương thích. Bảng/công thức/tiêu đề hoặc ảnh nằm trong vùng chữ chặn phép nối, kể cả bảng xuất sau hai cột nhưng có thể giữ phần câu còn thiếu. Chỉ ảnh minh họa nằm hoàn toàn phía trên vùng chữ được chuyển trước đoạn đã nối. `document.json` giữ `continuations` với extraction/source ID, bbox, cột, hình học và ID ảnh đã chuyển; chunk luôn cần review. Extraction order, chữ thô và vị trí nguồn không đổi. Đây là heuristic ghép đoạn có bằng chứng, chưa là nghiệm thu accuracy; không nối toàn bộ whitespace hoặc đổi `literal_v1`.
 
 Furniture dùng document_context_v3: vị trí mép trang chỉ tạo ứng viên; cần hỗ trợ liên trang, token, vị trí tương đối và chuỗi số trang. Bảo vệ caption, heading nội dung và dòng tiếp nối bảng. Giữ role_initial/role_final, visibility và lý do. Header/footer ẩn trong Markdown vẫn còn evidence/JSON.
 
@@ -81,7 +103,15 @@ Cây mục dùng heuristic đánh số, nhãn, font khi có và đối chiếu m
 
 ## 8 Keyword và publication
 
-Giữ literal_v1: NFC rồi casefold, tìm chuỗi con đã escape, không chồng lấn trong mỗi keyword. Không fuzzy, bỏ dấu hoặc gộp khoảng trắng. Đếm toàn result.md, gồm markup và đường dẫn ảnh. Mỗi keyword độc lập. Dictionary v1 giữ 88 vị trí hiển thị và 87 cụm duy nhất; Internet di động lặp hai vị trí cùng count. Phân biệt tổng canonical và display.
+Alias không cộng vào literal JSON/Excel. Không bật global rules thì giữ companion `keyword-two-tier-v2`; có rules thì v3 ghi riêng accepted/rejected/Pending. Quyết định occurrence v2 bắt buộc hash PDF, Markdown, dictionary, policy và offset NFC; dùng trạng thái mới nhất theo timestamp có timezone. Trùng ID khác nội dung hoặc trạng thái xung đột cùng thời điểm báo lỗi. Literal của keyword khác không loại ứng viên; offset casefold được ánh xạ về NFC. Analysis khóa toàn snapshot decisions/rules và hash byte nguồn trong config/identity, từ chối resume khi đổi; mất/đổi input trong lượt chặn publication. Đọc kiểm companion trước prepare và khi tái dùng. Bundle v1 thiếu identity phải đối chiếu nguồn và xuất v2, không sửa receipt cũ.
+
+Rules schema v1 chuẩn hóa NFC/casefold, chỉ ánh xạ biến thể dấu cùng khung chữ sang target trong dictionary. Điều kiện ngữ cảnh là literal cùng đoạn, có ranh giới token; alias ngắn cần điều kiện để tránh nghĩa khác. Quyết định occurrence ưu tiên hơn global rule; thiếu rule/ngữ cảnh thì Pending. Không sửa MD/raw/bbox/số hoặc tự học rule từ AI/occurrence. Rules chỉ thuộc identity phân tích; cập nhật dùng CPU analysis mới trên extraction đã xác minh. CLI mặc định nạp seed với dictionary chuẩn; dictionary riêng chỉ dùng rules tương thích chỉ định rõ.
+
+Sau document worker thoát, `AliasFinalizingProcessor` hoàn tất companion ở CPU trước prepare, không chạy thêm model. Projection SQLite giữ hash companion và vector Tier2/Pending. Publication dựng lại companion từ report/text/snapshot, đối chiếu projection, ghi/đọc kiểm ma trận và queue cùng revision trước acknowledge. Các sheet Tier2/Pending/tổng sau duyệt và trích dẫn nằm riêng; tổng sau duyệt để trống ở ô còn Pending. Tài liệu chưa đánh giá giữ null, queue toàn batch ghi rõ coverage thiếu. Xem [quy trình 14](Cai%20Tien/14_QUY_TRINH_TU_DONG_HOA_ALIAS_RULES_VA_KIEM_THU_KAGGLE.md).
+
+Giữ literal_v1: NFC rồi casefold, tìm chuỗi con đã escape, không chồng lấn trong mỗi keyword. Không fuzzy, bỏ dấu hoặc gộp khoảng trắng. Đếm toàn result.md, gồm markup và đường dẫn ảnh. Mỗi keyword độc lập. Dictionary v1 revision 2026-11-06 giữ đúng bảng người dùng 86 dòng/cụm duy nhất, không có key độc lập điện toán; Internet di động một lần. Bản v1 gốc 88/87 ở config/keywords-v1-original.txt giữ nguyên byte/hash để đọc receipt lịch sử. Snapshot revision mới nhận dạng bằng digest danh sách; không sửa identity cũ. Phân biệt tổng canonical và display; bộ v2 không còn hoạt động.
+
+Report mới giữ một citation cho mỗi occurrence canonical trên cùng result.md; mapping offset NFC/casefold giữ chữ nguồn ngay cả khi ký tự casefold mở rộng. Marker trang chỉ được dùng khi khớp toàn phạm vi trang. Bảng logic ghi tập trang của projection.fragments thay vì trang đầu nơi bảng được render; thiếu vị trí giữ chưa xác định. Context gắn hash document.json; analysis dùng extraction origin đã xác minh và result.md cùng hash. Workbook từng BCTC có đúng Tong_hop/Trich_dan_chi_tiet, ghi metadata và rich text một lần; đọc lại cả hai sheet và bold trước publication acknowledge. Workbook một sheet chỉ tương thích với report lịch sử không có citation schema; sheet literal của ma trận batch giữ hợp đồng cũ, các tầng bổ sung được khai báo riêng.
 
 Chỉ nhận tài liệu đủ trang, telemetry GPU thật, bridge và receipt/hash hợp lệ. Document owner xuất keyword JSON, Excel riêng, đọc kiểm workbook và completion. Ledger SQLite WAL/FULL lưu meta/documents/revisions/events. Prepare revision, ghi ma trận nguyên tử, đọc kiểm, băm rồi acknowledge trước PDF tiếp theo. Pending/lỗi để trống, số 0 chỉ cho hàng đếm thành công. Lỗi publication/identity dừng batch.
 
@@ -119,6 +149,8 @@ Notebook chuẩn là `kaggle/ocr_pdf_kaggle.ipynb`, dùng cùng CLI/config/accep
 ## 11 Đầu ra và rà soát
 
 Giữ result.md/result.json, pages, extraction.json, structure.json, document.json/document.md, layout_order.json, furniture.json, quality/validation/manifest, structures và images theo tùy chọn. Giữ OCR/keyword receipts, completion, keyword_counts.json/count_keywords.xlsx, ma trận và SQLite. Mode compact/full chỉ thay cách biểu diễn result.json.
+
+Export thêm `result.txt` từ Markdown cuối cùng sau phép chiếu bảng. Converter chỉ nhận tập Markdown do dự án sinh; bỏ markup, giữ literal nội dung và tab giữa ô. Không dùng TXT để đếm keyword. TXT tham gia inventory/receipt của lượt mới; validator kiểm nếu có và chấp nhận lịch sử thiếu TXT. Không thêm file vào publication cũ.
 
 Đối chiếu số trang, input manifest, outcome, validation, review, dấu/số, bảng, thứ tự cột và keyword mẫu. Chạy `scripts/audit_batch_outputs.py --output <batch> --report scratch/audit.json --validate`. Báo cáo phải ngoài batch. Sao lưu toàn batch sau khi dừng ghi; không sửa tay receipt/hash. Sửa OCR cần lượt output mới.
 

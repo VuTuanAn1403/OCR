@@ -156,7 +156,10 @@ def build_evidence_blocks(sorted_blocks, regions, page_num, rejected_evidence):
         block_region = region_by_id.get(b.region_id)
         rot = block_region.rotation if block_region else 0.0
         no_score = b.quality_score is None
-        needs_review = no_score or b.quality_score < 0.75
+        # A high weighted score must not clear a separate recognizer/numeric
+        # quality gate. Only an accepted retry can resolve its pending reason.
+        pending_gate = bool(b.fallback_reason) and not b.reviewed
+        needs_review = no_score or b.quality_score < 0.75 or pending_gate
         evidence_blocks.append(EvidenceBlock(
             block_id=f"B_{page_num:04d}_{idx + 1:04d}",
             page=page_num,
@@ -176,8 +179,8 @@ def build_evidence_blocks(sorted_blocks, regions, page_num, rejected_evidence):
             font_size=b.font_size,
             reading_order=idx + 1,
             status="UNRESOLVED" if needs_review else "EXTRACTED",
-            failure_reason=("No calibrated confidence for model output" if no_score
-                            else (b.fallback_reason or "Low OCR quality score") if needs_review else None),
+            failure_reason=((b.fallback_reason or ("No calibrated confidence for model output" if no_score
+                                                  else "Low OCR quality score")) if needs_review else None),
         ))
     evidence_blocks.extend(rejected_evidence)
     return evidence_blocks

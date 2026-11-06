@@ -1,0 +1,18 @@
+{
+  "schema_version": "test-trace-addendum-v1",
+  "pipeline_version": "7.0.0",
+  "tc_id": "TC_ENV_03",
+  "test_status": "VERIFIED_TEST_SUBSET",
+  "acceptance_status": "NOT_EVALUATED",
+  "verification_kind": "RUNTIME_CAPABILITY_PROBE",
+  "observed_at": "2026-11-04T08:27:48.096468+00:00",
+  "report": "scratch\\dev_sessions\\20261104-input-contracts\\preflight-cuda.json",
+  "report_sha256": "14cfd815dc155d2c43a4e097da22ea03df2933b0341335aaf976322e5b05722f",
+  "prior_addendum_sha256": "a9dff8db1fa66d374d0d0ce0de2f6c476cc5e623a8112057a6da8462be6882ad",
+  "trace_sha256": "b0341eb01b1fbb5002b1c65ca315b727ff2021a0f981a568a60ecb4684204ff7",
+  "test_counts_with_addenda": {
+    "VERIFIED_TEST_SUBSET": 57,
+    "NOT_EVALUATED": 8
+  },
+  "limits": "Two CUDA tensor capability probes. Model inference, full pipeline placement, quality, SLO and soak remain NOT_EVALUATED."
+}

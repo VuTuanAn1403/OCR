@@ -15,7 +15,7 @@ from ocr_keywords.counter import KeywordCounter
 from ocr_keywords.validation import validate_keyword_group
 
 ROOT = Path(__file__).resolve().parents[3]
-V1 = ROOT / "config/keywords.txt"
+V1 = ROOT / "config/keywords-v1-original.txt"
 
 
 def counts(text, keywords):

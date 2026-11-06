@@ -71,15 +71,11 @@ def test_excel_report_contents_totals_and_refresh_without_changing_markdown(tmp_
     workbook = load_workbook(document / "count_keywords.xlsx")
     try:
         sheet = workbook.active
-        assert sheet.title == "Thống kê từ khóa"
-        assert sheet["A1"].value == "BÁO CÁO TẦN SUẤT TỪ KHÓA"
-        assert [sheet.cell(4, c).value for c in (1, 2, 3)] == [
-            "STT", "Từ khóa / Cụm từ", "Số lần xuất hiện"]
-        assert [(sheet.cell(r, 2).value, sheet.cell(r, 3).value) for r in range(5, 9)] == [
-            ("Đổi mới", 2), ("=SUM", 1), ("C++", 1), ("Không có", 0)]
-        assert sheet["B6"].data_type == "s"
-        assert sheet["B9"].value == "Tổng cộng"
-        assert sheet["C9"].value == 4
+        assert workbook.sheetnames == ["Tong_hop", "Trich_dan_chi_tiet"]
+        assert sheet["A1"].value == "File_name"
+        assert [c.value for c in sheet[1]][1:] == ["Đổi mới", "=SUM", "C++", "Không có"]
+        assert [c.value for c in sheet[2]][1:] == [2, 1, 1, 0]
+        assert sheet["C1"].data_type == "s"
     finally:
         workbook.close()
     keywords.write_text("C++\n", encoding="utf-8")

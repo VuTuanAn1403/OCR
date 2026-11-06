@@ -4,6 +4,8 @@ import csv
 import hashlib
 import io
 import json
+import os
+import tempfile
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +23,9 @@ V1_FIELDS = tuple(field for field in FIELDS if field not in ("company_name", "ex
 # Supplied by the person verifying the source, never inferred from the file name.
 SUPPLIED_FIELDS = ("company_name", "exchange", "year", "industry", "size", "dbi_object", "language",
                    "source_url", "collected_at")
+LEGACY_SPLITS = ("train", "dev", "test")
+ACCEPTANCE_SPLITS = ("train", "development", "calibration", "holdout")
+SOURCE_USE_AUDIT = "split-leakage-audit-v2"
 
 
 def file_sha256(path: Path) -> str:
@@ -122,12 +127,16 @@ def read_sources(path: Path) -> list[dict]:
     return rows
 
 
-def lock_company_splits(sources: Path, assignments: dict, output: Path) -> dict:
+def _split_snapshot(sources: Path, assignments: dict, *, audit: Path | None = None) -> dict:
+    partitions = ACCEPTANCE_SPLITS if audit is not None else LEGACY_SPLITS
+    if not isinstance(assignments, dict) or set(assignments) != set(partitions):
+        raise ValueError(f"Assignments must declare {', '.join(partitions)}")
+    sources_hash = file_sha256(sources)
     rows = read_sources(sources)
-    if set(assignments) != {"train", "dev", "test"}:
-        raise ValueError("Assignments must declare train, dev and test")
+    if file_sha256(sources) != sources_hash:
+        raise ValueError("Source inventory changed while reading")
     assignment, normalized = {}, {}
-    for split in ("train", "dev", "test"):
+    for split in partitions:
         if not isinstance(assignments[split], list):
             raise ValueError("Each split must be a list of company IDs")
         normalized[split] = []
@@ -141,7 +150,7 @@ def lock_company_splits(sources: Path, assignments: dict, output: Path) -> dict:
     if set(assignment) != {row["company_id"] for row in rows} or "unknown" in assignment:
         raise ValueError("Every source requires verified company_id and exactly one company split")
     if any(not normalized[split] for split in normalized):
-        raise ValueError("Each train/dev/test split needs at least one verified company")
+        raise ValueError("Each split needs at least one verified company")
     hash_owners = {}
     documents = []
     for row in rows:
@@ -151,30 +160,111 @@ def lock_company_splits(sources: Path, assignments: dict, output: Path) -> dict:
         documents.append({key: row[key] for key in ("document_id", "company_id", "sha256", "relative_path")})
         documents[-1]["split"] = assignment[row["company_id"]]
     snapshot = {"schema_version": "splits-v1", "locked": True, "companies": normalized,
-                "sources_sha256": file_sha256(sources), "documents": documents}
+                "sources_sha256": sources_hash, "documents": documents}
+    if audit is not None:
+        snapshot.update(schema_version="splits-v2", **_validate_split_audit(audit, snapshot, rows))
+    return snapshot
+
+
+def _validate_split_audit(path: Path, snapshot: dict, rows: list[dict]) -> dict:
+    raw = path.read_bytes()
+    audit = json.loads(raw.decode("utf-8-sig"))
+    if (not isinstance(audit, dict) or audit.get("schema_version") not in ("split-leakage-audit-v1", SOURCE_USE_AUDIT)
+            or audit.get("sources_sha256") != snapshot["sources_sha256"]):
+        raise ValueError("Split audit schema or source hash does not match")
+    for key in ("reviewed_by", "holdout_custodian"):
+        if not isinstance(audit.get(key), str) or not audit[key].strip():
+            raise ValueError(f"Split audit requires {key}")
+    documents = {doc["document_id"]: doc["split"] for doc in snapshot["documents"]}
+    usable = {documents[row["document_id"]] for row in rows if row["status"] == "OK"}
+    if usable != set(ACCEPTANCE_SPLITS):
+        raise ValueError("Each acceptance split needs at least one usable PDF")
+    for key in ("template_groups", "near_duplicate_groups"):
+        groups = audit.get(key)
+        if not isinstance(groups, dict) or groups.keys() != documents.keys():
+            raise ValueError(f"{key} must assign every inventory document")
+        owners = {}
+        for doc_id, group in groups.items():
+            if not isinstance(group, str) or not group.strip() or group.strip().casefold() == "unknown":
+                raise ValueError(f"{key} requires a verified group for {doc_id}")
+            group = unicodedata.normalize("NFC", group.strip()).casefold()
+            split = documents[doc_id]
+            if owners.setdefault(group, split) != split:
+                raise ValueError(f"Leakage across splits in {key}: {group}")
+    result = {"leakage_audit_sha256": hashlib.sha256(raw).hexdigest(), "holdout_custodian": audit["holdout_custodian"]}
+    if audit["schema_version"] == SOURCE_USE_AUDIT:
+        _validate_source_use(audit, documents)
+        result["leakage_audit_schema"] = SOURCE_USE_AUDIT
+    return result
+
+
+def _validate_source_use(audit: dict, documents: dict) -> None:
+    def reference(value):
+        return isinstance(value, str) and value.strip() and value.strip().casefold() not in {"unknown", "not_evaluated"}
+
+    try:
+        reviewed_at = datetime.fromisoformat(audit.get("reviewed_at"))
+    except (TypeError, ValueError):
+        reviewed_at = None
+    if audit.get("status") != "REVIEWED" or reviewed_at is None or reviewed_at.utcoffset() is None:
+        raise ValueError("Source use audit requires REVIEWED status and a timezone-aware review date")
+    dispositions = audit.get("source_dispositions")
+    if not isinstance(dispositions, dict) or dispositions.keys() != documents.keys():
+        raise ValueError("Source use audit must dispose every inventory document")
+    for doc_id, disposition in dispositions.items():
+        if (not isinstance(disposition, dict)
+                or disposition.get("status") not in ("development_only", "eligible_for_assignment")
+                or not all(reference(disposition.get(field)) for field in ("exposure_evidence", "rights_evidence"))):
+            raise ValueError(f"Source use and rights evidence required for {doc_id}")
+        if disposition["status"] == "development_only" and documents[doc_id] != "development":
+            raise ValueError(f"Previously exposed source must stay in development: {doc_id}")
+    access = audit.get("partition_access")
+    if (not isinstance(access, dict) or access.keys() != {"calibration", "holdout"}
+            or not all(reference(value) for value in access.values())
+            or len({unicodedata.normalize("NFC", value.strip()).casefold() for value in access.values()}) != 2):
+        raise ValueError("Source use audit requires distinct calibration and holdout access evidence references")
+
+
+def lock_company_splits(sources: Path, assignments: dict, output: Path, *, audit: Path | None = None) -> dict:
+    snapshot = _split_snapshot(sources, assignments, audit=audit)
     output = Path(output)
+    if not output.exists():
+        output.parent.mkdir(parents=True, exist_ok=True)
+        # Publish the complete file exclusively, even if another writer wins the race.
+        with tempfile.TemporaryDirectory(dir=output.parent) as directory:
+            staged = Path(directory) / "split.json"
+            atomic_write_json(staged, snapshot)
+            try:
+                os.link(staged, output)
+            except FileExistsError:
+                pass
     if output.exists():
         previous = json.loads(output.read_text(encoding="utf-8"))
         if previous != snapshot:
             raise ValueError("Locked splits are immutable; create a new versioned split file")
         return previous
-    atomic_write_json(output, snapshot)
-    return snapshot
+    raise FileNotFoundError(output)
+
+
+def verify_company_splits(sources: Path, splits: Path, *, audit: Path | None = None) -> dict:
+    """Recompute a locked split from its original sources and reviewed audit."""
+    locked = json.loads(Path(splits).read_text(encoding="utf-8"))
+    schema = "splits-v2" if audit is not None else "splits-v1"
+    if not isinstance(locked, dict) or locked.get("schema_version") != schema or locked.get("locked") is not True:
+        raise ValueError(f"A locked {schema} file is required; splits-v2 also requires --audit")
+    expected = _split_snapshot(sources, locked.get("companies"), audit=audit)
+    if expected != locked:
+        raise ValueError("Split inventory changed")
+    return locked
 
 
 def prepare_gt_drafts(sources: Path, splits: Path, output: Path, *, pages: int = 50, seed: int = 42,
-                      source_root: Path | None = None) -> dict:
+                      source_root: Path | None = None, audit: Path | None = None) -> dict:
     """Create unannotated draft files with .pending suffixes, never valid GT."""
     import random
     if type(pages) is not int or pages < 1:
         raise ValueError("Pilot page count must be positive")
-    locked = json.loads(Path(splits).read_text(encoding="utf-8"))
-    if locked.get("schema_version") != "splits-v1" or locked.get("locked") is not True:
-        raise ValueError("A locked splits-v1 file is required before annotation")
-    # Revalidate membership and inventory checksum, not merely the locked flag.
-    expected = lock_company_splits(sources, locked["companies"], Path(splits))
-    if expected != locked:
-        raise ValueError("Split inventory changed")
+    locked = verify_company_splits(sources, splits, audit=audit)
     rows = read_sources(sources)
     docs = {item["document_id"]: item for item in locked["documents"]}
     from collections import defaultdict, Counter
@@ -187,7 +277,8 @@ def prepare_gt_drafts(sources: Path, splits: Path, output: Path, *, pages: int =
     source_root = Path(source_root).resolve()
     strata, seen = defaultdict(list), set()
     for row in rows:
-        if row["status"] != "OK" or row["sha256"] in seen or docs[row["document_id"]]["split"] == "test":
+        if (row["status"] != "OK" or row["sha256"] in seen
+                or docs[row["document_id"]]["split"] not in {"train", "dev", "development"}):
             continue
         seen.add(row["sha256"])
         pdf = (source_root / row["relative_path"]).resolve()

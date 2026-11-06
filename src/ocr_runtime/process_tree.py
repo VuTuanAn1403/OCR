@@ -61,7 +61,11 @@ class ProcessTree:
             if not kernel.AssignProcessToJobObject(self.job, wintypes.HANDLE(int(process._handle))):
                 self.close()
                 raise OSError(ctypes.get_last_error(), "Cannot assign phase process to Windows job")
-        self.observe()
+        try:
+            self.observe()
+        except BaseException:
+            self.close()
+            raise
 
     def observe(self):
         try:
@@ -76,7 +80,12 @@ class ProcessTree:
                 raise
 
     def close(self):
-        self.observe()
+        observation_error = None
+        try:
+            self.observe()
+        except BaseException as exc:
+            # Resource exhaustion must not bypass the owned job/group teardown.
+            observation_error = exc
         job_owned = bool(self.job)
         if job_owned:
             if not self.kernel.TerminateJobObject(self.job, 1):
@@ -107,6 +116,8 @@ class ProcessTree:
         survivors = self.survivors()
         if survivors:
             raise ProcessTreeSurvived(survivors)
+        if observation_error is not None:
+            raise observation_error
 
     def survivors(self):
         alive = []

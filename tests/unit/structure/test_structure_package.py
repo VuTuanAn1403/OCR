@@ -26,6 +26,7 @@ class FakeDocling(docling_client.DoclingStructureExtractor):
 docling_client.DoclingStructureExtractor = FakeDocling
 gpu_phase_worker_extractor = FakeDocling
 page = json.loads((fixture / "text_page-0001.json").read_text(encoding="utf-8"))
+page["blocks"][0]["recognition_provenance"] = {"method": "vertical-line-orientation-v1", "rotation_clockwise_degrees": 0}
 atomic_write_json(root / "text" / "page-0001.json", page)
 atomic_write_json(root / "text.done.json", {"files": {"text/page-0001.json": "fixture"}})
 run = json.loads((fixture / "run.json").read_text(encoding="utf-8"))
@@ -37,6 +38,7 @@ out = json.loads((root / "structure" / "page-0001.json").read_text(encoding="utf
 print(json.dumps({"loaded": sorted(m for m in ("vietocr", "ocr_recognition", "src.ocr.application.process_page",
                                                   "torch") if m in sys.modules),
                   "bridge": out["metadata"]["ocr_structure_bridge"], "status": out["metadata"]["docling_structure"]["status"],
+                  "first_block_reviews": out["blocks"][0]["review_reason_codes"],
                   "blocks": len(out["blocks"])}))
 '''
 
@@ -57,4 +59,6 @@ def test_phase_b_does_not_load_recognition(tmp_path):
     report = json.loads(result.stdout.strip().splitlines()[-1])
     assert report["loaded"] == [], report["loaded"]
     assert report["bridge"]["policy"] == "raster-plus-gpu-text-v1" and report["bridge"]["native_text_layer_copied"] is False
+    assert report["bridge"]["orientation_placements"][0]["status"] == "KEPT_FOR_REVIEW"
+    assert "bridge_orientation_unresolved" in report["first_block_reviews"]
     assert report["status"] == "success" and report["blocks"] > 0

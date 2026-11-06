@@ -1,4 +1,4 @@
 # Retired version path. The historical baseline is under benchmark/baselines/.
 config_schema: ocr-profiles-v1
-pipeline: v6.3
+pipeline: v7.0
 profiles_file: profiles.yaml

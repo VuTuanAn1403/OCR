@@ -19,7 +19,7 @@ def read(path):
 
 
 def ocr_files(output):
-    excluded = {*KEYWORD_ARTIFACTS, "COMPLETED.json", "ocr_receipt.json"}
+    excluded = {*KEYWORD_ARTIFACTS, "COMPLETED.json", "ocr_receipt.json", "keyword_two_tier.json"}
     return {p.relative_to(output).as_posix():sha256(p) for p in sorted(output.rglob('*'))
             if p.is_file() and p.name not in excluded and p.name != "manifest.json" and not p.name.endswith(".tmp")}
 

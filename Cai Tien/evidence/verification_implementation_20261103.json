@@ -1,0 +1,44 @@
+{
+  "schema": "ocr-improvement-implementation-verification-v1",
+  "status": "VERIFIED_IMPLEMENTATION_SCOPE",
+  "created_at_bangkok": "2026-11-03T22:31:15.251352+07:00",
+  "accuracy_status": "NOT_EVALUATED",
+  "gt_acceptance_granted": false,
+  "git_head": "a95c806965118b53b3afc28d2ebbff37dec0cfc7",
+  "git_status": " M .gitignore\n M ARCHITECTURE.md\n M README.md\n M benchmark/scientific_evaluation/numeric_metric.py\n M src/ocr_contracts/text_block.py\n M src/ocr_document/README.md\n M src/ocr_document/document_contracts.py\n M src/ocr_document/export.py\n M src/ocr_document/page_assembly.py\n M src/ocr_document/region_tree.py\n M src/ocr_document/resolve_document_layout.py\n M src/ocr_document/section_tree.py\n M src/ocr_recognition/README.md\n M src/ocr_recognition/blocks.py\n M src/ocr_recognition/vietnamese_seq2seq_engine.py\n M src/ocr_text/README.md\n M src/ocr_text/numeric_guard.py\n M src/ocr_text/vietnamese_diacritics.py\n?? AGENTS.md\n?? CLAUDE.md\n?? \"Cai Tien/\"\n?? Doi_Chieu/\n?? \"Test case/\"\n?? docs/development/\n?? scripts/build_dev_context.py\n?? tests/scientific/test_numeric_metric_counterexamples.py\n?? tests/scientific/test_numeric_schema_and_locations.py\n?? tests/scientific/test_testcase_harness.py\n?? tests/unit/document/test_content_flow_contract.py\n?? tests/unit/recognition/test_repetition_evidence.py\n?? tests/unit/recognition/test_rotated_line_crops.py\n?? tests/unit/test_build_dev_context.py\n?? tests/unit/test_document_review_gate_exports.py\n?? tests/unit/test_ocr_review_propagation.py\n?? tests/unit/test_table_evidence_occurrences.py\n?? tests/unit/text/test_digital_term_review.py\n?? tests/unit/text/test_financial_numeric_guard.py\n",
+  "backlog": {
+    "ids": 23,
+    "sha256": "0c3bddab08a77dc5db521daeb0abc1670766f119375a32b739d6e2dc960d551d",
+    "historical_byte_match": true
+  },
+  "trace": {
+    "cases": 65,
+    "functional": 44,
+    "scientific": 21,
+    "test_status_counts": {
+      "VERIFIED_TEST_SUBSET": 51,
+      "NOT_EVALUATED": 14
+    },
+    "sha256": "c7a7c6e5ef5a54f86c1c5a82a1daba05e09f83bd43e0f77616ce315869212937"
+  },
+  "pytest": {
+    "run": "scratch/runs/20261103-222428-1f1dd622",
+    "exit_code": 0,
+    "cases": 1490,
+    "skipped": 1,
+    "junit_sha256": "9a5854db71bd55a60cd8fef7b908a14f41e2ba47558997fed0b615412ead94f4"
+  },
+  "protected_historical_sources_unchanged": 58,
+  "focus_code_hashes": {
+    "src/ocr_text/numeric_guard.py": "4abb71abb8bd2d6d6c79ceaa862e9d96e89e1ce0e71f2427ee2541832d80c7cf",
+    "src/ocr_text/vietnamese_diacritics.py": "031ddfb2363e2654ed9c94ea3390fcfd732e2eb34538ba263eae694074509a23",
+    "benchmark/scientific_evaluation/numeric_metric.py": "3e929e7a6909955bc80ee3b9c7f88ef88e468e1f99a0191606f11e7b640d5185",
+    "src/ocr_document/region_tree.py": "49273af6e858224a4aa68fb9d60f3648e17238c489609cc00aba23df46335194",
+    "src/ocr_document/resolve_document_layout.py": "cd71f61b8ecabf2b013f4793a1c03e500636d07012e054b21a0d1d788057be70",
+    "src/ocr_document/section_tree.py": "e1acf91ed458b3cc61313d0f563933540b0e48b8b7490b7bb34abe5e4aad2b96",
+    "src/ocr_document/document_contracts.py": "1b385719d47e966a035c1cc5f45921e103fe112b66814591d033d4807ec9a778",
+    "src/ocr_document/export.py": "3fa853e3be40ce82f5eb22a60683b55ab2ddec5b49dbe9905771d7da4552d042",
+    "src/ocr_recognition/vietnamese_seq2seq_engine.py": "522cd81e9270c20db0c80e208d0f5599c16634a59ef39561011a9171a1e07722"
+  },
+  "scope_limit": "Focused code hashes and fixture tests; not full model/runtime identity, new GPU OCR, soak or independent GT"
+}

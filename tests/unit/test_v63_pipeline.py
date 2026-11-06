@@ -22,7 +22,7 @@ from src.ocr.runtime.gpu_scheduler import sha256, GPULease
 from src.ocr.runtime.paths import PROJECT_ROOT
 from tests.unit.document_test_helpers import make_doc, block
 
-KEYWORDS = PROJECT_ROOT/"config/keywords.txt"
+KEYWORDS = PROJECT_ROOT/"config/keywords-v1-original.txt"
 
 
 def pdf(path):

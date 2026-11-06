@@ -16,8 +16,8 @@ ROOT = Path(__file__).resolve().parents[3]
 UNICODE_DIR = "thư mục có dấu cách"
 
 
-@pytest.mark.parametrize("name,pipeline", [("profiles.yaml", "v6.3"), ("profiles-v62.yaml", "v6.3"),
-                                           ("profiles-v63.yaml", "v6.3")])
+@pytest.mark.parametrize("name,pipeline", [("profiles.yaml", "v7.0"), ("profiles-v62.yaml", "v7.0"),
+                                           ("profiles-v63.yaml", "v7.0")])
 def test_each_profile_file_declares_its_pipeline(name, pipeline):
     assert config.read_declaration(ROOT / "config" / name) == {"config_schema": config.CONFIG_SCHEMA,
                                                                "pipeline": pipeline}
@@ -38,6 +38,21 @@ def test_versioned_paths_resolve_the_same_canonical_profile():
     assert list(profiles) == ["unified_gpu_full_ocr"]
     for name in ("profiles-v62.yaml", "profiles-v63.yaml"):
         assert config.load_profiles(ROOT / "config" / name) == (canonical, profiles)
+
+
+def test_existing_v63_alias_and_cli_version_resolve_to_v70(tmp_path, capsys):
+    from ocr_pipeline.cli import main
+    from ocr_document.manifest_exporter import PIPELINE_VERSION
+
+    alias = tmp_path / "previous.yaml"
+    canonical = ROOT / "config/profiles.yaml"
+    alias.write_text(f"pipeline: v6.3\nprofiles_file: {canonical.as_posix()}\n", encoding="utf-8")
+    assert config.resolve_config_path(alias) == canonical
+    assert config.declared_pipeline(alias) == "v7.0"
+    assert PIPELINE_VERSION == "7.0.0"
+    with pytest.raises(SystemExit) as error:
+        main(False, argv=["--version"])
+    assert error.value.code == 0 and capsys.readouterr().out.strip() == "OCR PDF v7.0 (7.0.0)"
 
 
 @pytest.mark.parametrize("head,message", [("pipeline: v7\n", "pipeline must be one of"),
@@ -159,7 +174,7 @@ def test_diagnosis_is_read_only_and_light(tmp_path):
     assert Path(cache["path"]) == (tmp_path / UNICODE_DIR).resolve()
     assert cache["source"] == "OCR_CACHE_DIR" and cache["exists"] is False
     declared = {Path(row["file"]).name: row["declaration"].get("pipeline") for row in report["profile_files"]}
-    assert set(declared.values()) == {"v6.3"}
+    assert set(declared.values()) == {"v7.0"}
     cli = subprocess.run([sys.executable, "-m", "ocr_runtime.diagnose"], cwd=tmp_path, env=env, capture_output=True,
                          text=True, encoding="utf-8", timeout=120)
     assert cli.returncode == 0 and "[layout]" in cli.stdout

@@ -257,6 +257,31 @@ def test_continuation_candidate_requires_structure_and_a_signal():
     assert marked and "continuation_marker" in marked["signals"]
 
 
+@pytest.mark.parametrize("first_row", ["CÔNG TY CỔ PHẦN CHỨNG KHOÁN AGRIBANK", "Đơn vị tính: triệu VND"])
+def test_repeated_page_title_or_unit_is_not_repeated_columns(first_row):
+    head = [first_row, "", ""]
+    assert _continuation([head, ["Thu nhập khác", "15.825.000", "1.963.910"]],
+                         [head, ["Chi phí khác", "30.097.845", "207.770.163"]],
+                         between=["THUYẾT MINH BÁO CÁO TÀI CHÍNH (Tiếp theo)"]) is None
+
+
+def test_repeated_headers_must_occupy_the_same_column_spans():
+    a = table([["Chỉ tiêu", "2021", ""], ["Chi phí", "100", "90"]])
+    b = table([["Chỉ tiêu", "2021", ""], ["Lãi vay", "75", "70"]])
+    b.cells[1].col_span = 2
+    b.cells.pop(2)  # the merged header has no separate third-column anchor
+    assert continuation_candidate(a, [50, 500, 545, 800], 842, b, [50, 60, 545, 300], 842, [], False) is None
+
+
+def test_new_caption_and_closed_table_barriers_keep_carry_control():
+    header = ["Chỉ tiêu", "Năm 2022", "Năm 2021"]
+    first = [header, ["Thu nhập khác", "500", "600"], ["Cộng", "500", "600"]]
+    next_rows = [["Chi phí thuê tài sản", "100", "110"]]
+    assert _continuation(first, next_rows) is None
+    assert _continuation(first, next_rows, between=["Cộng chuyển sang"]) is not None
+    assert _continuation(first, [header, *next_rows], between=["Bảng: Chi phí khác"]) is None
+
+
 def _page(number, tables):
     return ExtractedPage(page_num=number, width=595, height=842, page_type=PageType.NATIVE_TEXT,
                          tables=tables, regions=[Region(region_id=f"r{number}", bbox=BoundingBox(

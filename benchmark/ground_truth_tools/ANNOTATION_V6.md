@@ -68,6 +68,121 @@ Ghi annotator ID, reviewer ID, ngày, nguồn tiền gán nhãn (nếu có) và 
 
 Xuất GT sang format evaluator đã chọn bằng bước chuyển đổi có kiểm tra schema. Không coi layout draft là COCO JSON: scientific runner nhận COCO categories/annotations/images hoặc các records theo API; phải ghi mapping page→image ID và bbox format. Text evaluator hiện có tìm `<document_id>_page_NNNN.txt` (ví dụ `example_page_0001.txt`); dùng ID đầy đủ và thư mục GT riêng để tránh policy prefix legacy. Chỉ tạo file đó sau khi xác minh và lưu manifest human review. Table/structure/labels/KIE cần GT và evaluator tương ứng; không dùng confidence để thay chất lượng.
 
+## Quy trình chuẩn bị corpus nghiệm thu mới
+
+Quy tắc kiểm mẫu 20% ở trên áp dụng cho pilot V6 lịch sử. Với corpus nghiệm thu theo tài liệu 07 và 09, mỗi đơn vị cần hai người gán nhãn độc lập từ ảnh. Người phân xử lưu hai bản nhãn gốc, kết quả thống nhất, lý do loại trừ hoặc bất đồng và danh tính người thực hiện. Ghi đơn vị nguồn, PDF SHA-256, trang, bbox, hệ tọa độ và hash ảnh. Đối chiếu cả ô rỗng, số có 0 đầu, dấu và lần lặp thật. Giữ phần chưa rà ở trạng thái thiếu nhãn. Khóa guideline và quy tắc phân xử trước khi bắt đầu holdout.
+
+Nhãn AI sơ bộ được lưu riêng với actor/provenance và trạng thái `AI_DRAFT`, không tự chuyển thành `HUMAN_VERIFIED` do hai tác nhân đồng ý. Với quy trình source-only đã chọn, không cấp bản AI/OCR/workbook cho hai người A/B trước khi họ nộp và khóa phiếu riêng. Khóa hash A/B trước khi phân xử; giữ bản gốc và lý do sửa. Hoàn tất packet hoặc đồng thuận AI không chứng minh accuracy hay độc lập thống kê.
+
+Với bảng qua trang, dùng bộ phiếu L5 có bbox theo pixel ảnh cho từng mảnh ô qua ranh giới. Công cụ kiểm hai phiếu, khóa hash và nhận quyết định C để xuất bộ nhãn vùng ngắt dành cho phát triển. [Cách tiếp nhận L5](TABLE_BOUNDARY_INTAKE_V7.md).
+
+### Tiếp nhận và khóa phiếu người cho pilot keyword
+
+Điều phối viên chốt bản guideline dùng chung trước khi giao ảnh. Lưu nguyên bytes guideline đó đến hết lượt. Mỗi tài liệu dùng một source manifest `keyword-pilot-regions-v1` và thư mục phiếu mới. Hai người nhận gói ảnh và phiếu riêng, đọc phần đích đánh dấu trong từng ảnh, chép nguyên văn, giữ `020`/`O2O`, dấu, chữ hoa và lần lặp. Giữ `transcription: null` và ghi `ambiguity_reason` nếu chưa đọc được. Chỉ dùng `transcription: ""` khi xác nhận vùng rỗng, kèm `annotation_state: "annotated_empty"` và `empty_reason`. Giữ ID vùng, trang, hash ảnh và tọa độ đích đã cấp.
+
+Nhận `annotation_A.json` và `annotation_B.json` riêng, giữ bytes gốc. Ghi `annotator_id` và `completed_at` có múi giờ trên phiếu khi nộp. Chạy các lệnh từ thư mục gốc dự án bằng Python supervisor. Trong ví dụ, đặt `$source`, `$packets`, `$guideline` theo hồ sơ thực, `$custody` là thư mục mới nằm ngoài `$packets`, `$receiver` là ID điều phối viên và `$dictionary` là snapshot từ batch dùng để đối chiếu.
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path src).Path
+$tool = @('-B', '-m', 'benchmark.ground_truth_tools.human_annotations')
+$common = @('--source', $source, '--packets', $packets, '--guideline', $guideline)
+$ab = Join-Path $custody 'declarations-ab.json'
+$seal = Join-Path $custody 'seal-ab.json'
+$c = Join-Path $custody 'declaration-c.json'
+$decision = Join-Path $packets 'adjudication.json'
+& .venv/Scripts/python.exe @tool declaration-template @common --output $ab
+```
+
+Mẫu xác nhận ghim SHA-256 của từng phiếu và để trống lời xác nhận. Sau khi xác minh trực tiếp với từng người, điều phối viên lưu `actor_type: "HUMAN"`, `completed_at`, `confirmed_at` có múi giờ và các xác nhận `source_images_checked`, `no_model_or_workbook`, `no_peer_before_submission`. Giữ hồ sơ gốc chứng minh ai nộp, thời điểm nộp và tài liệu đã giao. Chỉ chuyển cho người C sau khi khóa hai phiếu.
+
+```powershell
+& .venv/Scripts/python.exe @tool seal @common --declarations $ab --received-by $receiver --output $seal
+& .venv/Scripts/python.exe @tool adjudication-template @common --declarations $ab --seal $seal --output $decision
+```
+
+C là người khác A/B. C đọc lại ảnh của mỗi vùng, kể cả khi A/B đồng ý, rồi điền `adjudicator_id`, `completed_at` có múi giờ, bản chép, `source_checked: true` và `decision_reason`. Giữ hash A/B do mẫu sinh. Tạo mẫu xác nhận C sau khi nhận phiếu C đã điền, rồi ghi xác nhận thật về danh tính, thời điểm, việc đọc ảnh và việc không xem OCR/workbook.
+
+```powershell
+& .venv/Scripts/python.exe @tool declaration-template @common --declaration-role C --seal $seal --output $c
+# Complete C's declaration before running the audit.
+$locked = @('--declarations', $ab, '--seal', $seal, '--adjudicator-declaration', $c)
+& .venv/Scripts/python.exe @tool audit @common @locked --output (Join-Path $custody 'audit.json')
+& .venv/Scripts/python.exe @tool export-keywords @common @locked --dictionary $dictionary --output (Join-Path $custody 'keyword-gt-development.json')
+```
+
+Lệnh `audit` trả mã `0` khi hồ sơ khai báo đầy đủ để điều phối viên duyệt, `1` khi thiếu phiếu hoặc xác nhận, `2` khi input không hợp lệ hoặc lỗi I/O. Lệnh chỉ tạo file mới. Khi phiếu đổi, lưu bản cũ và thực hiện lại quy trình với đường dẫn mới. Mặc định các đường dẫn nguồn PDF/ảnh trong manifest được giải từ thư mục gốc dự án. Dùng `--source-root` nếu ảnh/PDF hợp lệ nằm trong một cây dữ liệu khác.
+
+Điều phối viên chịu trách nhiệm xác minh người thật, độc lập và nội dung ảnh. Kết quả xuất giữ văn bản nguyên gốc, vị trí, hash và các occurrence literal theo snapshot từ điển. Bộ nhãn này chỉ dùng cho `development`. Scorecard holdout từ chối artifact mang partition đó và tình trạng nghiệm thu vẫn là `NOT_EVALUATED`.
+
+### Phân tập và rà rò rỉ
+
+`splits-v2` nhận đúng bốn khóa trong assignments JSON gồm `train`, `development`, `calibration`, `holdout`. Mỗi khóa chứa danh sách ID công ty đã xác minh. Với nghiệm thu mới, dùng audit `split-leakage-audit-v2` có các trường sau.
+
+- `schema_version` có giá trị `split-leakage-audit-v2` và `sources_sha256` là SHA-256 của CSV inventory đã bổ sung company ID. Giữ `status: DRAFT` trong lúc rà. Sau khi có đủ bằng chứng, người phụ trách điền `status: REVIEWED`, `reviewed_at` có múi giờ, `reviewed_by` và `holdout_custodian`.
+- `template_groups` và `near_duplicate_groups` là hai map từ ID tài liệu sang nhóm đã rà, bao gồm cả tài liệu thuộc nhóm một phần tử. Mọi tài liệu trong CSV đều cần có mặt. Cùng nhóm phải thuộc cùng partition.
+- `source_dispositions` có một mục cho mỗi ID tài liệu. Mỗi mục khai báo `status`, `exposure_evidence` và `rights_evidence`. Dùng `development_only` cho tài liệu đã dùng phân tích lỗi hoặc điều chỉnh hệ thống. Dùng `eligible_for_assignment` sau khi người phụ trách kiểm lịch sử sử dụng và quyền dùng. Tham chiếu bằng chứng cần chỉ rõ hồ sơ đã rà. Tài liệu `development_only` chỉ được gán vào `development`; những tài liệu cùng công ty hoặc cùng nhóm đã rà phải đi cùng partition.
+- `partition_access` có hai tham chiếu hồ sơ quyền truy cập riêng cho `calibration` và `holdout`. Điều phối viên đối chiếu quyền truy cập thực tế và giữ bằng chứng. CLI kiểm hai tham chiếu khác nhau và ghim bytes audit; việc kiểm quyền trên máy hoặc kho dữ liệu do người phụ trách thực hiện.
+
+```powershell
+ocrpdf-collect splits --sources sources.csv --assignments assignments-v2.json --audit split-audit.json --output splits-v2.locked.json
+ocrpdf-collect drafts --sources sources.csv --splits splits-v2.locked.json --audit split-audit.json --output pilot-v2 --pages 50 --seed 42
+```
+
+Audit là kết quả rà do người phụ trách cung cấp. CLI kiểm tính đầy đủ, membership và hash. Lệnh tạo pilot chỉ lấy train và development. Khóa lịch sử dùng audit v1 vẫn đọc được ở lệnh chẩn đoán. Preflight nghiệm thu yêu cầu bằng chứng nguồn theo audit v2. Khi đổi inventory, nhóm audit hoặc phân tập, dùng đường dẫn khóa mới.
+
+#### Tạo danh sách cặp PDF để rà
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path src).Path
+.venv/Scripts/python.exe -B -m benchmark.scientific_evaluation.source_overlap `
+  --sources scratch/HOSO/sources.csv --source-root inputs `
+  --canonical-batch output/BATCH --report scratch/HOSO/pair-worklist.json
+```
+
+Bỏ `--canonical-batch` để dùng lớp chữ PDF. Khi có tùy chọn này, công cụ xác minh batch và đối chiếu đúng tập PDF rồi dùng chữ thô trong frozen evidence. Cả hai chế độ render ảnh thu nhỏ bằng CPU và kiểm SHA-256 PDF, số trang, SHA-256 inventory. Trang có cảnh báo render bị loại khỏi so sánh ảnh. Nếu dùng lớp chữ PDF, cảnh báo render hoặc đọc chữ cũng loại trang khỏi so chữ. Các trang thiếu tín hiệu được phản ánh trong mẫu số. Công cụ giữ cả cặp có cùng SHA-256 của PDF.
+
+Danh sách ghi số trang vật lý và bằng chứng theo từng cặp tài liệu. So chữ dùng cụm bốn token, NFC và casefold cho mục đích truy hồi. So bố cục dùng cosine trên lưới ảnh xám chuẩn hóa và giới hạn chênh lệch tỷ lệ trang. Có thể gặp ảnh giống nhau do mẫu kiểm toán, trang bìa hoặc biểu mẫu chung. Điểm giống và ảnh thu nhỏ trùng là tín hiệu để xem ảnh nguồn. Người phụ trách ghi lý do, chốt nhóm sau khi xem bằng chứng và kiểm quyền sử dụng. Báo cáo giữ `DRAFT_FOR_CURATOR`, `NOT_EVALUATED` và mọi quan hệ nhóm để trống.
+
+## GT cấu trúc cho báo cáo chẩn đoán
+
+Lưu một file `structured-page-gt-v1` cho từng tài liệu. Đầu file có `schema_version`, `document_id`, `pdf_sha256`, `total_pages` và danh sách `pages`. Từng trang ghi `page` bắt đầu từ 1, `coordinate_space` và `transforms` đúng không gian ảnh đã gán nhãn. Bbox dùng `[x0, y0, x1, y1]` theo điểm PDF, gốc trên trái. Với trang xoay, ghi phép xoay như extraction.
+
+- `tables` chứa `id`, `bbox` và một bảng HTML trong `html`. Dùng `[]` khi đã rà và trang không có bảng. Thiếu trường hoặc `null` biểu thị chưa rà.
+- `numeric_cells_complete: true` xác nhận đã rà toàn bộ bảng trên trang. Khi đó mỗi bảng cần `numeric_cells`, kể cả danh sách rỗng. Ghi toàn văn từng ô chứa chữ số trong `value` và tọa độ logic `row`, `col` bắt đầu từ 0. Phép chấm ghép bảng bằng IoU rồi so ô theo hàng và cột, giữ dấu, ký hiệu và số 0 đầu. Chỉ số này đo ô chứa chữ số, chưa phân loại nghiệp vụ, đơn vị, kỳ báo cáo hoặc độ nghiêm trọng.
+- `reading_order` có `nodes` và `before_pairs`. Mỗi node có `id`, `text` và `bbox`. Chỉ gán các cặp có quan hệ đọc xác định, giữ cả node ngắn, số và chữ lặp. Dùng `adjacent_pairs` nếu nguồn xác định hai node phải liền nhau, mỗi cặp cần nằm trong `before_pairs`. Danh sách cặp rỗng vẫn cho phép đếm node thừa/thiếu. Phạm vi v1 là các text block hiển thị trong extraction.
+- `layout` là danh sách vùng vật lý gồm `id`, `category` theo taxonomy V6 và `bbox` dạng `xyxy` trong cùng hệ tọa độ/transform với trang. Dùng `[]` cho trang đã rà và xác nhận rỗng. Thiếu trường hoặc `null` biểu thị chưa gán nhãn. Vùng loại trừ dùng `ignore: true`. Vùng crowd dùng `iscrowd: true` và cần category. Hai cờ là boolean và không bật cùng lúc.
+
+```powershell
+.venv/Scripts/python.exe scripts/run_scientific_benchmark.py --prediction output/RUN/DOC --ground-truth benchmark/ground_truth --structured-gt scratch/DOC.structure.json --output-dir scratch/DOC-score
+```
+
+Harness trong `Test case/scientific_benchmark_harness.py` cũng nhận `--structured-gt`. Báo cáo giữ riêng điểm chữ từ `result.md`, điểm cấu trúc từ `extraction.json`, hash hai file dùng cho chấm cấu trúc và các trang thiếu đầu ra theo modality. Phần cấu trúc đối chiếu ID và tiền tố SHA-256 ghi trong extraction. Nghiệm thu cần liên kết SHA-256 đầy đủ với receipt của run, GT và protocol đã khóa. Điểm chẩn đoán có thể đo trên dữ liệu phát triển trước khi đủ điều kiện nghiệm thu.
+
+### Chấm bố cục vật lý
+
+Adapter `canonical-layout-boxes-v1` đọc bbox và role từ `extraction.json`. Đầu/chân trang đã nhận dạng vẫn tham gia vì đây là bố cục trên trang. Số trang đứng riêng nằm ngoài taxonomy và có danh sách loại riêng. Table dùng bbox bảng, còn fragment mang nhãn ô rời không tự đổi thành Table. Giữ ID vùng chưa ánh xạ hoặc thiếu bbox để tính vùng thừa.
+
+Ghép một-một theo lớp tại IoU ≥ 0,5, ưu tiên số cặp khớp rồi tổng IoU. Dự đoán trùng một vùng hợp lệ vẫn tính thừa. Vùng ignore áp ngưỡng chồng 0,5 theo diện tích dự đoán. Vùng crowd chỉ bỏ qua dự đoán cùng lớp. Báo cáo giữ TP/FP/FN và ID vùng khớp/thừa/thiếu, kể cả trang xác nhận rỗng hoặc trang thiếu đầu ra. `Footnote` có mặt trong chẩn đoán và không thay cho một lớp bắt buộc của V6.
+
+Khi có nhãn hợp lệ, báo cáo chẩn đoán có thể tính COCO mAP bằng `pycocotools`. Bbox không có điểm layout xuất bản dùng cùng thứ hạng mặc định. Điểm confidence của nhận dạng chữ không được dùng để xếp hạng mAP bố cục. Scorecard paired dùng số đếm ghép bbox thay vì trung bình mAP từng trang.
+
+GT dùng ở scorecard cần `intended_partition: holdout`. Khi protocol khai báo modality `layout`, khóa kế hoạch, ngưỡng tuyệt đối và margin của hai metric overall `layout_recall = TP/(TP+FN)` và `layout_errors_per_gt = (FP+FN)/(TP+FN)`. Dùng mẫu số chung là vùng GT thường, không gồm ignore/crowd. Giữ FP của trang được gán nhãn rỗng trong tử số. Cổng giữ `NOT_EVALUATED` nếu thiếu lớp GT bắt buộc hoặc thiếu chỉ số overall. Đơn vị có GT mà thiếu prediction vẫn chịu lỗi trong mẫu số.
+
+### Căn thứ tự đọc khi khối bị tách hoặc gộp
+
+Hai người gán nhãn đọc ảnh và người phân xử chốt GT nguồn, gồm node, thứ tự và cặp liền nhau. Chốt `reading_order.alignment_mode` theo trang trước khi rà prediction. Dùng `automatic` hoặc bỏ trường để giữ cách ghép một-một V6.2. Dùng `reviewed_spans` trên trang yêu cầu đối chiếu từng đoạn. Hai phía baseline/candidate dùng cùng chế độ của GT. Khi khóa holdout, đưa file GT vào manifest đã khóa trước khi mở prediction để rà.
+
+Sau khi khóa GT, người rà căn nguồn lập **một artifact mỗi tài liệu và mỗi prediction**. Schema `ocr-reading-order-alignment-v1` có `document_id`, `pdf_sha256`, `ground_truth_sha256`, `extraction_sha256`, `intended_partition`, `reviewed_by`, `reviewed_at` (ISO 8601 có múi giờ), `reviewed_against_source: true` và `pages`. Mỗi trang có số trang vật lý `page` và `mappings`. Mỗi mapping có `gt_id`, `reason` và `spans` dưới dạng `{"prediction_id": "...", "start": 0, "end": 3}`.
+
+- Offset là chỉ số code point bắt đầu từ 0 trên chính `text_corrected` của item, tính đoạn `[start, end)`. Giữ nguyên dấu và khoảng trắng khi tính offset. Chỉ chọn đoạn chứa chữ hoặc ký hiệu có nghĩa trong text block hiển thị có bbox giao với node nguồn.
+- Khối tách dùng nhiều span cho cùng một GT node. Khối gộp dùng những span rời nhau trong cùng prediction item. Mỗi đoạn prediction dùng tối đa một lần. Căn theo ảnh và bằng chứng vị trí, giữ các đoạn thiếu hoặc thừa đúng như đầu ra.
+- Rà toàn bộ node trong trang khai báo `reviewed_spans`. Node vắng mặt bỏ khỏi `mappings`; `mappings: []` xác nhận đã rà và không có node nào khớp. Nếu còn điểm chưa rõ, giữ hồ sơ trang chưa nộp cho tới khi phân xử.
+- Cặp đúng khi mọi span của node trước kết thúc trước hoặc đúng điểm bắt đầu của span đầu tiên của node sau. Các đoạn xen kẽ tính cặp sai. Cặp liền nhau còn yêu cầu giữa hai đoạn không có nội dung khác hoặc block chen vào. Báo riêng GT node khớp, prediction block được dùng, khối thừa và cặp đúng.
+
+Truyền `--reading-order-alignment <file>` cùng `--structured-gt <file>` vào scientific runner hoặc harness. Nếu còn trang có prediction nhưng thiếu hồ sơ căn bắt buộc, aggregate giữ `NOT_EVALUATED` và ghi danh sách trang. Trang có GT mà thiếu prediction vẫn chịu lỗi trong mẫu số. Người điều phối kiểm danh tính và đối chiếu thực tế; phần mềm kiểm phạm vi, span, khai báo và hash file.
+
+Ở scorecard dùng `--reading-order-alignments <index>`. Cổng phát hành dùng `--baseline-reading-order-alignments <index>` và `--candidate-reading-order-alignments <index>`. Mỗi index `ocr-reading-order-alignment-index-v1` có `side`, `prediction_inventory_sha256` và `documents` ánh xạ ID tài liệu sang `path` tương đối, `sha256`. Artifact dùng cho scorecard cần `intended_partition: holdout`; kết quả chấm giữ hash căn nguồn theo trang.
+
 ## 3. Bootstrap paired và Holm
 
 Một count report cho mỗi metric có metadata giống nhau ở B0/candidate:

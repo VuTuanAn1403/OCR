@@ -21,6 +21,7 @@ from ocr_recognition.ocr_quality import OCRQualityEvaluator
 from ocr_recognition.rapidocr_engine import RapidOCREngine
 from ocr_recognition.vietnamese_seq2seq_engine import VietnameseSeq2SeqEngine
 from ocr_recognition.diacritic_retry import diacritic_retry_settings
+from ocr_recognition.short_token_retry import short_token_retry_settings
 from ocr_document.reading_order import READING_ORDER_METHODS
 from ocr_runtime.config import ConfigError
 from ocr_structure.docling_client import DoclingStructureExtractor
@@ -31,6 +32,7 @@ def validate_page_config(config: Dict[str, Any]) -> bool:
     """Reject page settings that would otherwise be silently misread; returns native_first."""
     try:
         diacritic_retry_settings(config)
+        short_token_retry_settings(config)
     except ValueError as exc:
         raise ConfigError(str(exc)) from exc
     native_first = config.get("native_first", True)
@@ -80,6 +82,7 @@ def build_page_engines(doc, config: Dict[str, Any], *, legacy_furniture: bool,
                                                        num_threads=threads or 2)
         engines.ocr_engine = VietnameseSeq2SeqEngine(
             batch_size=config.get("batch_size", 16), device=config.get("device"),
+            horizontal_180_retry_threshold=config.get("horizontal_180_retry_threshold"),
             **detector_args,
             **({"num_threads": threads} if threads is not None else {}))
     else:

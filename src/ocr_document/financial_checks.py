@@ -23,6 +23,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 from ocr_contracts.table import TableStructure
 
 METHOD = "financial-checks-v2"
+CONTINUATION_METHOD = "table-continuation-signals-v2"
 _DASHES = {"-", "–", "—", "−"}
 _SPACE_GROUPED = re.compile(r"\d{1,3}(?: \d{3})+(?:[.,]\d+)?")
 _SHAPES = {
@@ -48,9 +49,10 @@ _LEVEL_STYLES = (
     ("roman_rows", re.compile(r"^(?:[IVX]|[IVXLC]{2,})\s*[.)\-–]\s")),
     ("arabic_rows", re.compile(r"^\d{1,2}\s*[.)]\s")),
 )
-_CONTINUATION_MARKER = re.compile(r"tiếp theo|\(tiếp\)|continued|cộng chuyển sang|chuyển sang|mang sang",
-                                  re.IGNORECASE)
-_CAPTION = re.compile(r"^(bảng|biểu|table)\s*\d", re.IGNORECASE)
+_CAPTION = re.compile(r"^(?:bảng|biểu(?: đồ)?|table)(?:\s*\d|\s*[:：])", re.IGNORECASE)
+_CARRY = re.compile(r"\b(?:chuyển sang|mang sang|carried forward|brought forward)\b", re.IGNORECASE)
+_CONTINUATION_MARKER = re.compile(r"tiếp theo|\(tiếp\)|continued|" + _CARRY.pattern, re.IGNORECASE)
+_CLOSING_TOTAL = re.compile(r"(?:tổng cộng|cộng|grand total|total)\s*[:：]?")
 _UNIT_RATIO_LIMIT = 50  # totals further apart than this are in different units
 
 
@@ -391,6 +393,16 @@ def _compare_identity(left: Dict[str, Any], right: Dict[str, Any]) -> Dict[str, 
             {"table_id": right["table_id"], "row": right["row"], "col": rc, "value": str(b)})]}
 
 
+def _leading_column_header(grid: _Grid) -> tuple:
+    if not grid.rows or grid.rows[0] not in grid.header_rows:
+        return ()
+    row = grid.rows[0]
+    cells = sorted((cell.col_idx, cell.col_span, _norm(cell.text)) for cell in grid.table.cells
+                   if cell.row_idx == row and _norm(cell.text))
+    # A single full-width title/unit or page masthead is not a column header.
+    return tuple(cells) if len({col for col, _, _ in cells}) >= 2 else ()
+
+
 def continuation_candidate(previous: TableStructure, previous_box: Sequence[float], previous_height: float,
                            following: TableStructure, following_box: Sequence[float], following_height: float,
                            between_texts: Sequence[str], heading_between: bool) -> Optional[Dict[str, Any]]:
@@ -403,10 +415,18 @@ def continuation_candidate(previous: TableStructure, previous_box: Sequence[floa
     if any(_CAPTION.match(text.strip()) for text in between_texts):
         return None
     before, after = _Grid(previous), _Grid(following)
-    first_prev = [_norm(before.text(before.rows[0], c)) for c in before.cols] if before.rows else []
+    if before.duplicates or after.duplicates:
+        return None
     first_next = [_norm(after.text(after.rows[0], c)) for c in after.cols] if after.rows else []
-    header_repeated = bool(first_prev) and first_prev == first_next
+    header = _leading_column_header(before)
+    header_repeated = bool(header) and header == _leading_column_header(after)
     next_starts_with_data = bool(after.rows) and after.rows[0] in after.data_rows
+    if not header_repeated and next_starts_with_data and before.rows:
+        last = before.rows[-1]
+        carry_context = [*between_texts, *first_next, *(before.text(last, col) for col in before.cols)]
+        if (last in before.data_rows and _CLOSING_TOTAL.fullmatch(_norm(before.label(last)))
+                and not any(_CARRY.search(text) for text in carry_context)):
+            return None
     signals = []
     if any(_CONTINUATION_MARKER.search(text) for text in [*between_texts, " ".join(first_next)]):
         signals.append("continuation_marker")
@@ -421,6 +441,6 @@ def continuation_candidate(previous: TableStructure, previous_box: Sequence[floa
         unverified.append("unit_and_period")  # no repeated header to compare
     if between_texts:
         unverified.append("text_between_tables")
-    return {"status": "CANDIDATE", "method": METHOD,
+    return {"status": "CANDIDATE", "method": CONTINUATION_METHOD,
             "signals": signals + (["header_repeated"] if header_repeated else ["next_starts_with_data"]),
             "unverified": unverified, "merged": False}

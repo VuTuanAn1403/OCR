@@ -133,9 +133,11 @@ class UnicodeNormalizer:
 
     @classmethod
     def _normalize_basic(cls, text: str) -> str:
-        # First fix CMap control chars and erroneous typography substitutions
-        text = cls.fix_cmap_and_typography(text)
+        return cls.normalize_ocr_text(cls.fix_cmap_and_typography(text))
 
+    @classmethod
+    def normalize_ocr_text(cls, text: str) -> str:
+        """Clean OCR formatting without applying PDF font or dictionary guesses."""
         for old, new in cls.REPLACEMENTS.items():
             text = text.replace(old, new)
 

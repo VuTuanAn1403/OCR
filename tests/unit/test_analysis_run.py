@@ -325,3 +325,136 @@ def test_broken_standalone_source_is_a_failed_row(tmp_path, no_ocr):
     report = run_analysis([broken], tmp_path / "analysis", KEYWORDS)
     (row,) = report["documents"]
     assert row["id"] == "standalone" and row["outcome"] == "FAILED_DOCUMENT" and row["counts"] is None
+
+
+
+def test_analysis_run_exports_keyword_two_tier_companion_artifact(extraction, tmp_path, no_ocr):
+    source, _ = extraction
+    output = tmp_path / "analysis_two_tier"
+    report = run_analysis([source], output, KEYWORDS)
+    assert all(r["outcome"] == "SUCCEEDED" for r in report["documents"])
+    for doc_id in ("a", "b", "c"):
+        two_tier_file = output / doc_id / "keyword_two_tier.json"
+        assert two_tier_file.is_file()
+        data = json.loads(two_tier_file.read_text(encoding="utf-8"))
+        assert data["schema_version"] == "keyword-two-tier-v2"
+        assert data["document_id"] == doc_id
+        assert data["tier2_candidate_status"] == "EVALUATED"
+        assert data["tier2_review_status"] == "NOT_EVALUATED"
+        assert data["tier2_total_reviewed"] is None
+        assert data["tier1_total_literal"] >= 0
+
+
+def alias_input(source, tmp_path):
+    from ocr_keywords.alias_map import AliasDecision, find_alias_candidates
+    from ocr_keywords.contract import dictionary_snapshot, count_report
+    key = tmp_path / "alias-keys.txt"
+    key.write_text("chuyển đổi sổ\n", encoding="utf-8")
+    snapshot = dictionary_snapshot(key, "custom-alias")
+    md = source / "a/result.md"
+    pdf_hash = json.loads((source / "a/keyword_counts.json").read_text(encoding="utf-8"))["pdf_sha256"]
+    report = count_report("a", pdf_hash, md, snapshot, [1])
+    candidates = find_alias_candidates(md.read_text(encoding="utf-8"), snapshot)
+    assert len(candidates) == 1  # This test must exercise a genuine alias.
+    cand = candidates[0]
+    item = AliasDecision(decision_id="accept-a", document_id="a", pdf_sha256=pdf_hash,
+        result_md_sha256=report["identity"]["result_md_sha256"],
+        dictionary_snapshot_hash=snapshot["snapshot_sha256"],
+        keyword_id=cand.keyword_id, keyword=cand.keyword, observed_text=cand.observed_text,
+        match_start=cand.match_start, match_end=cand.match_end, reviewer="operator-test")
+    return key, item
+
+
+def test_analysis_run_reconciles_alias_decisions_bundle(extraction, tmp_path, no_ocr):
+    from ocr_keywords.alias_map import save_alias_decisions
+    source, _ = extraction
+    before = tree_hashes(source)
+    keys, item = alias_input(source, tmp_path)
+    bundle = tmp_path / "decisions.json"
+    save_alias_decisions(bundle, [item])
+    output = tmp_path / "analysis-alias"
+    result = run_analysis([source], output, keys, keyword_set_version="custom-alias", alias_decisions=bundle)
+    assert all(row["outcome"] == "SUCCEEDED" for row in result["documents"])
+    tiers = json.loads((output / "a/keyword_two_tier.json").read_text(encoding="utf-8"))
+    assert tiers["tier1_total_literal"] == 0
+    assert tiers["tier2_total_reviewed"] == 1
+    config = json.loads((output / "batch_config.json").read_text(encoding="utf-8"))
+    frozen = config["alias_decisions"]
+    assert frozen["decisions"][0]["pdf_sha256"] == item.pdf_sha256
+    assert frozen["source_sha256"] == hashlib.sha256(bundle.read_bytes()).hexdigest()
+    assert tiers["decision_snapshot_sha256"] == frozen["snapshot_sha256"]
+    companion_bytes = (output / "a/keyword_two_tier.json").read_bytes()
+    run_analysis([source], output, keys, keyword_set_version="custom-alias", alias_decisions=bundle, resume=True)
+    assert (output / "a/keyword_two_tier.json").read_bytes() == companion_bytes
+    assert tree_hashes(source) == before
+
+
+def test_changed_decisions_cannot_resume_and_new_output_uses_them(extraction, tmp_path, no_ocr):
+    from ocr_keywords.alias_map import save_alias_decisions
+    source, _ = extraction
+    keys, item = alias_input(source, tmp_path)
+    bundle, output = tmp_path / "decisions.json", tmp_path / "analysis-empty"
+    save_alias_decisions(bundle, [])
+    run_analysis([source], output, keys, keyword_set_version="custom-alias", alias_decisions=bundle)
+    before = tree_hashes(output)
+    save_alias_decisions(bundle, [item])
+    with pytest.raises(ValueError, match="BATCH_IDENTITY_MISMATCH"):
+        run_analysis([source], output, keys, keyword_set_version="custom-alias", alias_decisions=bundle, resume=True)
+    # Failed resume must not rewrite any accepted document artifact.
+    assert (output / "a/keyword_two_tier.json").read_bytes()
+    assert tree_hashes(output) == before
+    fresh = tmp_path / "analysis-reviewed"
+    run_analysis([source], fresh, keys, keyword_set_version="custom-alias", alias_decisions=bundle)
+    tiers = json.loads((fresh / "a/keyword_two_tier.json").read_text(encoding="utf-8"))
+    assert tiers["tier2_total_reviewed"] == 1
+
+
+def test_missing_decisions_fail_before_creating_analysis(extraction, tmp_path, no_ocr):
+    source, _ = extraction
+    output = tmp_path / "missing-decisions-analysis"
+    with pytest.raises(FileNotFoundError):
+        run_analysis([source], output, KEYWORDS, alias_decisions=tmp_path / "missing.json")
+    assert not output.exists()
+
+
+def test_decisions_changed_during_run_never_reach_ledger(extraction, tmp_path, monkeypatch, no_ocr):
+    import sqlite3
+    from ocr_keywords.alias_map import save_alias_decisions
+    source, _ = extraction
+    keys, item = alias_input(source, tmp_path)
+    bundle, output = tmp_path / "decisions.json", tmp_path / "analysis-interrupted"
+    save_alias_decisions(bundle, [])
+    original = analysis_run.export_document
+    def change_during_export(*args, **kwargs):
+        result = original(*args, **kwargs)
+        save_alias_decisions(bundle, [item])
+        return result
+    monkeypatch.setattr(analysis_run, "export_document", change_during_export)
+    with pytest.raises(IdentityMismatch, match="decisions input changed"):
+        run_analysis([source], output, keys, keyword_set_version="custom-alias", alias_decisions=bundle)
+    with sqlite3.connect(output / "batch_state.sqlite") as db:
+        revision = json.loads(db.execute("SELECT value FROM meta WHERE key='prepared_revision'").fetchone()[0])
+        assert revision == 0
+        for (payload,) in db.execute("SELECT payload FROM documents"):
+            record = json.loads(payload)
+            assert record.get("outcome") != "SUCCEEDED" and record.get("counts") is None
+
+
+def test_companion_readback_rejects_changed_counts(extraction, tmp_path, no_ocr):
+    from ocr_pipeline.analysis_run import AnalysisProcessor
+    source, _ = extraction
+    output = tmp_path / "analysis-readback"
+    result = run_analysis([source], output, KEYWORDS)
+    snapshot = json.loads((output / "keyword_dictionary.snapshot.json").read_text(encoding="utf-8"))
+    companion = output / "a/keyword_two_tier.json"
+    data = json.loads(companion.read_text(encoding="utf-8"))
+    data["tier2_total_candidates"] += 1
+    companion.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ValueError, match="Two-tier companion differs"):
+        AnalysisProcessor().verify_existing(result["documents"][0], snapshot, output)
+
+
+def test_cli_does_not_silently_ignore_alias_decisions_outside_analysis():
+    with pytest.raises(SystemExit) as exc:
+        cli(argv=["--alias-decisions", "decisions.json", "--output", "unused"])
+    assert exc.value.code == 2

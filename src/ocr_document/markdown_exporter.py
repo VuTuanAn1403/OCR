@@ -79,9 +79,10 @@ class MarkdownExporter:
         image_prefix: str = "../images",
         include_running_headers_footers: bool = False,
         assets_mode: str = "png",
+        table_stitch=None,
     ) -> str:
         if "ordered_item_ids" in page.metadata:
-            return cls._export_shared_flow(page, image_prefix, include_running_headers_footers, assets_mode)
+            return cls._export_shared_flow(page, image_prefix, include_running_headers_footers, assets_mode, table_stitch)
         lines: List[str] = [f"# Trang {page.page_num}\n"]
 
         # 1. Separate Header, Footer, and Body blocks
@@ -415,7 +416,7 @@ class MarkdownExporter:
         return "\n".join(lines).strip()
 
     @classmethod
-    def _export_shared_flow(cls, page, image_prefix, include_running, assets_mode):
+    def _export_shared_flow(cls, page, image_prefix, include_running, assets_mode, table_stitch=None):
         from ocr_document.ids import page_items
         from ocr_document.section_tree import build_structure
         from ocr_document.document_contracts import render_document_md
@@ -427,7 +428,7 @@ class MarkdownExporter:
             items = [replace(i, block=i.block.model_copy(update={"block_type": i.block.block_type.removeprefix("running_")}))
                      if i.block is not None and i.block.block_type in ("running_header", "running_footer") else i
                      for i in items]
-        text = render_document_md(None, build_structure([items], layout_method="region_tree_graph_v1"), assets_mode)
+        text = render_document_md(None, build_structure([items], layout_method="region_tree_graph_v1"), assets_mode, table_stitch)
         if image_prefix != "images":
             text = text.replace("](images/", f"]({image_prefix}/")
         diagrams = "\n\n".join(cls.render_diagrams(page))
@@ -452,6 +453,7 @@ class MarkdownExporter:
         image_prefix: str = "images",
         include_running_headers_footers: bool = False,
         assets_mode: str = "png",
+        table_stitch=None,
     ) -> str:
         doc_lines: List[str] = [
             f"# Báo cáo trích xuất tài liệu: {doc.document_id}",
@@ -465,6 +467,7 @@ class MarkdownExporter:
                 image_prefix=image_prefix,
                 include_running_headers_footers=include_running_headers_footers,
                 assets_mode=assets_mode,
+                table_stitch=table_stitch,
             )
             doc_lines.append(page_md)
             doc_lines.append("\n---\n")

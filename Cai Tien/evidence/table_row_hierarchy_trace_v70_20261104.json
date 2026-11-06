@@ -1,0 +1,24 @@
+{
+  "schema_version": "test-trace-addendum-v1",
+  "pipeline_version": "7.0.0",
+  "tc_id": "TC_SCI_TAB_04",
+  "test_status": "VERIFIED_TEST_SUBSET",
+  "acceptance_status": "NOT_EVALUATED",
+  "trace_sha256": "b0341eb01b1fbb5002b1c65ca315b727ff2021a0f981a568a60ecb4684204ff7",
+  "prior_addendum_sha256": "9b9aca96fe610831a42638e681d604373ef7de9937c1e912915111b46af7231b",
+  "test_counts_with_addenda": {
+    "VERIFIED_TEST_SUBSET": 60,
+    "NOT_EVALUATED": 5
+  },
+  "verification_kind": "CONTRACT_FIXTURE_AND_SAVED_OUTPUT_REPLAY",
+  "evidence_sha256": {
+    "scratch/runs/20261104-table-row-hierarchy-focused/evidence/junit.xml": "9c0c310f67002710e8189ab425d6ebd4ce734afe58003f8ad5fbc6a706f18cb4",
+    "scratch/runs/20261104-table-row-hierarchy-metric/evidence/junit.xml": "e68babb8e5bbc89e3d5b1224ed501dcba7a99142e20bbac8143839c30e876ef9",
+    "scratch/dev_sessions/20261104-table-row-hierarchy/hierarchy-replay.json": "60ee4afdeea477b00b98281500ed668cb68298a56b1126fb22b7809e65012101",
+    "scratch/dev_sessions/20261104-table-row-hierarchy/wheel-hierarchy-replay.json": "60ee4afdeea477b00b98281500ed668cb68298a56b1126fb22b7809e65012101",
+    "scratch/dev_sessions/20261104-table-row-hierarchy/review-final/row-hierarchy-packets.json": "660f4be5e8e667f4e96b2dd35c86490ae8104670d0077a8c2f153324ae590e25",
+    "scratch/dev_sessions/20261104-table-row-hierarchy/review-final/wheel-score-readiness.json": "b9fa9655c1cd2fd3b16573ca1de214285b538797969321f19c4049675cc2f802",
+    "scratch/dev_sessions/20261104-table-row-hierarchy/release-build/wheel-verification.json": "f12a0f617703fd7103fdcdc2c62c0e756e888f389ae9b84a487037f2c6e75587"
+  },
+  "limits": "Export and scoring are verified on fixtures. CPU replay and three development source crops do not provide independent hierarchy accuracy or coverage."
+}

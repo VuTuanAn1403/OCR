@@ -25,7 +25,9 @@ def ocr_results_to_blocks(ocr_results, *, regions, page_num, scale_x, scale_y, u
             round(raw_bbox[2] * scale_x, 2),
             round(raw_bbox[3] * scale_y, 2)
         ]
-        text = UnicodeNormalizer.normalize(res["text"])
+        text = UnicodeNormalizer.normalize_ocr_text(res["text"])
+        raw_text = res.get("text_raw", res["text"])
+        provenance = res.get("recognition_provenance", {})
         conf = res.get("confidence")
 
         # Filter hallucination / low confidence (A1)
@@ -55,6 +57,8 @@ def ocr_results_to_blocks(ocr_results, *, regions, page_num, scale_x, scale_y, u
                 bbox_original=scaled_bbox,
                 bbox_normalized=scaled_bbox,
                 text=text,
+                text_raw=raw_text,
+                recognition_provenance=provenance,
                 content_type=ContentType.IMAGE,
                 source="ocr",
                 confidence=conf,
@@ -85,9 +89,10 @@ def ocr_results_to_blocks(ocr_results, *, regions, page_num, scale_x, scale_y, u
 
         block = TextBlock(
             text=text,
-            text_raw=res.get("text_raw", res["text"]),
+            text_raw=raw_text,
+            recognition_provenance=provenance,
             correction_source=(res.get("correction_source") or "unicode_normalizer")
-                if text != res.get("text_raw", res["text"]) else None,
+                if text != raw_text else None,
             source="primary_ocr",
             page=page_num,
             bbox=scaled_bbox,
@@ -97,8 +102,10 @@ def ocr_results_to_blocks(ocr_results, *, regions, page_num, scale_x, scale_y, u
             reviewed=False,
             line_index=idx,
             region_id=res.get("region_id"),
-            fallback_reason=(res.get("review_reason") if res.get("needs_review")
-                             else "; ".join(diacritic_reasons) or None),
+            # A numeric/recognizer gate can request review even when the
+            # weighted linguistic score is high. Persist its reason so that
+            # evidence and regions retain the unresolved decision.
+            fallback_reason=("; ".join(reasons) or "OCR quality gate requested review") if needs_fb else None,
             review_reason_codes=[DIACRITIC_REVIEW_CODE] if diacritic_reasons else [],
         )
         if scaled_bbox and len(scaled_bbox) >= 4:
@@ -127,9 +134,9 @@ def ocr_results_to_blocks(ocr_results, *, regions, page_num, scale_x, scale_y, u
 
 
 def mark_review_regions(candidates_for_fallback, regions):
-    """Flag the regions of lines whose numeric text could not be confirmed."""
+    """Propagate unresolved line gates to their containing regions."""
     for candidate in candidates_for_fallback:
-        if candidate.fallback_reason not in ("OCR candidates disagree on numeric text", "numeric_cleanup_rejected"):
+        if candidate.reviewed:
             continue
         if len(candidate.bbox) < 4:
             continue
@@ -138,5 +145,5 @@ def mark_review_regions(candidates_for_fallback, regions):
         for region in regions:
             if region.bbox.contains_point(mid_x, mid_y):
                 region.needs_fallback = True
-                region.failure_reason = candidate.fallback_reason
+                region.failure_reason = candidate.fallback_reason or "OCR quality gate requested review"
                 break

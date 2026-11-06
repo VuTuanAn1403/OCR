@@ -7,6 +7,7 @@ in page metadata instead of being reported as successful Docling extraction.
 from __future__ import annotations
 import hashlib
 import json
+import logging
 import math
 import os
 from pathlib import Path
@@ -30,6 +31,7 @@ from ocr_runtime.process_tree import ProcessTree
 
 ROOT = PROJECT_ROOT
 SCHEMA_VERSION = "docling-structure-v1"
+logger = logging.getLogger(__name__)
 
 
 def _worker_environment(options: dict[str, Any]) -> dict[str, str]:
@@ -215,32 +217,47 @@ class DoclingStructureExtractor:
                    "formula_hints": native_formula_hints(page) if self.options.get("formulas", True) else []}
         timeout = float(self.options.get("startup_timeout_seconds", 900) if cold
                         else self.options.get("timeout_seconds", 180))
+        releasable = False
+        failed = False
         try:
-            with pymupdf.open() as selected:
-                selected.insert_pdf(page.parent, from_page=page.number, to_page=page.number)
-                selected.save(path)
-            self._process.stdin.write(json.dumps(request) + "\n")
-            self._process.stdin.flush()
-            response = self._responses.get(timeout=timeout)
-        except queue.Empty:
+            try:
+                with pymupdf.open() as selected:
+                    selected.insert_pdf(page.parent, from_page=page.number, to_page=page.number)
+                    selected.save(path)
+                self._process.stdin.write(json.dumps(request) + "\n")
+                self._process.stdin.flush()
+                response = self._responses.get(timeout=timeout)
+            except queue.Empty as exc:
+                raise DoclingStructureError(f"Docling worker exceeded {timeout:g}s and was terminated") from exc
+            except (OSError, ValueError, RuntimeError) as exc:
+                raise DoclingStructureError(f"Docling worker transport failed: {exc}") from exc
+            if response.get("id") != request_id or response.get("status") not in ("success", "partial_success"):
+                raise DoclingStructureError(response.get("error", "Mismatched Docling worker response"))
+            self._requests += 1
+            self._warm = True
+            response.update(elapsed_seconds=time.perf_counter() - started, cold_start=cold,
+                            log_path=str(self._job_dir / "worker.log"), schema_version=SCHEMA_VERSION)
+            try:
+                result = self.map_response(response, page_num)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise DoclingStructureError(f"Invalid Docling structure response: {exc}") from exc
+            releasable = True
+            return result
+        except BaseException:
+            failed = True
+            # Reap the worker before removing a PDF it may still be reading.
             self.close()
-            raise DoclingStructureError(f"Docling worker exceeded {timeout:g}s and was terminated")
-        except (OSError, ValueError, RuntimeError) as exc:
-            self.close()
-            raise DoclingStructureError(f"Docling worker transport failed: {exc}") from exc
-        if response.get("id") != request_id or response.get("status") not in ("success", "partial_success"):
-            error = response.get("error", "Mismatched Docling worker response")
-            self.close()
-            raise DoclingStructureError(error)
-        self._requests += 1
-        self._warm = True
-        response.update(elapsed_seconds=time.perf_counter() - started, cold_start=cold,
-                        log_path=str(self._job_dir / "worker.log"), schema_version=SCHEMA_VERSION)
-        try:
-            return self.map_response(response, page_num)
-        except (KeyError, TypeError, ValueError) as exc:
-            self.close()
-            raise DoclingStructureError(f"Invalid Docling structure response: {exc}") from exc
+            releasable = True
+            raise
+        finally:
+            if releasable:
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    if not failed:
+                        self.close()
+                        raise
+                    logger.warning("Cannot remove transient Docling page PDF %s", path, exc_info=True)
 
     @staticmethod
     def map_response(response: dict[str, Any], page_num: int) -> dict[str, Any]:
@@ -254,6 +271,8 @@ class DoclingStructureExtractor:
             cells = [TableCell(row_idx=c["row"], col_idx=c["col"],
                                row_span=c["row_span"], col_span=c["col_span"],
                                text=c["text"], bbox=c.get("bbox") or [],
+                               column_header=c.get("column_header"), row_header=c.get("row_header"),
+                               row_section=c.get("row_section"),
                                confidence=None, confidence_source="unavailable")
                      for c in raw["cells"]]
             # An empty model output is never a replacement for existing content.
@@ -266,12 +285,16 @@ class DoclingStructureExtractor:
                 or c.col_idx + c.col_span > raw["num_cols"] for c in cells
             ):
                 raise ValueError("Invalid table cell indices or spans")
+            if "orientation" in raw and raw["orientation"] not in ("rot_0", "rot_90", "rot_180", "rot_270"):
+                raise ValueError("Invalid observed table orientation")
             tables.append(TableStructure(
                 table_id=f"p{page_num}_docling_table_{index}", page=page_num,
                 bbox=raw["bbox"], num_rows=raw["num_rows"], num_cols=raw["num_cols"],
                 cells=cells, caption=raw.get("caption"), confidence=None,
                 confidence_source="unavailable", engine="docling_tableformer", needs_review=True,
                 provenance={**response.get("provenance", {}), "item_ref": raw.get("item_ref"),
+                            **({"table_orientation": raw["orientation"]} if "orientation" in raw else {}),
+                            **({"cell_role_source": "docling_tableformer"} if any(c.column_header is not None for c in cells) else {}),
                             "confidence_available": False, "html": raw.get("html", "")},
             ))
         formulas = []

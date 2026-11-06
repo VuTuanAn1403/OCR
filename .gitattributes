@@ -9,6 +9,10 @@ models/vietocr/*.yml text eol=crlf
 # The v1 keyword snapshot hashes the original CRLF bytes in existing receipts.
 # Check out those same bytes on Linux as well as Windows.
 config/keywords.txt text eol=crlf
+config/keywords-v1-original.txt text eol=crlf
 
 # Captured evidence retains its original bytes; console logs may pad lines.
 benchmark/evidence/** -text -whitespace
+
+# Preserve the original CDM blob bytes for runtime verification on every OS.
+benchmark/scientific_evaluation/_vendor/unimernet_cdm/** -text -whitespace

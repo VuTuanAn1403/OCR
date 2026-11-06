@@ -26,6 +26,7 @@ import json
 import argparse
 import re
 import math
+import sqlite3
 from typing import Dict, Any, List, Optional
 from tabulate import tabulate
 
@@ -88,6 +89,10 @@ def evaluate_document_scientific(
     coco_gt_path: Optional[Path] = None,
     common_layout_classes: Optional[List[str]] = None,
     supported_layout_classes: Optional[List[str]] = None,
+    *,
+    structured_gt_path: Optional[Path] = None,
+    expected_pdf_sha256: Optional[str] = None,
+    reading_order_alignment: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Evaluates a document against ground truth adhering to Section 3 and Section 4.
@@ -95,6 +100,8 @@ def evaluate_document_scientific(
     """
     if not prediction_dir.exists():
         raise FileNotFoundError(f"Prediction directory does not exist: {prediction_dir}")
+    if reading_order_alignment is not None and structured_gt_path is None:
+        raise ValueError("Reading order alignment requires structured GT")
 
     doc_id = prediction_dir.name
     pages_dir = prediction_dir / "pages"
@@ -457,6 +464,12 @@ def evaluate_document_scientific(
         },
         "page_evaluations": page_evals,
     }
+    if structured_gt_path is not None:
+        from benchmark.scientific_evaluation.structured_scoreboard import evaluate_structure
+        report["structured_scoreboard"] = evaluate_structure(
+            prediction_dir, structured_gt_path, expected_pdf_sha256=expected_pdf_sha256,
+            reading_order_alignment=reading_order_alignment,
+        )
 
     return report
 
@@ -464,19 +477,42 @@ def evaluate_document_scientific(
 def main():
     parser = argparse.ArgumentParser(description="V5.0 Scientific Benchmark Suite conforming to Protocol V5")
     parser.add_argument("--prediction", required=True, help="Path to document prediction directory")
+    parser.add_argument("--canonical-batch", type=Path,
+                        help="Verify prediction and batch publication as canonical full-page CUDA")
     parser.add_argument("--ground-truth", default=None, help="Path to ground truth directory")
     parser.add_argument("--coco-gt", default=None, help="Path to COCO layout annotations JSON")
+    parser.add_argument("--structured-gt", type=Path, help="Path to structured-page-gt-v1 annotations")
+    parser.add_argument("--reading-order-alignment", type=Path, help="Reviewed spans pinned to structured GT and extraction")
     parser.add_argument("--common-layout-classes", help="Locked common classes, comma separated")
     parser.add_argument("--supported-layout-classes", help="Declared model classes, comma separated")
     parser.add_argument("--output-dir", default="benchmark/results", help="Directory to save report artifacts")
     parser.add_argument("--generate-latex", action="store_true", help="Generate publication-grade LaTeX tables")
 
     args = parser.parse_args()
+    if args.reading_order_alignment and not args.structured_gt:
+        parser.error("--reading-order-alignment requires --structured-gt")
 
     pred_dir = Path(args.prediction).resolve()
     gt_dir = Path(args.ground_truth).resolve() if args.ground_truth else None
     coco_gt = Path(args.coco_gt).resolve() if args.coco_gt else None
     out_dir = Path(args.output_dir).resolve()
+    rep_file = out_dir / f"{pred_dir.name}_scientific_protocol_report.json"
+    if any(path and rep_file.resolve() == path.resolve() for path in (args.structured_gt, args.reading_order_alignment)):
+        parser.error("Report path must differ from structured GT and alignment")
+    canonical_prediction = None
+    if args.canonical_batch:
+        from benchmark.scientific_evaluation.canonical_predictions import collect_predictions
+
+        batch = args.canonical_batch.resolve()
+        if out_dir.is_relative_to(batch) or pred_dir.parent != batch:
+            parser.error("Canonical prediction must be in its batch and reports must be outside the batch")
+        try:
+            inventory = collect_predictions([batch])
+            canonical_prediction = next(
+                doc for doc in inventory["documents"] if Path(doc["source_dir"]).resolve() == pred_dir
+            )
+        except (OSError, ValueError, KeyError, TypeError, StopIteration, sqlite3.Error) as exc:
+            parser.error(f"Canonical prediction verification failed: {type(exc).__name__}: {exc}")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 65)
@@ -488,7 +524,19 @@ def main():
 
     report = evaluate_document_scientific(pred_dir, gt_dir, coco_gt,
         args.common_layout_classes.split(",") if args.common_layout_classes else None,
-        args.supported_layout_classes.split(",") if args.supported_layout_classes else None)
+        args.supported_layout_classes.split(",") if args.supported_layout_classes else None,
+        structured_gt_path=args.structured_gt,
+        expected_pdf_sha256=canonical_prediction["pdf_sha256"] if canonical_prediction else None,
+        reading_order_alignment=args.reading_order_alignment)
+    if canonical_prediction is not None:
+        from ocr_pipeline.document import valid_ocr
+        from ocr_artifacts.hashing import sha256_file
+
+        if (not valid_ocr(pred_dir, canonical_prediction["ocr_identity"])
+                or sha256_file(pred_dir / "COMPLETED.json") != canonical_prediction["completion_sha256"]
+                or sha256_file(pred_dir / "ocr_receipt.json") != canonical_prediction["ocr_receipt_sha256"]):
+            parser.error("Canonical prediction changed during evaluation")
+        report["canonical_prediction"] = {**canonical_prediction, "batch": inventory["batches"][0]}
 
     metrics = report["academic_metrics"]
     timing = report["timing_and_throughput"]
@@ -500,17 +548,25 @@ def main():
         ["Character Error Rate (micro CER)", metrics["micro_cer"] if metrics["micro_cer"] is not None else "not_evaluated"],
         ["Word Error Rate (micro WER)", metrics["micro_wer"] if metrics["micro_wer"] is not None else "not_evaluated"],
         ["Diacritic Error Rate (micro DER)", metrics["micro_der"] if metrics["micro_der"] is not None else "not_evaluated"],
-        ["Reading Order Score", metrics["mean_reading_order_penalized"] if metrics["mean_reading_order_penalized"] is not None else "not_evaluated"],
+        ["Reading Order (legacy text)", metrics["mean_reading_order_penalized"]
+         if metrics["mean_reading_order_penalized"] is not None else "not_evaluated"],
         ["Throughput (Pages / sec)", f"{timing['throughput_pps']} PPS"],
         ["Avg Latency per page", f"{timing['seconds_per_page']} s"],
         ["CPU Latency Compliance", compliance.get("status") or
          f"{'PASS' if compliance['is_compliant'] else 'FAIL'} (limit <= {compliance.get('upper_limit_seconds')}s)"],
     ]
+    if "structured_scoreboard" in report:
+        structure = report["structured_scoreboard"]
+        order = structure["reading_order"]
+        score = order["penalized_precedence"]
+        table_data.append(["Reading Order (structured GT)", score if score is not None else order["status"]])
+        if structure["coverage"]["layout"]["annotated_pages"]:
+            layout = structure["layout"]
+            table_data.append(["Layout F1@50 (structured GT)", layout["f1"] if layout["f1"] is not None else layout["status"]])
 
     print(tabulate(table_data, headers=["Scientific Metric", "Score / Status"], tablefmt="fancy_grid"))
 
     # Save scientific report JSON
-    rep_file = out_dir / f"{pred_dir.name}_scientific_protocol_report.json"
     with open(rep_file, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
     print(f"\n[OK] Saved scientific report JSON: {rep_file}")

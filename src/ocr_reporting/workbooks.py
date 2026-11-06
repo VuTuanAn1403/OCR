@@ -1,38 +1,79 @@
 """V6.3 workbook projections. All totals are values, never cached formulas."""
 from io import BytesIO
 from pathlib import Path
+import json
 
 from openpyxl import Workbook, load_workbook
 from ocr_artifacts.atomic_io import atomic_write_bytes
-from ocr_contracts.keyword import KeywordReport, KeywordCount
-from ocr_reporting.document_workbook import KeywordExporter
+from ocr_contracts.keyword import KeywordReport, KeywordCount, KeywordCitation
+from ocr_reporting.document_workbook import (KeywordExporter, SHEETS, CITATION_HEADERS, WORKBOOK_SCHEMA,
+                                              CellRichText, ordered_citations, citation_text, citation_page)
+
+
+def _model(report, snapshot):
+    rows = [KeywordCount(keyword=k, count=n, exact_count=n) for k, n in zip(snapshot["display_columns"], report["display_counts"])]
+    return KeywordReport(document_id=report["document_id"], source_file=report["source_file"], keywords=rows,
+                         citations=[KeywordCitation.model_validate(c) for c in report.get("citations", [])],
+                         total_keywords_searched=len(rows), total_matches=report["total_display_matches"],
+                         total_exact_matches=report["total_display_matches"])
+
+
+def _metadata(report, snapshot):
+    return {"schema_version": WORKBOOK_SCHEMA, "keyword_set_version": snapshot["keyword_set_version"],
+            "keyword_set_revision": snapshot.get("keyword_set_revision"),
+            "counting_policy": "literal_v1", "dictionary_sha256": snapshot["snapshot_sha256"],
+            "total_canonical_matches": report["total_canonical_matches"], "total_display_matches": report["total_display_matches"],
+            "citation_schema_version": report.get("citation_schema_version")}
 
 
 def export_document(report, snapshot, output):
-    rows = [KeywordCount(keyword=k, count=n, exact_count=n) for k, n in zip(snapshot["display_columns"], report["display_counts"])]
-    model = KeywordReport(document_id=report["document_id"], source_file=report["source_file"], keywords=rows,
-                          total_keywords_searched=len(rows), total_matches=report["total_display_matches"],
-                          total_exact_matches=report["total_display_matches"])
-    path = KeywordExporter.export_excel(model, Path(output))
-    # Include both totals and the policy without changing the established rows.
-    book = load_workbook(path)
-    try:
-        book.active["A3"] = (f"{snapshot['keyword_set_version']} | literal_v1 | canonical={report['total_canonical_matches']} | "
-                             f"display={report['total_display_matches']} | {snapshot['snapshot_sha256']}")
-        buffer = BytesIO()
-        book.save(buffer)
-        atomic_write_bytes(path, buffer.getvalue())
-    finally:
-        book.close()
+    # Write once: reopening without rich_text=True would erase bold citations.
+    path = KeywordExporter.export_excel(_model(report, snapshot), Path(output), metadata=_metadata(report, snapshot))
     verify_document(path, report, snapshot)
 
 
 def verify_document(path, report, snapshot):
-    book = load_workbook(path, read_only=True, data_only=True)
+    options = {"rich_text": True} if CellRichText is not None else {}
+    # openpyxl's streaming reader flattens inline rich strings. Load this
+    # per-document workbook normally so bold runs and literal types survive.
+    book = load_workbook(path, read_only=False, data_only=False, **options)
     try:
-        rows = list(book.active.iter_rows(min_row=5, max_row=4+len(snapshot["display_columns"]), values_only=True))
-        if [r[1] for r in rows] != snapshot["display_columns"] or [r[2] for r in rows] != report["display_counts"]:
+        if book.sheetnames == ["Thống kê từ khóa"] and "citation_schema_version" not in report:
+            rows = list(book.active.iter_rows(min_row=5, max_row=4+len(snapshot["display_columns"]), values_only=True))
+            if [r[1] for r in rows] != snapshot["display_columns"] or [r[2] for r in rows] != report["display_counts"]:
+                raise ValueError("Per-document legacy Excel differs from canonical keyword report")
+            return
+        if book.sheetnames != list(SHEETS):
+            raise ValueError("Per-document Excel must contain the two declared summary/citation sheets")
+        summary, details = (book[name] for name in SHEETS)
+        rows = list(summary.iter_rows(values_only=True))
+        expected = [["File_name", *snapshot["display_columns"]], [report["document_id"], *report["display_counts"]]]
+        if [list(row) for row in rows] != expected or any(type(n) is not int for n in rows[1][1:]):
             raise ValueError("Per-document Excel differs from canonical keyword report")
+        if summary["A2"].data_type != "s" or any(c.data_type != "s" for c in next(summary.iter_rows(min_row=1, max_row=1))):
+            raise ValueError("Per-document names/keywords must be literal strings")
+        if json.loads(book.properties.description or "null") != _metadata(report, snapshot):
+            raise ValueError("Per-document Excel dictionary/policy metadata mismatch")
+        actual = iter(details.iter_rows())
+        if [c.value for c in next(actual)] != list(CITATION_HEADERS):
+            raise ValueError("Citation sheet header mismatch")
+        for number, citation in enumerate(ordered_citations(_model(report, snapshot)), 1):
+            row = next(actual, None)
+            expected_row = [number, citation.keyword, citation_page(citation), citation_text(citation)]
+            if row is None or [str(c.value) if i == 3 and c.value is not None else c.value for i, c in enumerate(row)] != expected_row:
+                raise ValueError("Citation sheet differs from canonical occurrence report")
+            page = expected_row[2]
+            if (type(row[0].value) is not int or row[1].data_type != "s" or row[3].data_type != "s"
+                    or type(row[2].value) is not type(page)
+                    or isinstance(page, str) and row[2].data_type != "s"):
+                raise ValueError("Citation cells must preserve literal strings and physical page types")
+            if CellRichText is not None and citation.citation_keyword:
+                rich = row[3].value
+                bold = [part.text for part in rich if getattr(getattr(part, "font", None), "b", False)] if isinstance(rich, CellRichText) else []
+                if bold != [citation.citation_keyword]:
+                    raise ValueError("Citation keyword bold formatting is missing or changed")
+        if next(actual, None) is not None:
+            raise ValueError("Citation sheet contains extra occurrences")
     finally:
         book.close()
 
@@ -78,6 +119,11 @@ def matrix_bytes(batch_id, revision, records, snapshot):
         for key, value in {"batch_id": batch_id, "revision": revision, "dictionary_sha256": snapshot["snapshot_sha256"],
                            "schema_version": "keyword-matrix-v1", "policy": "literal_v1", "quality_acceptance": "NOT_EVALUATED"}.items():
             info.append([key, value])
+        if any(row.get("analytics_enabled") for row in records):
+            from ocr_reporting.tiered_workbooks import append_tiered
+            info.append(["alias_rules_sha256", records[0]["analytics_rules_sha256"]])
+            info.append(["tiered_schema_version", "keyword-matrix-tiered-v1"])
+            append_tiered(book, records, snapshot)
         buffer = BytesIO()
         book.save(buffer)
         return buffer.getvalue()
@@ -86,7 +132,7 @@ def matrix_bytes(batch_id, revision, records, snapshot):
 
 
 def verify_matrix(path, batch_id, revision, records, snapshot):
-    book = load_workbook(path, read_only=True, data_only=True)
+    book = load_workbook(path, read_only=True, data_only=False)
     try:
         info = dict(book["Thông tin"].iter_rows(values_only=True))
         if info.get("batch_id") != batch_id or info.get("revision") != revision or info.get("dictionary_sha256") != snapshot["snapshot_sha256"]:
@@ -104,5 +150,11 @@ def verify_matrix(path, batch_id, revision, records, snapshot):
                 totals = [a+b for a, b in zip(totals, expected)]
         if list(next(rows)) != ["TỔNG CỘNG", *totals] or next(rows, None) is not None:
             raise ValueError("Matrix totals/row count mismatch")
+        if any(row.get("analytics_enabled") for row in records):
+            from ocr_reporting.tiered_workbooks import verify_tiered
+            if (info.get("alias_rules_sha256") != records[0]["analytics_rules_sha256"]
+                    or info.get("tiered_schema_version") != "keyword-matrix-tiered-v1"):
+                raise ValueError("Tiered matrix rule identity mismatch")
+            verify_tiered(book, records, snapshot)
     finally:
         book.close()

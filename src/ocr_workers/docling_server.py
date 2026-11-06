@@ -152,9 +152,11 @@ def convert_structures(converter, pipeline, pdf, formula_hints=()):
             data = item.data
             cells = [{"row": c.start_row_offset_idx, "col": c.start_col_offset_idx,
                       "row_span": c.row_span, "col_span": c.col_span, "text": c.text,
+                      "column_header": c.column_header, "row_header": c.row_header, "row_section": c.row_section,
                       "bbox": bbox_in_points(c.bbox, height)} for c in data.table_cells]
             tables.append({"item_ref": item.self_ref, "bbox": bbox,
                            "num_rows": data.num_rows, "num_cols": data.num_cols, "cells": cells,
+                           "orientation": data.orientation.value,
                            "html": item.export_to_html(doc=doc), "caption": item.caption_text(doc) or None})
         elif item.label == DocItemLabel.FORMULA and pipeline.do_formula_enrichment:
             formulas.append({"item_ref": item.self_ref, "bbox": bbox, "latex": item.text,

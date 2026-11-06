@@ -121,11 +121,14 @@ output/*
 /examples/*.pdf
 /*.pdf
 
-# Excluded local documentation, notes, and reports.
-/docs/
+# Keep shared development guidance; other local documentation stays excluded.
+/docs/*
+!/docs/development/
 reports/
 research_notes/
-CLAUDE.md
 CLEANUP_RESPORT.md
 .claude/
 Noi dung nghien cuu.pdf
+Doi_Chieu/
+Test case/
+

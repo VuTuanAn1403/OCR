@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--env-root", type=Path, default=ROOT / ".venv-v62")
     parser.add_argument("--sync", action="store_true")
     parser.add_argument("--http1-downloads", action="store_true", help="Hash-verified local wheelhouse for slow proxies")
+    parser.add_argument("--no-cuda-check", action="store_true", help="Skip live GPU tensor verification (for container build environments without GPU)")
     args = parser.parse_args()
     platform = "windows" if sys.platform == "win32" else "linux"
     env_root = args.env_root.resolve()
@@ -71,14 +72,30 @@ if not torch.cuda.is_available(): raise RuntimeError('Torch CUDA unavailable')
 x=torch.ones((16,16),device='cuda'); y=x@x; torch.cuda.synchronize()
 print(json.dumps({'python':sys.version,'packages':p,'torch_device':str(y.device),'value':float(y[0,0])}))
 """
-            with lease_for_gpu(gpu_snapshot("cuda")):
-                result = subprocess.run([str(python), "-c", code], check=True, cwd=ROOT,
+            if not args.no_cuda_check:
+                with lease_for_gpu(gpu_snapshot("cuda")):
+                    result = subprocess.run([str(python), "-c", code], check=True, cwd=ROOT,
+                                            capture_output=True, text=True, encoding="utf-8")
+                probe_data = json.loads(result.stdout.splitlines()[-1])
+            else:
+                verify_code = """
+import sys,json
+from importlib.metadata import distributions
+p={d.metadata['Name'].lower().replace('_','-'):d.version for d in distributions() if str(d.locate_file('')).lower().startswith(sys.prefix.lower())}
+if sys.version_info[:2] != (3,11): raise RuntimeError('V6.2 locks require Python 3.11')
+if any(n in p for n in ('onnxruntime','rapidocr-onnxruntime')): raise RuntimeError('Mixed/legacy runtime')
+import torch,torchvision
+import cv2,numpy
+print(json.dumps({'python':sys.version,'packages':p,'torch_device':'deferred_build_time','torch_version':torch.__version__}))
+"""
+                result = subprocess.run([str(python), "-c", verify_code], check=True, cwd=ROOT,
                                         capture_output=True, text=True, encoding="utf-8")
+                probe_data = json.loads(result.stdout.splitlines()[-1])
             report["environments"][role] = {"clean_created": clean, "initial_package_count": int(initial.stdout.strip()),
                                               "lock_sha256": sha256(lock),
-                                              "python": str(python), "probe": json.loads(result.stdout.splitlines()[-1])}
+                                              "python": str(python), "probe": probe_data}
             atomic_write_json(report_path, report)
-        report["status"] = "INSTALLED_AND_CUDA_TORCH_VERIFIED"
+        report["status"] = "INSTALLED_AND_CUDA_TORCH_VERIFIED" if not args.no_cuda_check else "INSTALLED_BUILD_TIME_CUDA_DEFERRED"
     except BaseException as exc:
         report.update(status="FAILED", error=f"{type(exc).__name__}: {exc}")
         raise

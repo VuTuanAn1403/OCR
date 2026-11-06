@@ -8,9 +8,14 @@ Additive fields are allowed for backward-compatible schema evolution.
 from __future__ import annotations
 
 from typing import Annotated, Any, Dict, List, Literal, Optional
+import unicodedata
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
+from ocr_document.figures import (MAX_CAPTION_GAP_PT, MAX_TABLE_CAPTION_GAP_WITH_UNIT_PT, table_caption_geometry,
+                                  table_caption_unit)
 from ocr_document.id_patterns import ELEMENT_ID_PATTERN
+from ocr_document.table_hierarchy import infer_row_hierarchy
+from ocr_contracts.geometry import placed_line_bbox, placed_line_tokens
 
 
 def _valid_bbox(box: List[float]) -> List[float]:
@@ -37,6 +42,7 @@ EvidenceBBox = Annotated[List[Coordinate], AfterValidator(_evidence_bbox)]
 ElementId = Annotated[str, Field(pattern=ELEMENT_ID_PATTERN)]
 SectionId = Annotated[str, Field(pattern=r"^[^:\s]+:s\d{4}$")]
 PageNumber = Annotated[int, Field(ge=1)]
+CalloutId = Annotated[str, Field(pattern=r"^p\d{4,}:r(?:\.\d+)+$")]
 Confidence = Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
 
 
@@ -76,6 +82,9 @@ class Cell(TextProvenance):
     bbox: BBox
     bbox_source: Literal["cell", "table_fallback"]
     spans: Annotated[List[Span], Field(min_length=1)]
+    column_header: Optional[bool] = None
+    row_header: Optional[bool] = None
+    row_section: Optional[bool] = None
 
 
 class ExtractionItem(TextProvenance):
@@ -83,6 +92,8 @@ class ExtractionItem(TextProvenance):
     kind: Literal["b", "t", "f", "i"]
     bbox: EvidenceBBox
     cells: List[Cell] = Field(default_factory=list)
+    callout_id: Optional[CalloutId] = None
+    table_orientation: Optional[Literal["rot_0", "rot_90", "rot_180", "rot_270"]] = None
 
 
 class ExtractionPage(ContractModel):
@@ -128,6 +139,7 @@ class Chunk(TextProvenance):
     # C3.6 figure links; absent in documents written before them.
     role: Optional[Literal["figure_text", "caption"]] = None
     figure_id: Optional[ElementId] = None
+    callout_id: Optional[CalloutId] = None
 
 
 CheckStatus = Literal["CONSISTENT", "VIOLATION", "INCONCLUSIVE"]
@@ -155,6 +167,33 @@ class ConsistencyChecks(ContractModel):
     continuation_candidates: Optional[List[ContinuationCandidate]] = None
 
 
+class TableCaption(ContractModel):
+    chunk_id: ElementId
+    position: Literal["above", "below"]
+    gap_pt: Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    method: Literal["table-caption-adjacency-v1"]
+    label: Literal["table", "chart"]
+    unit_chunk_id: Optional[ElementId] = None
+
+
+RowIndex = Annotated[int, Field(ge=0)]
+
+
+class TableRowNode(ContractModel):
+    row: RowIndex
+    label_col: RowIndex
+    marker_col: RowIndex
+    parent_row: Optional[RowIndex]
+    depth: RowIndex
+    signal: Literal["OBSERVED_ROOT", "NUMBERING", "NUMBERING_AND_INDENTATION", "INDENTED_BULLET"]
+    indent_pt: Optional[Coordinate]
+
+
+class TableRowHierarchy(ContractModel):
+    method: Literal["table-row-numbering-indent-v1"]
+    nodes: Annotated[List[TableRowNode], Field(min_length=2)]
+
+
 class DocumentTable(ContractModel):
     table_id: ElementId
     chunk_id: ElementId
@@ -170,6 +209,9 @@ class DocumentTable(ContractModel):
     needs_review: Optional[bool] = None
     arithmetic_checks: Optional[List[ConsistencyCheck]] = None
     continuation: Optional[ContinuationCandidate] = None
+    caption: Optional[TableCaption] = None
+    row_hierarchy: Optional[TableRowHierarchy] = None
+    table_orientation: Optional[Literal["rot_0", "rot_90", "rot_180", "rot_270"]] = None
 
 
 class DocumentFormula(ContractModel):
@@ -211,6 +253,7 @@ class DocumentContract(ContractModel):
     images: List[DocumentImage]
     consistency_checks: Optional[ConsistencyChecks] = None
     figure_links: Optional[FigureLinks] = None
+    table_stitch: Optional[Dict[str, Any]] = None
 
 
 class StructureSection(ContractModel):
@@ -258,6 +301,71 @@ def contract_json_schemas(*, include_layout: bool = False) -> Dict[str, Dict[str
     return result
 
 
+def _glyph_disposition_error(archived, disposition, owners, placements, consumed):
+    """Replay optional glyph ownership evidence without altering legacy claims."""
+    from ocr_document.resolve_document_layout import _source_tokens
+    proof = disposition["placement_geometry"]
+    bbox = placed_line_bbox(archived, proof)
+    if (bbox is None or len(owners) != 1 or owners[0].kind != "t" or archived.get("protected_from_furniture")
+            or [p for p in placements if p.get("source_id") == archived.get("source_id")] != [proof]):
+        return "glyph placement differs from its frozen source or bridge record"
+    mapping = disposition.get("occurrence_mapping")
+    if not isinstance(mapping, list) or not mapping or any(not isinstance(p, dict) for p in mapping):
+        return "glyph ownership lacks token occurrence mapping"
+    cells = owners[0].cells
+    indices = [part.get("cell_index") for part in mapping]
+    if any(type(i) is not int or not 0 <= i < len(cells) for i in indices):
+        return "glyph source references a missing observed cell"
+    if disposition.get("placement_granularity") == "TOKEN":
+        tokens = placed_line_tokens(archived, proof)
+        expected = _source_tokens(archived)
+        if tokens is None or len(mapping) != len(expected) or len(set(indices)) < 2:
+            return "glyph token geometry is missing, incomplete or not a cross-cell claim"
+        located = tokens[len(tokens) - len(expected):]
+        observed, claims = [], set()
+        for part, token, index in zip(mapping, located, indices):
+            cell = cells[index]
+            words = unicodedata.normalize("NFC", cell.text_raw).split()
+            offset = part.get("token_index")
+            box = [round(v, 2) for v in token["bbox"]]
+            if (type(offset) is not int or not 0 <= offset < len(words) or words[offset] != token["text"]
+                    or part.get("row_idx") != cell.row or part.get("col_idx") != cell.col
+                    or cell.bbox_source != "cell"
+                    or not (cell.bbox[0] <= box[0] < box[2] <= cell.bbox[2] and cell.bbox[1] <= box[1] < box[3] <= cell.bbox[3])):
+                return "glyph token does not exactly belong to its claimed source cell"
+            observed.append((cell.row, cell.col, offset))
+            claims.add((owners[0].id, index, offset))
+        # Replay the same-row contiguous occurrence, rather than accepting a
+        # hand-picked permutation of cells with coincidentally equal words.
+        row = observed[0][0]
+        sequence = [(c.row, c.col, n) for c in sorted(cells, key=lambda c: (c.row, c.col)) if c.row == row
+                    for n, _ in enumerate(unicodedata.normalize("NFC", c.text_raw).split())]
+        if (observed[0] not in sequence or observed != sequence[sequence.index(observed[0]):sequence.index(observed[0])+len(observed)]
+                or len(claims) != len(mapping) or claims & consumed):
+            return "glyph token occurrence crosses rows, skips tokens or reuses source ownership"
+        consumed.update(claims)
+        return None
+    if "placement_granularity" in disposition or len(set(indices)) != 1:
+        return "glyph source must belong to one observed cell"
+    cell = cells[indices[0]]
+    rounded = [round(value, 2) for value in bbox]
+    if cell.bbox_source != "cell" or not (cell.bbox[0] <= rounded[0] < rounded[2] <= cell.bbox[2]
+                                         and cell.bbox[1] <= rounded[1] < rounded[3] <= cell.bbox[3]):
+        return "glyph box is not fully contained in its owning cell"
+    tokens = unicodedata.normalize("NFC", cell.text_raw).split()
+    positions = [part.get("token_index") for part in mapping]
+    if (any(type(i) is not int or not 0 <= i < len(tokens) for i in positions)
+            or positions != list(range(positions[0], positions[0] + len(positions)))
+            or any(part.get("row_idx") != cell.row or part.get("col_idx") != cell.col for part in mapping)
+            or [tokens[i] for i in positions] != _source_tokens(archived)):
+        return "glyph occurrence does not preserve the exact source tokens"
+    claims = {(owners[0].id, indices[0], i) for i in positions}
+    if claims & consumed:
+        return "glyph ownership reuses a previously consumed source occurrence"
+    consumed.update(claims)
+    return None
+
+
 def validate_extraction(extraction: Dict[str, Any]) -> List[str]:
     """Check extraction semantics even when the other contracts are absent."""
     try:
@@ -290,6 +398,7 @@ def validate_extraction(extraction: Dict[str, Any]) -> List[str]:
                     errors.append(f"extraction.json {item.id}: invalid furniture suppression")
             current_sources = set(source_ids)
             dispositions = extras.get("source_dispositions") or {}
+            glyph_claims = set()
             for archived in (extras.get("text_evidence") or {}).get("items", []):
                 sid = archived.get("source_id")
                 disposition = dispositions.get(sid, {})
@@ -299,12 +408,21 @@ def validate_extraction(extraction: Dict[str, Any]) -> List[str]:
                     if (len(owners) != 1 or disposition.get("status") != (
                             "REPLACED_BY_TABLE" if owners[0].kind == "t" else "REPLACED_BY_FORMULA")):
                         errors.append(f"extraction.json archived source {sid}: missing source disposition/mapping")
+                    if "placement_geometry" in disposition:
+                        placements = (extras.get("ocr_structure_bridge") or {}).get("orientation_placements", [])
+                        error = _glyph_disposition_error(archived, disposition, owners, placements, glyph_claims)
+                        if error:
+                            errors.append(f"extraction.json archived source {sid}: {error}")
         if page.page in pages:
             errors.append(f"extraction.json duplicate page {page.page}")
         pages.add(page.page)
         if page.page > source.total_pages:
             errors.append(f"extraction.json page {page.page} exceeds total_pages")
         for item in page.items:
+            if item.callout_id is not None and (source.schema_version != "extraction-v2-layout" or item.kind != "b"
+                                                or not item.callout_id.startswith(f"p{page.page:04d}:") or not item.bbox
+                                                or (item.model_extra or {}).get("column_id") is not None):
+                errors.append(f"extraction.json {item.id}: invalid pull quote placement")
             if not item.bbox and "UNPLACED" not in (item.model_extra or {}).get("review_reason_codes", []):
                 errors.append(f"extraction.json {item.id}: missing bbox requires UNPLACED review")
             if item.id in known:
@@ -373,6 +491,8 @@ def validate_contract_set(extraction: Dict[str, Any], document: Dict[str, Any],
         peer = tables.get(table.table_id)
         if peer and table.cells != peer.cells:
             errors.append(f"document.json table {table.table_id} cells differ from extraction.json")
+        if peer and table.table_orientation != peer.table_orientation:
+            errors.append(f"document.json table {table.table_id} orientation differs from extraction.json")
     return errors
 
 
@@ -446,6 +566,11 @@ def validate_contract_pair(extraction: Dict[str, Any], document: Dict[str, Any])
         for ref in section.chunk_ids:
             if ref not in chunks or chunks[ref].section_id != section.section_id:
                 errors.append(f"document.json section {section.section_id} has an invalid chunk id {ref}")
+    quote_sources: Dict[str, List[str]] = {}
+    for page in source.pages:
+        for item in page.items:
+            if item.callout_id is not None:
+                quote_sources.setdefault(item.callout_id, []).append(item.id)
     for chunk in doc.chunks:
         section = sections.get(chunk.section_id)
         if section is None or section.chunk_ids.count(chunk.chunk_id) != 1:
@@ -458,6 +583,13 @@ def validate_contract_pair(extraction: Dict[str, Any], document: Dict[str, Any])
         if any(ref in known and known[ref][1].kind not in allowed
                for span in chunk.spans for ref in span.block_ids):
             errors.append(f"document.json chunk {chunk.chunk_id} references the wrong element kind")
+        if chunk.callout_id is not None:
+            refs = quote_sources.pop(chunk.callout_id, None)
+            if (chunk.type != "paragraph" or chunk.role is not None or not chunk.needs_review
+                    or len(chunk.spans) != 1 or chunk.spans[0].block_ids != refs):
+                errors.append(f"document.json chunk {chunk.chunk_id} has invalid pull quote sources")
+    for missing in quote_sources:
+        errors.append(f"document.json does not preserve pull quote {missing} as one chunk")
     for collection, field in ((doc.tables, "table_id"), (doc.formulas, "formula_id"), (doc.images, "image_id")):
         for entry in collection:
             ref = getattr(entry, field)
@@ -492,12 +624,56 @@ def validate_contract_pair(extraction: Dict[str, Any], document: Dict[str, Any])
             if not listed or chunk.chunk_id not in listed:
                 errors.append(f"document.json chunk {chunk.chunk_id} references figure {chunk.figure_id} "
                               "that does not list it")
+    caption_owners: set[str] = set()
     for table in doc.tables:
         chunk = chunks.get(table.chunk_id)
         owning_sources = ({ref for span in chunk.spans for ref in span.block_ids}
                           if chunk and chunk.type == "table" else {table.table_id})
         if chunk and (chunk.type != "table" or set(table.pages) != {span.page for span in chunk.spans}):
             errors.append(f"document.json table {table.table_id} pages/type differ from its chunk")
+        source_table = known.get(table.table_id)
+        if source_table is not None and table.table_orientation != source_table[1].table_orientation:
+            errors.append(f"document.json table {table.table_id} orientation differs from extraction.json")
+        if table.row_hierarchy is not None:
+            source_table = known.get(table.table_id)
+            source_hierarchy = None
+            if (doc.schema_version == "doc-v2-layout" and source_table is not None
+                    and source_table[1].kind == "t" and table.pages == [source_table[0]]):
+                source_hierarchy = infer_row_hierarchy([cell.model_dump() for cell in source_table[1].cells])
+            if table.row_hierarchy.model_dump() != source_hierarchy:
+                errors.append(f"document.json table {table.table_id} row hierarchy differs from extraction.json evidence")
+        if table.caption is not None:
+            caption = table.caption
+            ref = caption.chunk_id
+            target = chunks.get(ref)
+            source_caption, source_table = known.get(ref), known.get(table.table_id)
+            if (doc.schema_version != "doc-v2-layout" or target is None or target.type != "paragraph"
+                    or target.role is not None or target.section_id != table.section_id
+                    or len(target.spans) != 1 or target.spans[0].block_ids != [ref]
+                    or table.pages != [target.spans[0].page]
+                    or source_caption is None or source_table is None or source_caption[0] != source_table[0]):
+                errors.append(f"document.json table {table.table_id} has an invalid caption source {ref}")
+            else:
+                title_box = [round(v, 2) for v in source_caption[1].bbox]
+                table_box = [round(v, 2) for v in source_table[1].bbox]
+                max_gap = MAX_CAPTION_GAP_PT
+                if caption.unit_chunk_id is not None:
+                    unit = chunks.get(caption.unit_chunk_id)
+                    source_unit = known.get(caption.unit_chunk_id)
+                    if (caption.position != "above" or unit is None or unit.type != "paragraph"
+                            or unit.role is not None or unit.section_id != table.section_id
+                            or len(unit.spans) != 1 or unit.spans[0].block_ids != [caption.unit_chunk_id]
+                            or source_unit is None or source_unit[0] != source_table[0] or len(title_box) != 4
+                            or not table_caption_unit(source_unit[1].text_corrected,
+                                                      [round(v, 2) for v in source_unit[1].bbox], title_box, table_box)):
+                        errors.append(f"document.json table {table.table_id} has invalid caption unit evidence")
+                    else:
+                        max_gap = MAX_TABLE_CAPTION_GAP_WITH_UNIT_PT
+                if table_caption_geometry(title_box, table_box, max_gap=max_gap) != (caption.position, caption.gap_pt):
+                    errors.append(f"document.json table {table.table_id} caption geometry differs from extraction.json")
+            if ref in caption_owners:
+                errors.append(f"document.json table caption {ref} has more than one owner")
+            caption_owners.add(ref)
         for cell in table.cells:
             check_spans(cell.spans, f"table {table.table_id} cell {cell.row},{cell.col}")
             if any(ref not in owning_sources for span in cell.spans for ref in span.block_ids):
@@ -506,4 +682,11 @@ def validate_contract_pair(extraction: Dict[str, Any], document: Dict[str, Any])
                 errors.append(f"document.json table {table.table_id} cell page is outside table pages")
             if cell.row + cell.row_span > table.num_rows or cell.col + cell.col_span > table.num_cols:
                 errors.append(f"document.json table {table.table_id} cell is outside table dimensions")
+    if doc.table_stitch is not None:
+        from ocr_document.auto_table_stitch import build_auto_stitches
+        try:
+            if doc.table_stitch != build_auto_stitches(extraction, document):
+                errors.append("document.json automatic table stitch differs from source replay")
+        except (ValueError, KeyError, TypeError) as exc:
+            errors.append(f"document.json automatic table stitch cannot replay: {exc}")
     return errors

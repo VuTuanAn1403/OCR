@@ -1,0 +1,17 @@
+{
+  "recorded_at": "2026-11-06T03:57:07.642766+00:00",
+  "active_version": "v1",
+  "revision": "2026-11-06",
+  "authoritative_source": "LATEST_USER_TABLE",
+  "source_sha256": "63737b33615213aa2c640b87febd556fef6d47d69a7fee2f2cec3d15f30b9800",
+  "display_sha256": "e3cf6e249b46960e306990d23bb38e5e6ef9210b43c27af55762d2299c169717",
+  "display_rows": 86,
+  "canonical_phrases": 86,
+  "standalone_dien_toan_present": false,
+  "internet_di_dong_rows": 1,
+  "historical_original": {
+    "path": "config/keywords-v1-original.txt",
+    "sha256": "9a3b8c2bf02906d8abed56cc71e8869f51c497baa576d3f930a83b1cc436be1d"
+  },
+  "continue_two_sheet_exporter": true
+}

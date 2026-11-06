@@ -1,11 +1,12 @@
-from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional, Literal
+from pydantic import BaseModel, Field, model_serializer
 from ocr_contracts.confidence import ConfidenceModel
 
 class TextBlock(ConfidenceModel):
     text: str
     text_raw: Optional[str] = None
     correction_source: Optional[str] = None
+    recognition_provenance: Dict[str, Any] = Field(default_factory=dict)
     source: Literal["native", "primary_ocr", "fallback_ocr", "image_ocr", "vector", "docling"] = "primary_ocr"
     page: int
     bbox: List[float] = Field(default_factory=list)  # [x0, y0, x1, y1]
@@ -30,6 +31,7 @@ class TextBlock(ConfidenceModel):
     parent_region_id: Optional[str] = None
     article_group_id: Optional[str] = None
     column_id: Optional[str] = None
+    callout_id: Optional[str] = None
     role_initial: Optional[str] = None
     role_final: Optional[str] = None
     role_source: Optional[str] = None
@@ -44,6 +46,17 @@ class TextBlock(ConfidenceModel):
     table_candidate_id: Optional[str] = None
     review_reason_codes: List[str] = Field(default_factory=list)
 
+    @model_serializer(mode="wrap")
+    def _serialize_optional_recognition_provenance(self, handler):
+        # Existing page/stage artifacts keep their wire representation. Only
+        # a producer with actual crop evidence adds this optional payload.
+        data = super().serialize_confidence(handler)
+        if not self.recognition_provenance:
+            data.pop("recognition_provenance", None)
+        if self.callout_id is None:
+            data.pop("callout_id", None)
+        return data
+
     def to_dict(self) -> dict:
         return {
             **self.model_dump(include={
@@ -56,6 +69,8 @@ class TextBlock(ConfidenceModel):
             "text_raw": self.text_raw if self.text_raw is not None else self.text,
             "text_corrected": self.text,
             "correction_source": self.correction_source,
+            **({"recognition_provenance": self.recognition_provenance} if self.recognition_provenance else {}),
+            **({"callout_id": self.callout_id} if self.callout_id else {}),
             "block_type": self.block_type,
             "source": self.source,
             "engine": self.engine,

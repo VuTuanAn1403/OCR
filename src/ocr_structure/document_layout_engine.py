@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional
 import re
 import unicodedata
 import pymupdf
+from ocr_contracts.geometry import is_oriented_line_candidate
 from ocr_contracts.table import TableStructure, TableCell
 from ocr_contracts.text_block import TextBlock
 from ocr_contracts.region import Region, ContentType
@@ -116,6 +117,8 @@ class DocumentLayoutEngine:
         """
         tables: List[TableStructure] = []
         document_index_page = has_document_index_title(blocks)
+        # The heuristic derives horizontal rows and has no vertical-cell alignment.
+        blocks = [block for block in blocks if not is_oriented_line_candidate(block.recognition_provenance)]
 
         # 1. Vector tables
         if allow_vector_tables:

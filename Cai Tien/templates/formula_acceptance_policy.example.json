@@ -1,0 +1,33 @@
+{
+  "schema_version": "ocr-formula-acceptance-policy-v1",
+  "status": "DRAFT",
+  "approved_by": null,
+  "locked_at": null,
+  "reference_placements": ["inline", "display"],
+  "text_method": "formula-text-visible-strict-v1",
+  "cdm_method": "unimernet-cdm-5a2c80d-pymupdf200-aa0-tol1-unicode-v2",
+  "iou_threshold": null,
+  "maximum_cdm_pair_absolute_delta": 0.0005,
+  "rules": {
+    "missing_gt": "BLOCK_MEASUREMENT",
+    "missing_prediction": "KEEP_AND_PENALIZE",
+    "unsupported_representation": "BLOCK_ACCEPTANCE",
+    "annotation_custody": "TWO_INDEPENDENT_HUMANS_AND_ADJUDICATOR",
+    "localization_scope": "EXTRACTION_FORMULA_ITEMS_AND_FORMULA_TEXT_BLOCKS",
+    "reviewed_span_credit": "CONTENT_ONLY",
+    "critical_scope": "ALL_SEVEN_CATEGORIES_PER_FORMULA",
+    "zero_denominator": "NOT_EVALUATED",
+    "paired_bootstrap": "COMPANY_CLUSTER"
+  },
+  "not_applicable": [],
+  "artifact_hashes": {
+    "data.formula_holdout_sample_sha256": null,
+    "evaluation.formula_renderer_validation_sha256": null,
+    "runtime.formula_renderer_manifest_sha256": null,
+    "data.adjudication_manifest_sha256": null,
+    "statistics.multiple_comparison_family_sha256": null,
+    "thresholds.subgroup_thresholds_sha256": null,
+    "thresholds.baseline_noninferiority_margins_sha256": null,
+    "statistics.sample_size_and_precision_plan_sha256": null
+  }
+}

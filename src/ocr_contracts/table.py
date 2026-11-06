@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import re
 import textwrap
 import unicodedata
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool, model_serializer
 from ocr_contracts.confidence import ConfidenceModel
 
 
@@ -13,6 +13,17 @@ class TableCell(ConfidenceModel):
     col_span: int = 1
     text: str = ""
     bbox: List[float] = Field(default_factory=list)
+    column_header: Optional[StrictBool] = None
+    row_header: Optional[StrictBool] = None
+    row_section: Optional[StrictBool] = None
+
+    @model_serializer(mode="wrap")
+    def _serialize_optional_roles(self, handler):
+        payload = super().serialize_confidence(handler)
+        for name in ("column_header", "row_header", "row_section"):
+            if getattr(self, name) is None:
+                payload.pop(name, None)
+        return payload
 
 
 class TableRenderer:

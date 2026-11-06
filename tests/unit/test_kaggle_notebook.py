@@ -176,7 +176,8 @@ def test_matrix_exports_every_file_and_exactly_88_ordered_keyword_columns(tmp_pa
     texts = ["Trí tuệ nhân tạo. " + "Internet di động. " * (index % 3) +
              "HỌC MÁY. " * (index % 2) for index in range(document_count)]
     namespace, cells = _matrix_namespace(tmp_path, texts)
-    expected_keywords = [line.strip() for line in (ROOT / "config/keywords.txt").read_text(
+    # This archived notebook deliberately embeds the original 88-row list.
+    expected_keywords = [line.strip() for line in (ROOT / "config/keywords-v1-original.txt").read_text(
         encoding="utf-8-sig").splitlines() if line.strip()]
     assert namespace["MATRIX_KEYWORDS"] == expected_keywords
     exec(cells["matrix"], namespace)

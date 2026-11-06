@@ -89,3 +89,18 @@ def test_coco_duplicate_wrong_page_and_no_predictions_count_errors():
     assert (text["TP"], text["FP"], text["FN"]) == (1, 2, 0)
     assert text["AP50"] == pytest.approx(.5)
     assert evaluate_layout_scoreboards([gt()], [])["acceptance"]["per_class"]["Text"]["FN"] == 1
+
+
+def test_paired_layout_errors_penalize_spurious_empty_page_and_missing_output():
+    planned = [{"company_id": company, "document_id": company, "page": page}
+               for company, page in (("a", 1), ("a", 2), ("b", 1))]
+    baseline = [dict(unit, numerator=errors, denominator=regions)
+                for unit, errors, regions in zip(planned, (0, 2, 1), (2, 0, 2))]
+    candidate = [dict(unit, numerator=errors, denominator=regions)
+                 for unit, errors, regions in zip(planned, (0, 1, 0), (2, 0, 2))]
+    candidate[-1]["status"] = "MISSING_OUTPUT"
+    result = company_cluster_bootstrap(baseline, candidate, metric="layout_errors_per_gt", resamples=100,
+                                       margin=.1, margin_approved=True, retain_zero_denominators=True)
+    assert result["baseline"] == result["candidate"] == .75
+    assert result["counts"]["reference_denominator"] == 4
+    assert result["noninferiority"]["harm_upper_bound"] == pytest.approx(.5)

@@ -1,0 +1,33 @@
+{
+  "schema_version": "test-trace-addendum-v1",
+  "pipeline_version": "7.0.0",
+  "tc_id": "TC_SCI_LAY_04",
+  "test_status": "VERIFIED_TEST_SUBSET",
+  "acceptance_status": "NOT_EVALUATED",
+  "verification_kind": "CONTRACT_FIXTURE_AND_SAVED_OUTPUT_REPLAY",
+  "test_file": "tests/unit/document/test_table_caption_binding.py",
+  "test_file_sha256": "9ba2741928b312587d53b488f33c2f6311a9b8fa5bf36af2d8bef07d632485c8",
+  "passing_test_cases": [
+    "test_modern_export_links_the_title_to_its_table[False]",
+    "test_modern_export_links_the_title_to_its_table[True]",
+    "test_caption_abstains_when_geometry_does_not_identify_one_pair[body]",
+    "test_caption_abstains_when_geometry_does_not_identify_one_pair[image]",
+    "test_caption_abstains_when_geometry_does_not_identify_one_pair[two_tables]",
+    "test_caption_abstains_when_geometry_does_not_identify_one_pair[two_captions]",
+    "test_caption_abstains_when_geometry_does_not_identify_one_pair[other_page]",
+    "test_caption_abstains_when_geometry_does_not_identify_one_pair[other_section]"
+  ],
+  "trace_sha256": "b0341eb01b1fbb5002b1c65ca315b727ff2021a0f981a568a60ecb4684204ff7",
+  "prior_addendum_sha256": "e64f46c5b10780b38b6213c83421b84cbc4681affff68ea4958b448c317cbe22",
+  "test_counts_with_addenda": {
+    "VERIFIED_TEST_SUBSET": 58,
+    "NOT_EVALUATED": 7
+  },
+  "evidence_sha256": {
+    "scratch/runs/20261104-table-caption-final-focused/evidence/junit.xml": "dfbcb84c5b8f7033f18e5cc4a7ebb5b3799e8f980d284b0c686f3cca6dd2729e",
+    "scratch/dev_sessions/20261104-table-caption-binding/caption-replay-final.json": "ee49b528ab3bf37b56584f10b6f985a23f1f9d0ee1efaa57da7ff2b7d50b141f",
+    "scratch/dev_sessions/20261104-table-caption-binding/caption-source-visual-check.json": "2dc14efb59f43bfe9d28af9ae0b3c5d74ae9b79e8762dd15a8f119cca54e7aa8",
+    "scratch/dev_sessions/20261104-table-caption-binding/release-build/wheel-verification.json": "cd47b63645d461dc3952c7b18a9a9f5637f0f2987562690c8b9a28337d628536"
+  },
+  "limitations": "Technical evidence of direct source association, abstention and evidence validation. Independent caption association F1 and acceptance remain NOT_EVALUATED."
+}

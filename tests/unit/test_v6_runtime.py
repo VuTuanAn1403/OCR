@@ -495,8 +495,11 @@ def test_vietocr_results_keep_recognizer_text_before_cleanup(monkeypatch):
     engine._recognizer.predict_batch.return_value = ([raw], [.9])
     result = engine.predict_image(np.zeros((40, 100, 3), dtype=np.uint8))[0]
     assert result["text_raw"] == raw
-    assert result["text"] == "Doanh thu thuần - dự kiến năm tới"
-    assert result["correction_source"] == "unicode_nfc+trim_whitespace+vietocr_dash_repair+vietocr_repetition_guard"
+    assert result["text"] == "Doanh thu thuần - dự kiến năm tới năm tới năm tới"
+    assert result["correction_source"] == "unicode_nfc+trim_whitespace+vietocr_dash_repair"
+    audit = result["recognition_provenance"]["repetition"]
+    assert audit["candidate_text"] == "Doanh thu thuần - dự kiến năm tới"
+    assert audit["applied"] is False
 
 
 @pytest.mark.parametrize("raw", ["2025 2025 2025", "Lợi nhuận ? 123 triệu đồng", "1\u00a0234 triệu đồng"])

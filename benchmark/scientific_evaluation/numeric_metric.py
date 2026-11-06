@@ -14,19 +14,23 @@ Metrics:
 """
 
 from typing import List, Dict, Any, Tuple, Optional
+from collections import deque
 import re
 import unicodedata
-from .spatial_matching import bbox_iou, same_scope
+from .spatial_matching import _box, bbox_iou, same_scope
 
 
 # C2.3(c): preserve signs, accounting negatives, separators, document IDs,
 # dates, percent signs and adjacent units. Spaces inside tokens remain visible.
 _NUMBER = r"\d+(?:(?:[.,]\d+)|(?:[ \u00a0]\d{3}(?!\d)))*"
 _IDENTIFIER = r"\d+(?:/[A-Za-zÀ-ỹ\dĐđ]+(?:-[A-Za-zÀ-ỹ\dĐđ]+)*)+"
-_UNIT = r"(?:nghìn|ngàn|triệu|tỷ|tỉ|đồng|VND|VNĐ|USD|lần)\b"
+_CODE = r"(?:[A-Za-zÀ-ỹĐđ]+\d[\w:/−\-]*|\d+[A-Za-zÀ-ỹĐđ][\w:/−\-]*)"
+_UNIT = r"(?:nghìn|ngàn|triệu|tỷ|tỉ|đồng|VND|VNĐ|USD|EUR|GBP|JPY|CNY|lần)\b"
+_SIGN = r"(?:[-−+][ \u00a0]*)?"
 NUMERIC_TOKEN_PATTERN = re.compile(
-    rf"(?:{_IDENTIFIER}|\([ \u00a0]*[-−+]?{_NUMBER}[ \u00a0]*\)|[-−+]?{_NUMBER})"
-    rf"(?:[ \u00a0]*%)?(?:[ \u00a0]*{_UNIT})*",
+    rf"(?:{_UNIT}[ \u00a0]+)*(?:[$€£][ \u00a0]*)?"
+    rf"(?:{_IDENTIFIER}|{_CODE}|\([ \u00a0]*{_SIGN}{_NUMBER}[ \u00a0]*\)|{_SIGN}{_NUMBER})"
+    rf"(?:[ \u00a0]*[%‰])?(?:[ \u00a0]*{_UNIT})*(?:[ \u00a0]*[$€£])?",
     flags=re.IGNORECASE,
 )
 
@@ -66,7 +70,7 @@ def compute_numeric_token_recall(reference_text: str, predicted_text: str) -> Di
     
     if not ref_tokens:
         return {
-            "token_recall": 1.0 if not pred_tokens else 1.0,
+            "token_recall": None,
             "matched_tokens": 0,
             "total_ref_tokens": 0,
             "total_pred_tokens": len(pred_tokens),
@@ -90,6 +94,34 @@ def compute_numeric_token_recall(reference_text: str, predicted_text: str) -> Di
     }
 
 
+def _location_id(item: Dict[str, Any]):
+    """Use the same nonempty identity for matching and coverage reporting."""
+    for key in ("location_id", "cell_id"):
+        value = item.get(key)
+        if (isinstance(value, str) and value.strip()) or (type(value) is int):
+            return value
+    return None
+
+
+def _has_location(item: Dict[str, Any]) -> bool:
+    # Table geometry alone cannot establish which cell owns a value.
+    if item.get("cell_id") is not None or item.get("table_id") is not None:
+        return _location_id(item) is not None
+    return _location_id(item) is not None or _box(item) is not None
+
+
+def _validate_numeric_items(items: List[Dict[str, Any]], name: str) -> None:
+    """Reject malformed evidence instead of turning missing values into TP."""
+    if not isinstance(items, (list, tuple)):
+        raise TypeError(f"{name} must be a list of numeric records")
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            raise TypeError(f"{name}[{index}] must be a numeric record")
+        value = item.get("value")
+        if not isinstance(value, str) or not value.strip() or not any(c.isdecimal() for c in value):
+            raise ValueError(f"{name}[{index}].value must be a nonempty numeric string")
+
+
 def evaluate_numeric_exact_matching(
     reference_items: List[Dict[str, Any]],
     predicted_items: List[Dict[str, Any]],
@@ -101,6 +133,8 @@ def evaluate_numeric_exact_matching(
       - 'value': str (e.g. '100', '(50)', '00123', '12%')
       - 'location_id': optional identifier or positional index (e.g. cell_id, block_idx)
     """
+    _validate_numeric_items(reference_items, "reference_items")
+    _validate_numeric_items(predicted_items, "predicted_items")
     n_gt = len(reference_items)
     n_pred = len(predicted_items)
 
@@ -115,20 +149,14 @@ def evaluate_numeric_exact_matching(
             "status": "NOT_APPLICABLE",
         }
 
-    matched_pred_indices = set()
-    tp = 0
-
-    for gt_idx, gt in enumerate(reference_items):
+    candidates = []
+    for gt in reference_items:
         gt_val = unicodedata.normalize("NFC", str(gt.get("value", "")).strip())
-        gt_loc = gt.get("location_id", gt.get("cell_id"))
-
-        # Look for matching prediction with same value and same location_id
-        match_found = False
+        gt_loc = _location_id(gt)
+        eligible = []
         for p_idx, p in enumerate(predicted_items):
-            if p_idx in matched_pred_indices:
-                continue
             p_val = unicodedata.normalize("NFC", str(p.get("value", "")).strip())
-            p_loc = p.get("location_id", p.get("cell_id"))
+            p_loc = _location_id(p)
 
             same_location = (gt_loc is not None and p_loc is not None and gt_loc == p_loc)
             # Text regions may use different block IDs after segmentation.
@@ -141,17 +169,46 @@ def evaluate_numeric_exact_matching(
                 same_location = same_location and gt.get("cell_id") == p.get("cell_id") and \
                                 gt.get("table_id") == p.get("table_id")
             if gt_val == p_val and same_location and same_scope(gt, p):
-                matched_pred_indices.add(p_idx)
-                tp += 1
-                match_found = True
-                break
+                eligible.append(p_idx)
+        candidates.append(eligible)
+
+    # An overlapping text box can match several references. Greedily taking
+    # the first prediction can strand a later reference and change TP when
+    # the input lists are permuted. Augment paths to maximize one-to-one
+    # cardinality while retaining the exact same value/location criteria.
+    matched_reference, matched_prediction = {}, {}
+    for root in range(n_gt):
+        pending = deque([root])
+        seen_references = {root}
+        predecessor = {}
+        free_prediction = None
+        while pending and free_prediction is None:
+            row = pending.popleft()
+            for col in candidates[row]:
+                if col in predecessor:
+                    continue
+                predecessor[col] = row
+                if col not in matched_prediction:
+                    free_prediction = col
+                    break
+                owner = matched_prediction[col]
+                if owner not in seen_references:
+                    seen_references.add(owner)
+                    pending.append(owner)
+        while free_prediction is not None:
+            row = predecessor[free_prediction]
+            previous = matched_reference.get(row)
+            matched_reference[row] = free_prediction
+            matched_prediction[free_prediction] = row
+            free_prediction = previous
+    tp = len(matched_prediction)
 
     fp = n_pred - tp
     fn = n_gt - tp
 
     precision = round(tp / float(tp + fp), 4) if (tp + fp) > 0 else 0.0
     recall = round(tp / float(tp + fn), 4) if (tp + fn) > 0 else 0.0
-    f1 = round((2 * precision * recall) / (precision + recall), 4) if (precision + recall) > 0 else 0.0
+    f1 = round(2 * tp / (2 * tp + fp + fn), 4) if (2 * tp + fp + fn) > 0 else 0.0
 
     return {
         "precision": precision,
@@ -164,8 +221,7 @@ def evaluate_numeric_exact_matching(
         "total_pred": n_pred,
         "numeric_errors": fn,
         "numeric_error_rate": round(fn / n_gt, 4) if n_gt else None,
-        "reference_items_without_location": sum(
-            item.get("location_id") is None and "bbox" not in item for item in reference_items),
+        "reference_items_without_location": sum(not _has_location(item) for item in reference_items),
         "status": "MEASURED"
     }
 
@@ -203,10 +259,11 @@ def compute_numeric_metrics(
                 matched_bag += 1
                 break
 
-    bag_recall = round(matched_bag / float(n_gt), 4) if n_gt > 0 else 1.0
+    bag_recall = round(matched_bag / float(n_gt), 4) if n_gt > 0 else None
 
     return {
         "bag_recall": bag_recall,
+        "bag_recall_status": "MEASURED" if n_gt else "NOT_APPLICABLE_NO_REF_NUMBERS",
         "location_exact_precision": loc_res["precision"],
         "location_exact_recall": loc_res["recall"],
         "location_exact_f1": loc_res["f1"],

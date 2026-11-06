@@ -1,0 +1,259 @@
+{
+  "schema": "ocr-benchmark-quality-document-audit-v1",
+  "created_at_bangkok": "2026-11-03T22:57:42.340414+07:00",
+  "verification_status": "VERIFIED_DOCUMENT_AND_CONTRACT_SCOPE",
+  "benchmark_acceptance_readiness": "NOT_READY_FOR_ACCEPTANCE_MEASUREMENT",
+  "new_ocr_accuracy_status": "NOT_EVALUATED",
+  "quality_acceptance_granted": false,
+  "scope": "Source/document inspection, 159 fixture/contract tests and primary-source methodology comparison; no new model inference or independent GT adjudication",
+  "git_head": "a95c806965118b53b3afc28d2ebbff37dec0cfc7",
+  "git_status": " M .gitignore\n M ARCHITECTURE.md\n M README.md\n M benchmark/scientific_evaluation/numeric_metric.py\n M src/ocr_contracts/text_block.py\n M src/ocr_document/README.md\n M src/ocr_document/document_contracts.py\n M src/ocr_document/export.py\n M src/ocr_document/page_assembly.py\n M src/ocr_document/region_tree.py\n M src/ocr_document/resolve_document_layout.py\n M src/ocr_document/section_tree.py\n M src/ocr_recognition/README.md\n M src/ocr_recognition/blocks.py\n M src/ocr_recognition/vietnamese_seq2seq_engine.py\n M src/ocr_text/README.md\n M src/ocr_text/numeric_guard.py\n M src/ocr_text/vietnamese_diacritics.py\n?? AGENTS.md\n?? CLAUDE.md\n?? \"Cai Tien/\"\n?? Doi_Chieu/\n?? \"Test case/\"\n?? docs/development/\n?? scripts/build_dev_context.py\n?? tests/scientific/test_numeric_metric_counterexamples.py\n?? tests/scientific/test_numeric_schema_and_locations.py\n?? tests/scientific/test_testcase_harness.py\n?? tests/unit/document/test_content_flow_contract.py\n?? tests/unit/recognition/test_repetition_evidence.py\n?? tests/unit/recognition/test_rotated_line_crops.py\n?? tests/unit/test_build_dev_context.py\n?? tests/unit/test_document_review_gate_exports.py\n?? tests/unit/test_ocr_review_propagation.py\n?? tests/unit/test_table_evidence_occurrences.py\n?? tests/unit/text/test_digital_term_review.py\n?? tests/unit/text/test_financial_numeric_guard.py\n",
+  "preservation": {
+    "source_config_lock_script_test_files_unchanged": 477,
+    "historical_testcase_and_test_sources_unchanged": 58,
+    "previous_nine_focus_hashes_match": true,
+    "backlog_and_trace_unchanged": true,
+    "manifest": "scratch/dev_sessions/20261103-benchmark-quality/protected_code_before.json",
+    "manifest_sha256": "d7fca59b9fd22816073e69a24e94d5bac586e04f3e94142e728d7eeebcd36dc9"
+  },
+  "tests": {
+    "run": "scratch/runs/20261103-224537-3ec2862b",
+    "command": [
+      "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+      "-B",
+      "-m",
+      "pytest",
+      "tests/scientific",
+      "tests/unit/test_v6_evaluation_protocol.py",
+      "tests/unit/test_v6_collect.py",
+      "tests/unit/test_v6_matrix_runner.py",
+      "-q",
+      "--capture=fd",
+      "--tb=short",
+      "-p",
+      "no:cacheprovider",
+      "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261103-224537-3ec2862b\\pytest",
+      "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261103-224537-3ec2862b\\evidence\\junit.xml"
+    ],
+    "exit_code": 0,
+    "passed": 159,
+    "failed": 0,
+    "skipped": 0,
+    "junit_sha256": "f442aadcca1d378cc85b55776329907ef0dd30e16f4d12c08b8e6404fb4bb51a"
+  },
+  "criteria_ids": [
+    "BQ-01",
+    "BQ-02",
+    "BQ-03",
+    "BQ-04",
+    "BQ-05",
+    "BQ-06",
+    "BQ-07",
+    "BQ-08",
+    "BQ-09",
+    "BQ-10",
+    "BQ-11",
+    "BQ-12",
+    "BQ-13",
+    "BQ-14"
+  ],
+  "work_package_ids": [
+    "BK-01",
+    "BK-02",
+    "BK-03",
+    "BK-04",
+    "BK-05",
+    "BK-06",
+    "BK-07",
+    "BK-08"
+  ],
+  "existing_backlog_is_unchanged": "23 IDs; BK items refine dependencies, not new confirmed OCR findings",
+  "document_hashes": {
+    "Cai Tien/07_BO_TIEU_CHI_BENCHMARK_OCR.md": "4c78aa7198ac252d3c694fbb3b608dda03479028db09d04cd2c2b5c8b99b794f",
+    "Cai Tien/templates/benchmark_acceptance_protocol.example.yaml": "3564dfbe8dbf243c240cb1c01872ac6c009275de8d9c5f30d25739ae400537c5",
+    "Cai Tien/README.md": "997ee105f4f9eb9d513b1e6f8ebd45d36b925c9fe8aa6cba16166ed8edaa4b61"
+  },
+  "primary_source_snapshots": [
+    {
+      "id": "REF-1",
+      "url": "https://github.com/opendatalab/OmniDocBench",
+      "title": "GitHub - opendatalab/OmniDocBench: [CVPR 2025] A Comprehensive Benchmark for Document Parsing and Evaluation · GitHub",
+      "http_status": 200,
+      "scrape_id": "01a1a214-e0b5-755c-9b16-4b85ee5db93c",
+      "cached_at": "2026-11-03T13:01:08.399Z",
+      "artifact": "scratch/dev_sessions/20261103-benchmark-quality/external_source_1.md",
+      "source_revision": "Repository main as retrieved; no immutable upstream commit pinned",
+      "scope": "Primary repository documentation, not an independently reproduced benchmark run",
+      "snapshot_sha256": "76cd7abd843f9a88571578e3d2fb1622d9112642a9c5ce4539abf3ea0bcffb1d",
+      "reviewed_on_bangkok_date": "2026-11-03"
+    },
+    {
+      "id": "REF-2",
+      "url": "https://github.com/allenai/olmocr/tree/main/olmocr/bench",
+      "title": "olmocr/olmocr/bench at main · allenai/olmocr · GitHub",
+      "http_status": 200,
+      "scrape_id": "01a1a214-e08e-777c-8e28-5e1009fe741b",
+      "cached_at": "2026-11-02T15:12:41.349Z",
+      "artifact": "scratch/dev_sessions/20261103-benchmark-quality/external_source_2.md",
+      "source_revision": "Repository main as retrieved; no immutable upstream commit pinned",
+      "scope": "Primary repository documentation, not an independently reproduced benchmark run",
+      "snapshot_sha256": "356e89a7f2eef5b898345fe7824bc670559dc61507a434c38196793438a9f4e3",
+      "reviewed_on_bangkok_date": "2026-11-03"
+    },
+    {
+      "id": "REF-3",
+      "url": "https://github.com/microsoft/table-transformer",
+      "title": "GitHub - microsoft/table-transformer: Table Transformer (TATR) is a deep learning model for extracting tables from unstructured documents (PDFs and images). This is also the official repository for the PubTables-1M dataset and GriTS evaluation metric. · GitHub",
+      "http_status": 200,
+      "scrape_id": "01a1a214-e09c-76ed-bfa4-25328fee96e9",
+      "cached_at": null,
+      "artifact": "scratch/dev_sessions/20261103-benchmark-quality/external_source_3.md",
+      "source_revision": "Repository main as retrieved; no immutable upstream commit pinned",
+      "scope": "Primary repository documentation, not an independently reproduced benchmark run",
+      "snapshot_sha256": "b3716caed8e6a769559c2bb847e9d8a049b002c1ceb2b0de383ab20271fbc74e",
+      "reviewed_on_bangkok_date": "2026-11-03"
+    },
+    {
+      "id": "REF-4",
+      "url": "https://github.com/DS4SD/DocLayNet",
+      "title": "GitHub - DS4SD/DocLayNet: DocLayNet: A Large Human-Annotated Dataset for Document-Layout Analysis · GitHub",
+      "http_status": 200,
+      "scrape_id": "01a1a214-e0bb-763f-bbd5-8fad7ca22e78",
+      "cached_at": null,
+      "artifact": "scratch/dev_sessions/20261103-benchmark-quality/external_source_4.md",
+      "source_revision": "Repository main as retrieved; no immutable upstream commit pinned",
+      "scope": "Primary repository documentation, not an independently reproduced benchmark run",
+      "snapshot_sha256": "7fc596c7562fab7710a4a4acc3f8d21c29e8996f8d9f768a3e703d546b6076b9",
+      "reviewed_on_bangkok_date": "2026-11-03"
+    },
+    {
+      "id": "REF-5",
+      "url": "https://proceedings.mlr.press/v70/guo17a.html",
+      "title": "On Calibration of Modern Neural Networks",
+      "published_year": 2017,
+      "source_kind": "Primary ICML/PMLR paper abstract page",
+      "artifact": "scratch/dev_sessions/20261103-benchmark-quality/external_source_5.md",
+      "source_revision": "2017 paper; official abstract page retrieved 2026-11-03",
+      "scope": "Confidence calibration concept only; not validation of VietOCR sequence probabilities",
+      "snapshot_sha256": "926556011690e52e562cba2c08a05b2ff0e1adccd52a978d0eda33d6e19d77ca",
+      "reviewed_on_bangkok_date": "2026-11-03"
+    }
+  ],
+  "code_evidence": [
+    {
+      "path": "benchmark/scientific_evaluation/ocr_metric.py",
+      "sha256": "83507ea41794391a5224c7685805cabe95979b5aa68cc39d6ad1360acdf0b816",
+      "symbols": {
+        "normalize_text_policy": 50,
+        "compute_cer_detailed": 128,
+        "compute_wer_detailed": 194,
+        "compute_der_detailed": 282
+      }
+    },
+    {
+      "path": "benchmark/scientific_evaluation/evaluation_protocol.py",
+      "sha256": "1400597d221f93518a28cb65ffe8d4d873cf415da979932f9dd242ea7146c8fb",
+      "symbols": {
+        "aggregate_text_metrics": 24
+      }
+    },
+    {
+      "path": "benchmark/scientific_evaluation/markdown_evaluator.py",
+      "sha256": "c2db4e13349d42fdddea262530b77ff47468406153d30ab8c66a811b8290cc31",
+      "symbols": {
+        "parse_markdown_artifacts": 25,
+        "_strip_markdown_for_text_evaluation": 119
+      }
+    },
+    {
+      "path": "benchmark/scientific_evaluation/numeric_metric.py",
+      "sha256": "3e929e7a6909955bc80ee3b9c7f88ef88e468e1f99a0191606f11e7b640d5185",
+      "symbols": {
+        "evaluate_numeric_exact_matching": 125
+      }
+    },
+    {
+      "path": "benchmark/scientific_evaluation/teds_metric.py",
+      "sha256": "da23080a615f5e7a5a607fd9a43aab37ba795f149b2f9db04aa1e6d83c8aa0ce",
+      "symbols": {
+        "evaluate_table_collection": 191
+      }
+    },
+    {
+      "path": "benchmark/scientific_evaluation/reading_order_v6_2.py",
+      "sha256": "7d47595ce768fd6cd545d119bc8c47033c2f80d4dbd1533ba6f79bf248b8ff7a",
+      "symbols": {
+        "evaluate_reading_order": 31
+      }
+    },
+    {
+      "path": "benchmark/scientific_evaluation/cluster_statistics.py",
+      "sha256": "ca6020d4abf5ce9a47e89e7382356e0f6b96e15b14a070ff45edfb4f2088f9bc",
+      "symbols": {
+        "company_cluster_bootstrap": 67
+      }
+    },
+    {
+      "path": "benchmark/scientific_evaluation/matrix_statistics.py",
+      "sha256": "c212ca42d4b358cf3275e0e0680623e8b6713e80f5fc77908d9579b7b4c51779",
+      "symbols": {
+        "evaluate_matrix": 19
+      }
+    },
+    {
+      "path": "benchmark/scientific_evaluation/matrix_runner.py",
+      "sha256": "0b2824e245ee0bb42cd8b667fff61a2711ea4f3261d9ee5f8f9a4f0a1c0de670",
+      "symbols": {
+        "derive_profile": 117
+      }
+    },
+    {
+      "path": "benchmark/accuracy_first.py",
+      "sha256": "763fcf3eb72deb65dfaa12166198cca98c0643f5e468b7248981b2e3298487f2",
+      "symbols": {
+        "evaluate_case": 72
+      }
+    },
+    {
+      "path": "scripts/run_scientific_benchmark.py",
+      "sha256": "f7d6b6affbd0ccb9d4d96e13ffd7782019cee6518e1302df0f305387a1faad29",
+      "symbols": {
+        "_final_markdown_protocol": 58,
+        "evaluate_document_scientific": 85
+      }
+    },
+    {
+      "path": "src/ocr/collect/catalog.py",
+      "sha256": "d606cb6ed2db41955ac33a569dd36907a36a8448321d411ab489b20d1edd9dfa",
+      "symbols": {
+        "lock_company_splits": 125
+      }
+    },
+    {
+      "path": "Test case/scientific_benchmark_harness.py",
+      "sha256": "8456a32284037611356e8cb17b2fdc91ae112e4b4fafd098202281b46ea5d2b4",
+      "symbols": {
+        "evaluate_document": 62
+      }
+    }
+  ],
+  "mathematical_example": {
+    "confidence_one_sided": 0.95,
+    "target_accuracy_lower_bound": 0.9999,
+    "zero_error_minimum_n_under_iid_bernoulli": 29956,
+    "assumption_limit": "Not a valid cell sample-size claim for correlated pages/documents"
+  },
+  "documentation_checks": {
+    "utf8_valid": true,
+    "local_links_checked": 36,
+    "yaml_parsed": true,
+    "draft_never_grants_acceptance": true,
+    "git_diff_check_exit": 0
+  },
+  "limitations": [
+    "Main-branch benchmark documentation snapshots are not pinned upstream evaluator executions",
+    "No leaderboard reproduction, new GT, new GPU OCR, soak, calibration or holdout acceptance",
+    "Thresholds are existing project proposals, not a universal industry certification",
+    "Scratch source snapshots and run logs are local-only; copy with handoff for another machine"
+  ]
+}

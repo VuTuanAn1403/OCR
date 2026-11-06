@@ -7,7 +7,7 @@ import subprocess
 import sys
 import uuid
 
-from ocr_runtime.config import ConfigError, declared_pipeline, load_profiles, get_profile
+from ocr_runtime.config import ConfigError, UNIFIED_PIPELINES, declared_pipeline, load_profiles, get_profile
 from ocr_runtime.pipeline_policy import PIPELINE, validate_profile
 from ocr_contracts.protocol import DOCUMENT_WORKER_PROTOCOL
 from ocr_pipeline.scheduler import ROOT, sha256
@@ -26,10 +26,11 @@ def prepare_backend(config_path, profile, env_root, *, preflight=True):
         # GPU workers load the project code through PYTHONPATH from a source
         # tree; an installed wheel would inject this interpreter's site-packages
         # into their separately locked runtimes (P10 decision).
-        raise ValueError("NOT_SUPPORTED: V6.3 GPU backend runs from a checkout, not from an installed wheel")
+        raise ValueError("NOT_SUPPORTED: Unified GPU extraction requires a source checkout")
     path, profiles = load_profiles(config_path)
-    if declared_pipeline(path) != PIPELINE:
-        raise ConfigError(f"{path} declares pipeline {declared_pipeline(path)!r}; V6.3 needs a v6.3 profile file")
+    declaration = declared_pipeline(path)
+    if declaration not in UNIFIED_PIPELINES:
+        raise ConfigError(f"{path} declares pipeline {declaration!r}; use the unified {PIPELINE} profile")
     config = copy.deepcopy(get_profile(profiles, profile))
     validate_profile(config)
     registry_path = (ROOT/config["model_registry"]).resolve()

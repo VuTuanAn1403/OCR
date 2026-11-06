@@ -112,11 +112,12 @@ def test_scientific_primary_preserves_whitespace_and_reports_secondary(tmp_path,
     assert metrics["reading_normalized_v1"]["micro_cer"] == 0.0
 
 
-def test_der_omits_pages_without_reference_diacritics(tmp_path, scientific_runner):
+def test_der_retains_insertions_from_pages_without_reference_diacritics(tmp_path, scientific_runner):
     gt = _gt(tmp_path, {"clw_page_0001.txt": "á", "clw_page_0002.txt": "a"})
     doc = _prediction(tmp_path, "CLW_report", {1: "á", 2: "ááá"}, selected=[1, 2])
     metrics = scientific_runner(doc, gt)["academic_metrics"]
-    assert metrics["micro_der"] == 0.0
+    assert metrics["micro_der"] == 3.0
+    assert metrics["counts"]["der"]["errors"] == 3
     assert metrics["counts"]["der"]["pages_without_denominator"] == 1
 
 
@@ -306,3 +307,9 @@ def test_perf_quality_evaluation_is_outside_extraction_wall_clock(tmp_path, monk
     report = perf.run(args)
     assert [repeat["wall_seconds"] for repeat in report["repeats"]] == [2.0, 2.0]
     assert report["documents"][0]["quality"]["academic_metrics"]["evaluated_pages"] == 1
+def test_der_aggregate_retains_extra_marks_on_an_unaccented_reference():
+    from benchmark.scientific_evaluation.evaluation_protocol import aggregate_text_metrics, text_metrics
+
+    measured = aggregate_text_metrics([text_metrics("đổi", "đổi"), text_metrics("ma", "má")])
+    assert measured["counts"]["der"]["reference_length"] == 3
+    assert measured["counts"]["der"]["errors"] == 1

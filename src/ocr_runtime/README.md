@@ -8,5 +8,6 @@ Paths/config, registry/model/dependency lock, fingerprint, GPU lease, process tr
 - Test: `tests/unit/runtime`, `test_migration_code_roots.py`, `test_model_identity.py`, `test_venv_interpreter_paths.py`. Hai test import worker trong `test_runtime_package.py` skip khi chưa có runtime; không phải pass inference.
 - Không resolve symlink Python venv thành interpreter hệ thống. Không sync runtime đang được batch dùng. Hash model phải chọn đúng file engine nạp, kể cả model nằm ngoài checkout.
 - Khi đổi fingerprint, kiểm coverage mã coordinator/worker và stage invalidation bằng call counter, không chỉ chuỗi hash.
+- Lỗi quan sát cây tiến trình (kể cả thiếu commit/pagefile) vẫn phải dọn Windows job hoặc process group rồi báo lại lỗi; không trả thành công khi kiểm tra thoát chưa đủ. Test nhánh lỗi dùng `tests/unit/runtime/test_process_tree_cleanup.py`, không thay nghiệm thu fault/soak thật.
 
 [Cài đặt, cách chạy và kiểm thử](../../README.md).

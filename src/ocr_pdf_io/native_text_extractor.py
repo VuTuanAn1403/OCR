@@ -49,8 +49,11 @@ class NativeTextExtractor:
                     continue
 
                 avg_font_size = sum(font_sizes) / len(font_sizes) if font_sizes else 10.0
-                norm_text = UnicodeNormalizer.normalize(full_line_text)
+                norm_text = unicodedata.normalize("NFC", full_line_raw)
                 diacritic_reasons = diacritic_suspicions(norm_text)
+                mapping_review = (UnicodeNormalizer.fix_cmap_and_typography(norm_text) != norm_text
+                                  or UnicodeNormalizer.analyze(norm_text)["is_corrupted"])
+                reasons = diacritic_reasons + (["Native font mapping requires image review"] if mapping_review else [])
 
                 block = TextBlock(
                     producer_ref=f"native:p{page_num}:object{object_index}:line{native_line_index}",
@@ -62,9 +65,10 @@ class NativeTextExtractor:
                     page=page_num,
                     bbox=[round(coord, 2) for coord in line_bbox],
                     confidence=1.0,
-                    quality_score=0.74 if diacritic_reasons else 1.0,
-                    fallback_reason="; ".join(diacritic_reasons) or None,
-                    review_reason_codes=[DIACRITIC_REVIEW_CODE] if diacritic_reasons else [],
+                    quality_score=0.74 if reasons else 1.0,
+                    fallback_reason="; ".join(reasons) or None,
+                    review_reason_codes=([DIACRITIC_REVIEW_CODE] if diacritic_reasons else [])
+                        + (["native_font_mapping_suspect"] if mapping_review else []),
                     reviewed=False,
                     block_type="paragraph",
                     line_index=line_idx,

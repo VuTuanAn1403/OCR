@@ -1,7 +1,6 @@
 """Invariants of the one supported pipeline; no model imports."""
-from ocr_runtime.config import ConfigError, document_layout_settings, furniture_settings
-
-PIPELINE = "v6.3"
+from ocr_runtime.config import ConfigError, document_layout_settings, furniture_settings, table_stitch_settings
+from ocr_runtime.version import PIPELINE
 PROFILE = "unified_gpu_full_ocr"
 BACKEND = "gpu_two_phase"
 SOURCE_POLICY = "gpu_ocr_only_v1"
@@ -30,6 +29,7 @@ def validate_profile(config, *, phase=None):
     if not isinstance(runtime, dict) or runtime.get("scheduler") != "document_two_phase_v1":
         raise ConfigError("Unified pipeline requires document_two_phase_v1")
     layout = document_layout_settings(config)
+    table_stitch_settings(config)
     if layout["method"] != "region_tree_graph_v1" or furniture_settings(layout)["method"] != "document_context_v3":
         raise ConfigError("Unified pipeline requires region_tree_graph_v1 and document_context_v3")
     docling = config.get("docling", {})

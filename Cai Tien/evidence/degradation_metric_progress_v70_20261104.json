@@ -1,0 +1,58 @@
+{
+  "schema_version": "benchmark-component-progress-v1",
+  "pipeline_version": "7.0.0",
+  "component": "paired-degradation-strict-nfc-v1",
+  "verification_status": "VERIFIED_CALCULATION_AND_TEXT_FILE_IDENTITY",
+  "affected_cases": {
+    "TC_SCI_DEG_01": "NOT_EVALUATED",
+    "TC_SCI_DEG_02": "NOT_EVALUATED",
+    "TC_SCI_DEG_03": "NOT_EVALUATED"
+  },
+  "technical_trace_counts_unchanged": {
+    "VERIFIED_TEST_SUBSET": 61,
+    "NOT_EVALUATED": 4
+  },
+  "quality_acceptance_status": "NOT_EVALUATED",
+  "new_ocr_run": false,
+  "trace_sha256": "b0341eb01b1fbb5002b1c65ca315b727ff2021a0f981a568a60ecb4684204ff7",
+  "prior_addendum_sha256": "fec9787bdeed9eded492483be4740d440058020640b9f5deba91bdac263fef46",
+  "source_sha256": {
+    "benchmark/scientific_evaluation/degradation_metric.py": "e0a6a5ff143d4c690791cc516a934b6634c404f37eaf480f6582a8b1b353e259",
+    "tests/scientific/test_degradation_metric.py": "8914fc7215f6191b61468eb96abeed9a12953741152cf8da7eaf9b9dcbcf7fef",
+    "benchmark/scientific_evaluation/DEGRADATION_V7.md": "7757048a1e18a9a40f86773659a1e76c951d784a567985df743a47ec6d699d68"
+  },
+  "passing_metric_cases": [
+    "test_curves_count_errors_and_use_the_same_reference_at_every_level",
+    "test_missing_prediction_is_scored_as_deletion_instead_of_dropping_the_unit",
+    "test_missing_gt_cannot_create_a_rate_from_the_annotated_subset",
+    "test_annotated_empty_keeps_insertions_without_fabricating_a_zero_rate",
+    "test_blank_page_insertions_are_kept_in_micro_counts_and_improvement_is_signed",
+    "test_unknown_source_or_condition_cannot_be_silently_excluded",
+    "test_strict_nfc_and_signed_angles_preserve_case_spacing_and_unclamped_errors",
+    "test_invalid_conditions_and_duplicate_source_ids_are_rejected",
+    "test_cli_checks_artifact_hashes_and_exposes_evaluator_identity",
+    "test_artifact_change_while_scoring_is_detected_and_report_is_not_overwritten",
+    "test_cli_rejects_duplicate_keys_and_returns_incomplete_for_null_gt"
+  ],
+  "regression_passed": 260,
+  "evidence_sha256": {
+    "scratch/runs/20261104-degradation-benchmark-regression/run.json": "50bd472f0288613bf98ce00b635f07b8ed8236a6c4d9bddf44a10c30908b5ede",
+    "scratch/runs/20261104-degradation-benchmark-regression/evidence/junit.xml": "5a38b2fed738a35ce9fd68d4acb4f6348a76162d3cc6eeabda64e2350e0f7596",
+    "scratch/dev_sessions/20261104-degradation-scoring/release-build/wheel-verification.json": "c34b5602d91f115f3949ed8ec012e59eaae8943e5de77d6a97565a8e94ddc60a",
+    "scratch/dev_sessions/20261104-degradation-scoring/checkout-verification.json": "acd1a07f1aec1b1a16bd2f273243d182efe36eec88bd90f35579508a208e5a77",
+    "scratch/dev_sessions/20261104-degradation-scoring/wheel-verification.json": "24d03142448cc95daa254dbdd7dae07b009b5ef3b57a564cac36fa7493095aba",
+    "scratch/dev_sessions/20261104-degradation-scoring/controlled-final/input.json": "524ff880a946a433b531a1d10388ec7a17a2170dff1c49e09fafcaf3675eb003",
+    "scratch/dev_sessions/20261104-degradation-scoring/controlled-final/missing-gt-input.json": "d1d1cb48c7343dd276a14d2302f6dd6f47ae5bfed0a822a2c207c3598019da04",
+    "scratch/dev_sessions/20261104-degradation-scoring/controlled-final/checkout-input-report.json": "8078b4b842e83ce68b47dcf706b6effa6ea9dbbf1e0596210432efa226a3f5b9",
+    "scratch/dev_sessions/20261104-degradation-scoring/controlled-final/checkout-missing-gt-input-report.json": "07b04e523164dd7a85439c3bd21df9f36e1dcced01bf368d281f304b6cddf410"
+  },
+  "wheel_sha256": "6b685e3124206155c8fb2c28fd421d3cb714632c7fffb2e74e4f26e2b5a3769c",
+  "remaining_requirements": [
+    "Frozen image corpus and transformation recipes",
+    "Independent human A/B labels and adjudication",
+    "Approved locked measurement protocol",
+    "Matched OCR predictions under identified code/config/model/runtime",
+    "Actual paired measurements and statistical review"
+  ],
+  "limits": "Only artificial text fixtures exercised. No image transformation or OCR model inference performed. File hashes do not establish GT independence or experimental validity."
+}

@@ -45,14 +45,26 @@ def run_structure(request):
             for name in sorted(checkpoint["files"]):
                 page = ExtractedPage.model_validate(read(text_root / name))
                 before = time.perf_counter()
-                from ocr_structure.ocr_bridge import ocr_bridge
+                from ocr_structure.ocr_bridge import ocr_bridge, unplaced_visible_block_indices
+                orientation_placements = []
+                source_coverage = {}
                 with ocr_bridge(pdf[page.page_num-1], page, request["config"]["render_dpi"],
-                                font_path=request["config"].get("bridge_font")) as bridge:
+                                font_path=request["config"].get("bridge_font"),
+                                orientation_placements=orientation_placements, source_coverage=source_coverage) as bridge:
+                    unplaced = unplaced_visible_block_indices(orientation_placements, len(page.blocks))
+                    for index in unplaced:
+                        block = page.blocks[index]
+                        if not block.review_reason_codes and not block.reviewed:
+                            page.quality.review_required_count += 1
+                        if "bridge_orientation_unresolved" not in block.review_reason_codes:
+                            block.review_reason_codes.append("bridge_orientation_unresolved")
                     page.blocks, page.tables, page.formulas = enrich_structures(
                         extractor, bridge[0], page.page_num, page.page_type, page.blocks,
-                        page.tables, page.regions, page.metadata)
+                        page.tables, page.regions, page.metadata, bridge_unplaced_indices=unplaced)
                 page.metadata["ocr_structure_bridge"] = {"policy":"raster-plus-gpu-text-v1",
-                    "native_text_layer_copied":False,"generation":request["generation"]}
+                    "native_text_layer_copied":False,"generation":request["generation"], "source_pool": source_coverage}
+                if orientation_placements:
+                    page.metadata["ocr_structure_bridge"]["orientation_placements"] = orientation_placements
                 for structure in [*page.tables,*page.formulas]:
                     structure.provenance["text_source_policy"] = "gpu_ocr_only_v1"
                     structure.provenance["bridge"] = "raster-plus-gpu-text-v1"

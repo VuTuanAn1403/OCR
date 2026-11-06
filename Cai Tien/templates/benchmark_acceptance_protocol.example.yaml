@@ -1,0 +1,97 @@
+# Draft acceptance contract. protocol_preflight checks locked input bundles.
+# Preserve this example as DRAFT. Freeze a separate protocol before holdout.
+schema_version: ocr-benchmark-acceptance-proposal-v1
+status: DRAFT
+approved_by: null
+locked_at: null
+scope:
+  profile: unified_gpu_full_ocr
+  ocr_source_policy: gpu_ocr_only_v1
+  full_document_required: true
+  document_population: null
+  declared_modalities: [text, numeric_cells, tables, reading_order, keywords, formulas]
+  # User selected formula accuracy as part of v7.0 acceptance on 2026-11-04.
+  # This scope choice does not approve protocol, GT, thresholds or release.
+  formula_scope_decision:
+    decision: IN_SCOPE
+    reason: User requires formula correctness in v7.0 acceptance.
+  subgroup_manifest_sha256: null
+data:
+  input_manifest_sha256: null
+  split_manifest_sha256: null
+  gt_manifest_sha256: null
+  annotation_guideline_sha256: null
+  adjudication_manifest_sha256: null
+  formula_holdout_sample_sha256: null
+  partitions: [train, development, calibration, holdout]
+  split_unit: company_and_document
+  near_duplicate_audit_sha256: null
+  holdout_custodian: null
+  public_benchmark_dataset_revision: null
+  contamination_disclosure: null
+evaluation:
+  primary_artifact: result.md
+  raw_artifact_sha256_manifest: null
+  normalization: visible_strict_v1
+  markdown_projection_symbol: benchmark.scientific_evaluation.markdown_evaluator._strip_markdown_for_text_evaluation
+  projection_code_sha256: null
+  evaluator_commit_and_dirty_diff_sha256: null
+  matching_protocol_sha256: null
+  formula_policy_sha256: null
+  formula_renderer_validation_sha256: null
+  whitespace_wer_name: WER_ws
+  missing_gt: NOT_EVALUATED
+  missing_output: KEEP_IN_DENOMINATOR_AND_PENALIZE
+  annotated_empty: SCORE_SPURIOUS_OUTPUT_COUNTS
+  preserve_case_diacritics_numbers_units_and_multiplicity: true
+  keyword_contract: literal_v1
+  source_occurrence_dispositions_required: true
+thresholds:
+  # Existing project proposals, not industry-wide standards or measured results.
+  status: PROPOSED_REQUIRES_APPROVAL_BEFORE_HOLDOUT
+  micro_cer_maximum: 0.001
+  micro_wer_ws_maximum: null
+  micro_der_vn_maximum: null
+  numeric_cell_exact_accuracy_minimum: 0.9999
+  observed_critical_numeric_errors_maximum: 0
+  teds_content_minimum: 0.98
+  teds_structure_minimum: 0.98
+  penalized_reading_order_precedence_minimum: 0.995
+  declared_gt_evaluation_coverage_minimum: 1.0
+  automatic_acceptance_coverage_minimum: 0.95
+  noncritical_review_miss_rate_maximum: 0.01
+  critical_review_misses_maximum: 0
+  subgroup_thresholds_sha256: null
+  baseline_noninferiority_margins_sha256: null
+statistics:
+  confidence_level: 0.95
+  cluster_unit: company
+  paired_comparison_required: true
+  seed: 42
+  resamples: 2000
+  minimum_independent_clusters: null
+  sample_size_and_precision_plan_sha256: null
+  multiple_comparison_family_sha256: null
+  zero_error_population_risk_is_not_zero: true
+review:
+  calibration_unit_and_label_definition: null
+  calibrated_thresholds_sha256: null
+  holdout_sample_sha256: null
+  reliability_and_risk_coverage_report_sha256: null
+  false_accept_false_reject_report_sha256: null
+  human_review_cost_report_sha256: null
+runtime:
+  model_registry_sha256: null
+  dependency_lock_manifest_sha256: null
+  interpreter_and_hardware_manifest_sha256: null
+  formula_renderer_manifest_sha256: null
+  fresh_output_and_process_exit_receipts_required: true
+  warm_cold_repeated_run_plan_sha256: null
+  latency_resource_cost_slos_sha256: null
+  soak_fault_recovery_report_sha256: null
+decision:
+  mandatory_metric_report_sha256: null
+  unresolved_critical_defects: null
+  independent_reviewer: null
+  release_approval: null
+  acceptance_status: NOT_EVALUATED

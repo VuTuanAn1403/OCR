@@ -7,6 +7,7 @@ import math
 import yaml
 from vietocr.tool.config import Cfg
 from vietocr.tool.predictor import Predictor
+from ocr_contracts.geometry import LINE_ORIENTATION_METHOD, VERTICAL_LINE_ORIENTATION_METHOD
 from ocr_recognition.primary_engine import BaseOCREngine
 from ocr_runtime.paths import VIETOCR_FILES, vietocr_model_dir
 from ocr_runtime.models import model_file_sha256
@@ -40,10 +41,16 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
         return cls._instance
 
     def __init__(self, batch_size: int = 16, device: Optional[str] = None, num_threads: Optional[int] = None,
-                 detector=None):
+                 detector=None, horizontal_180_retry_threshold=None):
         if type(batch_size) is not int or batch_size < 1:
             raise ValueError("batch_size must be a positive integer")
         self.batch_size = batch_size
+        if horizontal_180_retry_threshold is not None and (
+                type(horizontal_180_retry_threshold) not in (int, float)
+                or not math.isfinite(horizontal_180_retry_threshold)
+                or not 0 <= horizontal_180_retry_threshold <= 1):
+            raise ValueError("horizontal_180_retry_threshold must be null or a finite probability in [0, 1]")
+        self.horizontal_180_retry_threshold = horizontal_180_retry_threshold
 
         if detector is not None:
             self._detector = detector
@@ -78,16 +85,22 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
 
     @staticmethod
     def _guard_repetition(text: str) -> Tuple[str, bool]:
+        cleaned, noise, _ = VietnameseSeq2SeqEngine._repetition_candidate(text)
+        return cleaned, noise
+
+    @staticmethod
+    def _repetition_candidate(text: str) -> Tuple[str, bool, Optional[str]]:
         """
         VietOCR Repetition Guard (spec §4.2):
         Detects attention loops where 1 word or an n-word phrase (up to 4 words)
         repeats >= 3 times consecutively.
-        Truncates the loop and marks as GRAPHIC_NOISE if the remaining string is trivial.
-        Returns: (cleaned_text, is_graphic_noise)
+        Only terminal loops are cleanup candidates. An interior run may be
+        genuine repeated labels followed by business text; retain it verbatim.
+        Returns: (candidate, is_graphic_noise, pending_review_reason).
         """
         words = text.split()
         if not words:
-            return "", True
+            return "", True, None
 
         had_repetition = False
         best_i = len(words)
@@ -103,6 +116,8 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
                         else:
                             break
                     if rep >= 3:
+                        if i + rep * k < len(words):
+                            return text.strip(), False, "repetition_with_suffix"
                         if i + k < best_i:
                             best_i = i + k
                             had_repetition = True
@@ -116,7 +131,8 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             if len(meaningful_chars) <= 8 or len(truncated_words) <= 2:
                 is_graphic_noise = True
 
-        return cleaned, is_graphic_noise
+        reason = "repetition_cleanup_unverified" if had_repetition else None
+        return cleaned, is_graphic_noise, reason
 
     def predict_image(self, img_bgr: np.ndarray) -> List[Dict[str, Any]]:
         """
@@ -169,12 +185,19 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             if crop.size == 0 or crop.shape[0] < 4 or crop.shape[1] < 4:
                 continue
 
-            crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-            pil_img = Image.fromarray(crop_rgb)
-
+            # A vertical detector box is still in page coordinates. VietOCR
+            # expects horizontal lines: compare both possible reading directions
+            # without rotating the source bbox or changing any recognized number.
+            # Keep the original crop as a candidate (stacked text can be upright).
+            variants = [(0, crop)]
+            if crop.shape[0] >= crop.shape[1] * 1.5:
+                variants.extend([(90, cv2.rotate(crop, cv2.ROTATE_90_CLOCKWISE)),
+                                 (270, cv2.rotate(crop, cv2.ROTATE_90_COUNTERCLOCKWISE))])
             boxes_and_crops.append({
                 "bbox": [float(min(xs)), float(min(ys)), float(max(xs)), float(max(ys))],
-                "pil_crop": pil_img,
+                "crop_bbox_pixels": [x0, y0, x1, y1],
+                "variants": [(angle, Image.fromarray(cv2.cvtColor(pixels, cv2.COLOR_BGR2RGB)))
+                             for angle, pixels in variants],
             })
 
         if not boxes_and_crops:
@@ -185,7 +208,138 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
         # Nearby aspect ratios share resized widths, so group them before
         # chunking to avoid turning each bounded batch into many single lines.
         # Scatter predictions back to detection order below.
-        pil_crops = [bc["pil_crop"] for bc in boxes_and_crops]
+        pil_crops = []
+        for item in boxes_and_crops:
+            item["candidate_indices"] = list(range(len(pil_crops), len(pil_crops) + len(item["variants"])))
+            pil_crops.extend(crop for _, crop in item["variants"])
+        recognized_texts, recognized_probs = self._recognize_crops(pil_crops)
+        # Only uncertain horizontal crops receive an upside-down candidate.
+        # Existing vertical handling already tests both 90/270 directions.
+        threshold = getattr(self, "horizontal_180_retry_threshold", None)
+        upside_down = []
+        if threshold is not None:
+            for item in boxes_and_crops:
+                if len(item["variants"]) != 1:
+                    continue
+                index = item["candidate_indices"][0]
+                probability = float(recognized_probs[index])
+                if math.isfinite(probability) and probability >= threshold:
+                    continue
+                source_crop = item["variants"][0][1]
+                rotated = source_crop.transpose(Image.Transpose.ROTATE_180)
+                item["variants"].append((180, rotated))
+                item["candidate_indices"].append(len(pil_crops)+len(upside_down))
+                upside_down.append(rotated)
+        if upside_down:
+            texts, probabilities = self._recognize_crops(upside_down)
+            pil_crops.extend(upside_down)
+            recognized_texts.extend(texts)
+            recognized_probs.extend(probabilities)
+
+        # 3. Format results
+        results = []
+        for item in boxes_and_crops:
+            def probability_at(index):
+                value = float(recognized_probs[index])
+                return max(0.0, min(1.0, value)) if math.isfinite(value) else 0.0
+
+            def usable_at(index):
+                original = unicodedata.normalize("NFC", recognized_texts[index]).strip()
+                cleaned, noise = self._guard_repetition(original.replace(" ? ", " - "))
+                if not preserves_numeric_evidence(original, cleaned):
+                    return bool(original)  # numeric guard retains the raw reading
+                return bool(cleaned) and not noise
+
+            # Stable ties retain the original orientation. This score is a
+            # routing heuristic, never an independent accuracy certificate.
+            indices = item["candidate_indices"]
+            idx = max(indices, key=lambda i: (usable_at(i), bool(recognized_texts[i].strip()), probability_at(i)))
+            rotation = item["variants"][indices.index(idx)][0]
+            crop_provenance = {}
+            if len(indices) > 1:
+                crop_provenance = {
+                    "method": (LINE_ORIENTATION_METHOD if item["variants"][-1][0] == 180
+                               else VERTICAL_LINE_ORIENTATION_METHOD), "rotation_clockwise_degrees": rotation,
+                    "selection": "uncalibrated_recognizer_probability", "bbox_space": "original_image_pixels",
+                    "detector_bbox_pixels": list(item["bbox"]),
+                    "crop_bbox_pixels": list(item["crop_bbox_pixels"]), "source_image_shape": list(img_bgr.shape),
+                    "candidates": [{"rotation_clockwise_degrees": angle,
+                                    "text_raw": recognized_texts[index], "confidence": probability_at(index)}
+                                   for (angle, _), index in zip(item["variants"], indices)],
+                }
+            raw_text = recognized_texts[idx] if idx < len(recognized_texts) else ""
+            nfc_text = unicodedata.normalize("NFC", raw_text)
+            norm_text = nfc_text.strip()
+            if not norm_text:
+                continue
+            corrections = []
+            if nfc_text != raw_text:
+                corrections.append("unicode_nfc")
+            if norm_text != nfc_text:
+                corrections.append("trim_whitespace")
+
+            # In VietOCR, replace common question marks representing soft hyphens or broken dashes
+            before_guard = norm_text.replace(" ? ", " - ")
+            candidate, candidate_noise, repetition_reason = self._repetition_candidate(before_guard)
+            clean_text = candidate
+            repetition_provenance = {}
+            if repetition_reason:
+                # A repetition detector proposes an edit. Keep the entire
+                # recognized line until its visual source has been reviewed.
+                clean_text = norm_text if candidate_noise else before_guard
+                repetition_provenance = {
+                    "method": "terminal-repetition-candidate-v3", "reason": repetition_reason,
+                    "candidate_text": candidate, "candidate_graphic_noise": candidate_noise,
+                    "disposition": "KEPT_FOR_REVIEW", "applied": False,
+                    "bbox_space": "original_image_pixels",
+                    "detector_bbox_pixels": list(item["bbox"]),
+                    "crop_bbox_pixels": list(item["crop_bbox_pixels"]),
+                    "source_image_shape": list(img_bgr.shape),
+                    "rotation_clockwise_degrees": rotation,
+                }
+                if candidate_noise:
+                    repetition_reason = "repetition_noise_unverified"
+            numeric_cleanup_rejected = (
+                not preserves_numeric_evidence(norm_text, clean_text)
+                or (bool(repetition_provenance) and not preserves_numeric_evidence(norm_text, candidate))
+            )
+            if numeric_cleanup_rejected:
+                clean_text = norm_text
+                if repetition_provenance:
+                    repetition_provenance["disposition"] = "REJECTED_NUMERIC_CHANGE"
+            elif clean_text != norm_text:
+                if before_guard != norm_text:
+                    corrections.append("vietocr_dash_repair")
+                if not repetition_provenance and clean_text != before_guard:
+                    corrections.append("vietocr_repetition_guard")
+            if not clean_text:
+                continue
+
+            probability = probability_at(idx)
+            review_reasons = (["numeric_cleanup_rejected"] if numeric_cleanup_rejected else [])
+            if repetition_reason and not numeric_cleanup_rejected:
+                review_reasons.append(repetition_reason)
+            if crop_provenance:
+                review_reasons.append("line_orientation_unverified" if crop_provenance["method"] == LINE_ORIENTATION_METHOD
+                                      else "vertical_line_orientation_unverified")
+
+            results.append({
+                "bbox": [round(c, 2) for c in item["bbox"]],
+                "text": clean_text,
+                "text_raw": raw_text,
+                "correction_source": "+".join(corrections) if corrections else None,
+                "numeric_cleanup_rejected": numeric_cleanup_rejected,
+                "needs_review": bool(review_reasons),
+                "review_reason": "; ".join(review_reasons) or None,
+                "recognition_provenance": {**crop_provenance, **({"repetition": repetition_provenance}
+                                                               if repetition_provenance else {})},
+                "confidence": round(max(0.0, min(1.0, probability)), 4)
+            })
+
+        return results
+
+    def _recognize_crops(self, pil_crops):
+        """Bound batches, preserve order, and split only the chunk that OOMs."""
         recognition_order = sorted(range(len(pil_crops)), key=lambda i: pil_crops[i].width / pil_crops[i].height)
         recognized_texts, recognized_probs = [""] * len(pil_crops), [0.0] * len(pil_crops)
         pending = [recognition_order[start:start + self.batch_size] for start in range(0, len(pil_crops), self.batch_size)]
@@ -213,58 +367,7 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
                 recognized_texts[index] = text
                 recognized_probs[index] = probability
 
-        # 3. Format results
-        results = []
-        for idx, item in enumerate(boxes_and_crops):
-            raw_text = recognized_texts[idx] if idx < len(recognized_texts) else ""
-            nfc_text = unicodedata.normalize("NFC", raw_text)
-            norm_text = nfc_text.strip()
-            if not norm_text:
-                continue
-            corrections = []
-            if nfc_text != raw_text:
-                corrections.append("unicode_nfc")
-            if norm_text != nfc_text:
-                corrections.append("trim_whitespace")
-
-            # In VietOCR, replace common question marks representing soft hyphens or broken dashes
-            clean_text = norm_text.replace(" ? ", " - ")
-            cleanup_corrections = []
-            if clean_text != norm_text:
-                cleanup_corrections.append("vietocr_dash_repair")
-
-            # Apply repetition guard
-            before_guard = clean_text
-            clean_text, is_graphic_noise = self._guard_repetition(before_guard)
-            if clean_text != before_guard:
-                cleanup_corrections.append("vietocr_repetition_guard")
-            # Repeated numeric columns can be valid financial evidence. A
-            # cleanup candidate that changes protected numbers is rejected,
-            # retained verbatim after NFC, and surfaced for manual review.
-            numeric_cleanup_rejected = not preserves_numeric_evidence(norm_text, clean_text)
-            if numeric_cleanup_rejected:
-                clean_text, is_graphic_noise = norm_text, False
-            else:
-                corrections.extend(cleanup_corrections)
-            if is_graphic_noise or not clean_text:
-                continue
-
-            probability = float(recognized_probs[idx]) if idx < len(recognized_probs) else 0.0
-            if not math.isfinite(probability):
-                probability = 0.0
-
-            results.append({
-                "bbox": [round(c, 2) for c in item["bbox"]],
-                "text": clean_text,
-                "text_raw": raw_text,
-                "correction_source": "+".join(corrections) if corrections else None,
-                "numeric_cleanup_rejected": numeric_cleanup_rejected,
-                "needs_review": numeric_cleanup_rejected,
-                "review_reason": "numeric_cleanup_rejected" if numeric_cleanup_rejected else None,
-                "confidence": round(max(0.0, min(1.0, probability)), 4)
-            })
-
-        return results
+        return recognized_texts, recognized_probs
 
     def predict_batch(self, images: List[np.ndarray]) -> List[List[Dict[str, Any]]]:
         return [self.predict_image(img) for img in images]

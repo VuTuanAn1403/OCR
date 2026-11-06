@@ -1,9 +1,9 @@
 """Export-stage regression on a real V6.3 page (P01 baseline).
 
 The fixture holds the page JSON written by phase B of a real GPU run on
-examples/sample.pdf. Re-running only the CPU export stage must reproduce the
-recorded artifacts byte for byte; moving document modules must not change
-them. This is a software regression check, not an accuracy measurement.
+examples/sample.pdf. CPU export must preserve the recorded artifact bytes
+apart from the explicit pipeline version field. This is a software regression
+check, not an accuracy measurement.
 """
 import hashlib
 import json
@@ -39,11 +39,21 @@ def export(tmp_path, assets):
 
 
 def digests(output):
-    return {name: hashlib.sha256((output / name).read_bytes()).hexdigest() for name in STABLE}
+    result = {}
+    for name in STABLE:
+        raw = (output / name).read_bytes()
+        if name == "extraction.json":
+            assert json.loads(raw)["pipeline_version"] == "7.0.0"
+            version_field = b'"pipeline_version": "7.0.0"'
+            assert raw.count(version_field) == 1
+            raw = raw.replace(version_field, b'"pipeline_version": "6.3.0.dev1"', 1)
+        result[name] = hashlib.sha256(raw).hexdigest()
+    return result
 
 
 @pytest.mark.parametrize("assets", ["none", "png"])
 def test_export_reproduces_baseline(tmp_path, assets):
     output = export(tmp_path, assets)
     assert digests(output) == EXPECTED[assets]
+    assert json.loads((output / "manifest.json").read_text(encoding="utf-8"))["pipeline_version"] == "7.0.0"
     assert json.loads((output / "validation.json").read_text(encoding="utf-8"))["status"] == "NEEDS_REVIEW"

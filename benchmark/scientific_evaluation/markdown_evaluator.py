@@ -69,6 +69,7 @@ def parse_markdown_artifacts(markdown_path: Path, policy: str = "reading_normali
 
     # 5. Extract per-page contents if page markers are present
     pages_text: Dict[int, str] = {}
+    duplicate_page_markers = set()
     markers = list(_PAGE_MARKER_PATTERN.finditer(raw_text))
     if markers:
         for i, m in enumerate(markers):
@@ -76,12 +77,15 @@ def parse_markdown_artifacts(markdown_path: Path, policy: str = "reading_normali
             start_pos = m.end()
             end_pos = markers[i + 1].start() if i + 1 < len(markers) else len(raw_text)
             page_slice = raw_text[start_pos:end_pos].strip("\r\n")
+            if page_num in pages_text:
+                duplicate_page_markers.add(page_num)
             pages_text[page_num] = _strip_markdown_for_text_evaluation(page_slice, policy=policy)
 
     return {
         "raw_text": raw_text,
         "clean_text": clean_text,
         "pages_text": pages_text,
+        "duplicate_page_markers": sorted(duplicate_page_markers),
         "tables_html": all_tables_html,
         "image_links": image_links,
         "broken_images": broken_links,

@@ -1,0 +1,338 @@
+{
+  "schema": "ocr-improvement-synthesis-sources-v1",
+  "created_at_bangkok": "2026-11-03T21:31:30.868072+07:00",
+  "git_head": "a95c806965118b53b3afc28d2ebbff37dec0cfc7",
+  "git_status_at_snapshot": " M .gitignore\n M README.md\n M benchmark/scientific_evaluation/numeric_metric.py\n M src/ocr_contracts/text_block.py\n M src/ocr_document/document_contracts.py\n M src/ocr_document/page_assembly.py\n M src/ocr_document/resolve_document_layout.py\n M src/ocr_document/section_tree.py\n M src/ocr_recognition/blocks.py\n M src/ocr_recognition/vietnamese_seq2seq_engine.py\n?? AGENTS.md\n?? CLAUDE.md\n?? \"Cai Tien/\"\n?? Doi_Chieu/\n?? \"Test case/\"\n?? docs/development/\n?? scripts/build_dev_context.py\n?? tests/scientific/test_numeric_metric_counterexamples.py\n?? tests/scientific/test_testcase_harness.py\n?? tests/unit/recognition/test_rotated_line_crops.py\n?? tests/unit/test_build_dev_context.py\n?? tests/unit/test_document_review_gate_exports.py\n?? tests/unit/test_ocr_review_propagation.py\n?? tests/unit/test_table_evidence_occurrences.py\n",
+  "code_scope": {
+    "sha256": "1eb382e72786c85b87ad6f4a00b3191ecedfe0ee1ac2e8c8a956809e5d08f35a",
+    "files_count": 344,
+    "definition": "source/config/locks/registry/scripts; no model weights or interpreter hashes",
+    "baseline_observation": "Test case/antigravity_review_20261103/observation_20261103_170326_cc7dda/observation.json",
+    "changed_since_monitoring": []
+  },
+  "legacy_delivery_check": {
+    "files_checked": 13,
+    "changed": []
+  },
+  "report06_matches_recorded_hash": true,
+  "selected_sources": [
+    {
+      "path": "AGENTS.md",
+      "bytes": 4162,
+      "sha256": "1b72b30d863dc4412ea08f5a1826db7cf4886ecb41b9649ee71d636b19b5d910"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 192,
+      "sha256": "f310efec04e33a91f59417d705c8c3388e6661cc7ca5c104b88325df6d999449"
+    },
+    {
+      "path": "Test case/00_DOC_KET_QUA_TRUOC.md",
+      "bytes": 5051,
+      "sha256": "96cfed0f72d1a97df4380c3d0fdff1af0a9323659187f4c319a32163975f75cc"
+    },
+    {
+      "path": "Test case/01_DANH_GIA_TAI_LIEU_VA_DIEM_YEU_20261030.md",
+      "bytes": 20521,
+      "sha256": "9550d6abfa998cc79e4bffc1a8ba7ed50d2e6dc075563ec0b24a98b7cc1a84f7"
+    },
+    {
+      "path": "Test case/02_DAC_TA_NANG_CAP_VA_NGHIEM_THU_20261030.md",
+      "bytes": 23586,
+      "sha256": "d201b58df9053264479246fe8fbe771759720d3611e77ca7a4d8b37fb7cbe020"
+    },
+    {
+      "path": "Test case/03_KET_QUA_KIEM_CHUNG_20261030.md",
+      "bytes": 12456,
+      "sha256": "03078e8e8048566fd334619c87bc4dee836ab1511eb2fc251875be196b79655d"
+    },
+    {
+      "path": "Test case/04_MAU_BAO_CAO_NGHIEM_THU_KHONG_SO_GIA.md",
+      "bytes": 4509,
+      "sha256": "bb4d4e6689a29f8775d80c737651926ef9ef95de40b6f14654ff2ce05da02d79"
+    },
+    {
+      "path": "Test case/05_GIAM_SAT_ANTIGRAVITY_20261103.md",
+      "bytes": 19316,
+      "sha256": "059836a75e188f561a4a17e0ac00400db8d9643ed2b8a9077cf5b9622c659473"
+    },
+    {
+      "path": "Test case/06_DOI_CHIEU_PADDLE_VA_CHUAN_KEYWORD_20261103.md",
+      "bytes": 22688,
+      "sha256": "9078fb048309a2082a499b6ce6ef4d7914cddecbc3a044af230d88bdb3eef839"
+    },
+    {
+      "path": "Test case/BO_TEST_CASE_DANH_GIA_DO_CHINH_XAC_KHOA_HOC.md",
+      "bytes": 13540,
+      "sha256": "e4bc50aa13068c6ebc799a96e9b5ad6e43f9c564f27c142d873ce84792b5f9e1"
+    },
+    {
+      "path": "Test case/CHAN_DOAN_DIEM_YEU_VA_LO_TRINH_NANG_CAO_DO_CHINH_XAC.md",
+      "bytes": 20736,
+      "sha256": "7f1812c99f02d8765cb2e8600d9678552b86f90e785aee1b4e65687662b9a2ef"
+    },
+    {
+      "path": "Test case/KE_HOACH_VA_DANH_SACH_TEST_CASE.md",
+      "bytes": 21500,
+      "sha256": "4d03716300d938808109a3b09c2361a81aede9849f77b331eae31243633cd47b"
+    },
+    {
+      "path": "Test case/MAU_BAO_CAO_DIAGNOSTIC_NCKH.md",
+      "bytes": 3544,
+      "sha256": "d6b36479b3e074aecf0c02c2c4a388d379e3378b815e8d7c7b9a27f89b8e7c10"
+    },
+    {
+      "path": "Test case/PHAN_TICH_THUC_NGHIEM_CTS_2025.md",
+      "bytes": 19100,
+      "sha256": "e345bf8b2e17ba95712b48d8acd21d7e1f5433a61a1654bb212e8c299428896f"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/audit_final_20261103_1655.json",
+      "bytes": 447410,
+      "sha256": "fe90c8e124f068e9cba9af270cd010c2d88fa1c0d27e5d621f056a3b4014dd2e"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/automation_deleted.json",
+      "bytes": 262,
+      "sha256": "04c2812bca989af8625576cfc0450ca17b7568501fa0c282b3d6c73158d62821"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/counterexample_run/case_results.json",
+      "bytes": 3501,
+      "sha256": "06976a788e3b396c5f573070b99717415d569418297b57ff71e46ea53764d567"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/counterexample_run/evidence/junit.xml",
+      "bytes": 8192,
+      "sha256": "0485640d9305d0d5743c0a41c55415eaafaaddb5d9786146e74997a7aba1c4cf"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/counterexample_run/run.json",
+      "bytes": 827,
+      "sha256": "a73465361a1a98724b32e676b5dd8d1f2d713866d4edd70a2f3bb71cf76505ca"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/final_verification_20261103_1655.json",
+      "bytes": 2899,
+      "sha256": "5493744bbff43b9bcd268f59d6e034105717b83d1ee66edc5bf2b7ae2505abec"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/findings.json",
+      "bytes": 2747,
+      "sha256": "37e6bc3d37ed2ff7d4089db9989ca810cea119af3f0ca768b09e42bc05e93a33"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/monitor_state.json",
+      "bytes": 1629,
+      "sha256": "15b5818ca6f49892ec376f67dd0663afdf87ce8f629bfa1194b40bd695f87fa5"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/observation_20261103_170326_cc7dda/observation.json",
+      "bytes": 521763,
+      "sha256": "c80d7a019fdd471f512ef3cf53325a388f13f61a84a02da21c05f96bc292d5f0"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/production_guard_probe.json",
+      "bytes": 528,
+      "sha256": "06a6e2faded0ddb4abc2e152504a9c6a45a05933ec38785c058d4042d0e146fc"
+    },
+    {
+      "path": "Test case/antigravity_review_20261103/test_adversarial_review.py",
+      "bytes": 2917,
+      "sha256": "b6eeb0ae508ec47d354bf6621d0850309aebc29c64c365f81285d44b96f62dee"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/keyword_comparison.csv",
+      "bytes": 31749,
+      "sha256": "fa0f20c1a1f39f24f9377c05248c7988b43e5d986c1fa59e39a790c469516406"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/keyword_differences_reviewed.csv",
+      "bytes": 3046,
+      "sha256": "bcaebc2950b8debc0959a10836bda901cb60b91e975c6d8669a10a0a8b03c4a4"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/keyword_evidence.json",
+      "bytes": 69493,
+      "sha256": "632f68a5bb3db948a7f93c97887c9e1b9a969e6a268c974efafaafe10edd3d27"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/keyword_summary.json",
+      "bytes": 1295,
+      "sha256": "4174007c9aee76003ba1d1ea4ea97e6dee0e95aa85bf61958c1a0ac4de3fe3ee"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/long_repetition_runs.json",
+      "bytes": 6762,
+      "sha256": "fbd7dcc27a4300a231660d81f4ada911db72136da7a7914ebf84d36b9e9955e6"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/markdown_alignment_summary.json",
+      "bytes": 1561,
+      "sha256": "54822b1fc5588025e683d33bfbe53b4b93b5168901e03e7a1b0ab37bd4296931"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/pdf_input_inventory.json",
+      "bytes": 633,
+      "sha256": "cd71e2fe46cadb1a30d125408d62a7bf6e6b64983d4e84a9d99943d8fc9c20b7"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/review_annotations.json",
+      "bytes": 4457,
+      "sha256": "0dbd76adddbe38d600ad3c13c67ba75fa8a9c015297a16d543c2abd90a6e779e"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/review_summary.json",
+      "bytes": 735,
+      "sha256": "3fa3fd24e8c27a5d23b6251938859f541be58a941886575038a9fab9d4c09d81"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/source_block_traces.json",
+      "bytes": 6720,
+      "sha256": "136b224c4188c169d765b4a0d35ab9b524082492b6e8728558cb588d924205ac"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/source_manifest.json",
+      "bytes": 5335,
+      "sha256": "36c49df1d325bddd3c465aea0eed33365e9f2bb3480c39cfb093aec5a1dc5b69"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/verification.json",
+      "bytes": 10169,
+      "sha256": "9a49dde965bfbf87b80c5bbb2acd7ed445ae69553a50137be8a238d3a279e8e5"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/verification_tests/run.json",
+      "bytes": 897,
+      "sha256": "b478f02a8ad2d77d03968cec9efc30c757ac68dce46d1568df45be4e08e0ad7d"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/visual_evidence/contact_chuyen_doi_so.png",
+      "bytes": 265341,
+      "sha256": "c4bcfd4979d1874012163f31b46a1cbe54c1e38f3c60ad63268b35399fccc7c8"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/visual_evidence/contact_o2o.png",
+      "bytes": 189924,
+      "sha256": "5305511598c741411137290a523bfaa940650a1f4be48be7b54c2e6ee7b6591c"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/visual_evidence/full_AAA_p100.png",
+      "bytes": 135125,
+      "sha256": "f9fbc824ae88d32413a5d4598ca6d32845e12e4cd31ba47aa4fc0f934bf7a2cb"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/visual_evidence/full_AGR_p040.png",
+      "bytes": 149997,
+      "sha256": "bedf3c5419607863a27aaa2e3948ae8d9b9e3ce8daa05e4e2dc0ad48eeed08ef"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/visual_evidence/full_VIC_p037.png",
+      "bytes": 1098857,
+      "sha256": "06b454f9b5e21646aba923016487538e0d76c19d846c7c2332954e70d5a301f0"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/visual_evidence/full_VIC_p065.png",
+      "bytes": 290275,
+      "sha256": "d198bc99d9a60873c812dfd0da378a2c808bcce08614ec4f80bebdcfc5c99d34"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/visual_evidence/full_VIC_p137.png",
+      "bytes": 175098,
+      "sha256": "d5f32bef7c58fc3d95ff61c89e3b929cfd9a2f2edc1eedf2b6e1c173f072b033"
+    },
+    {
+      "path": "Test case/doi_chieu_paddle_20261103/visual_evidence/visual_review_log.json",
+      "bytes": 757,
+      "sha256": "4294fad95dbe2dfb8ebb619591c7234df6833a2b634f07e81ddddc73b20f527b"
+    },
+    {
+      "path": "Test case/ket_qua_20261030/dataset_inventory.json",
+      "bytes": 1640,
+      "sha256": "7ed9b3f8855d1bc358e6e295396ccda26d62f52526bb3f6721ddeb18b77c0046"
+    },
+    {
+      "path": "Test case/ket_qua_20261030/delivered_file_hashes.json",
+      "bytes": 1436,
+      "sha256": "ef6814057267da9bce37f141b39bfe5d55497fbba462b48b36abb2f12691ecd5"
+    },
+    {
+      "path": "Test case/ket_qua_20261030/diagnostic_summary.json",
+      "bytes": 18576,
+      "sha256": "4ede86b58ee10f501613232cbedde1586239acb63cbad83cc4772706862b0fcf"
+    },
+    {
+      "path": "Test case/ket_qua_20261030/verification.json",
+      "bytes": 35878,
+      "sha256": "94a2c30c69dc5c71ef6793887c2c1091fa744798c454de1579f1c1c51c787f89"
+    },
+    {
+      "path": "Test case/replay_gpu_diagnostic.py",
+      "bytes": 2650,
+      "sha256": "73941376c0ffe7093d311018d75643e80ed2ac6e33bcc85062a5faa222207e19"
+    },
+    {
+      "path": "Test case/sample_test_suite.py",
+      "bytes": 6252,
+      "sha256": "e7b02bd8748444117c0eaafdf558828279c17c9d429789a6c253645c7cb3f969"
+    },
+    {
+      "path": "Test case/scientific_benchmark_harness.py",
+      "bytes": 14661,
+      "sha256": "8456a32284037611356e8cb17b2fdc91ae112e4b4fafd098202281b46ea5d2b4"
+    },
+    {
+      "path": "scripts/build_dev_context.py",
+      "bytes": 7802,
+      "sha256": "5df3fa3f7a2dbb58894e2d0303675f24c25aa28e887e7e11dd2f367215b12484"
+    },
+    {
+      "path": "tests/scientific/test_numeric_metric_counterexamples.py",
+      "bytes": 3858,
+      "sha256": "ff54fde4b72324c376f03b2584a7dcf044d5112373de1b30df1e18e93a69dc47"
+    },
+    {
+      "path": "tests/scientific/test_testcase_harness.py",
+      "bytes": 6481,
+      "sha256": "f0886383e86899caddf4a6cce06aada61c05b3b8cda28d51662862f88eda4b49"
+    },
+    {
+      "path": "tests/unit/recognition/test_rotated_line_crops.py",
+      "bytes": 3890,
+      "sha256": "fa81faec161ded76a24624c44de8ca9898a7976c6ab4b7575ddf3820c761f327"
+    },
+    {
+      "path": "tests/unit/test_build_dev_context.py",
+      "bytes": 5362,
+      "sha256": "d1f7c29fd8b5c1b02fdbbe60f08e916aaf17e548ee91dbb59ff8b36986fbfe37"
+    },
+    {
+      "path": "tests/unit/test_document_review_gate_exports.py",
+      "bytes": 2901,
+      "sha256": "9239361369a9d7ffa759f1364012aad7888ba0490b0a0701b164f9bb8b6979be"
+    },
+    {
+      "path": "tests/unit/test_ocr_review_propagation.py",
+      "bytes": 3586,
+      "sha256": "b648ec722bceba73c1fc221e27b53f3a66b6bc57df58c8756194c56004c7be5b"
+    },
+    {
+      "path": "tests/unit/test_table_evidence_occurrences.py",
+      "bytes": 6084,
+      "sha256": "8b39acd7532506f261be9abf35a5f33780c10b841e1451198ae96a8aa44c99dc"
+    }
+  ],
+  "source_interpretation": {
+    "primary": "Reports 00-05 and report06 sections1-8, findings and selected evidence; local byte identity checked again.",
+    "historical_originals": "Indexed and checked through report01 corrections plus relevant excerpts; not accepted as measurements by default.",
+    "large_data": "No full log/hash-map/PDF text loaded into conversation; no new OCR/GT evaluation or full image re-review.",
+    "identity_limits": "No current rehash of PDF/model weights/interpreters. Original batch/input identity is historical receipt/manifest evidence.",
+    "test_limits": "Reuses original test logs; no production pytest rerun or new numerical performance claims."
+  },
+  "planned_document_edits": [
+    "docs/development/README.md",
+    "docs/development/PROJECT_MAP.md",
+    "docs/development/HANDOFF.md"
+  ],
+  "session_start_snapshot": "scratch/dev_sessions/20261103-cai-tien/start.json"
+}

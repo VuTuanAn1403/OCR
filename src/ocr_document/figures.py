@@ -1,4 +1,4 @@
-"""Figure captions and text inside figures (proposal V6 C3.6, review R-09).
+"""Link captions and text to placed document objects.
 
 Works on document.json chunks and images, after the section tree:
 
@@ -16,14 +16,22 @@ Precision/recall need L2/L3 GT.
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
+from ocr_document.source_identity import valid_bbox
+
 METHOD = "figure-geometry-keyword-v1"
+TABLE_CAPTION_METHOD = "table-caption-adjacency-v1"
 MAX_CAPTION_GAP_PT = 36.0
+MAX_TABLE_CAPTION_GAP_WITH_UNIT_PT = 54.0
 MIN_HORIZONTAL_OVERLAP = 0.3
 _CAPTION_START = re.compile(r"^\s*(?:hình|biểu đồ|sơ đồ|đồ thị|ảnh|figure|fig\.|chart|diagram|graph)(?:\s|\d|$|[.:])",
                             re.IGNORECASE)
 _TEXT_TYPES = ("paragraph", "list_item")
+_TABLE_CAPTION = re.compile(r"^\s*(?:bảng|table)(?:\s+\d+(?:\.\d+)*)?\s*[:：.\-–]\s*\S", re.I)
+_CHART_CAPTION = re.compile(r"^\s*(?:biểu đồ|chart)\s+\d+(?:\.\d+)*\s*[:：.\-–]\s*\S", re.I)
+_TABLE_UNIT = re.compile(r"^\s*(?:đơn vị(?: tính)?|đvt|units?)\s*[:：]\s*\S[^\n]{0,39}$", re.I)
 
 
 def _single_span(chunk: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -44,7 +52,8 @@ def _horizontal_overlap(a, b) -> float:
 
 def link_figures(chunks: List[Dict[str, Any]], images: List[Dict[str, Any]]) -> Dict[str, Any]:
     by_id = {chunk["chunk_id"]: chunk for chunk in chunks}
-    text_chunks = [(c, s) for c in chunks if c["type"] in _TEXT_TYPES for s in [_single_span(c)] if s]
+    text_chunks = [(c, s) for c in chunks if c["type"] in _TEXT_TYPES and not c.get("callout_id")
+                   for s in [_single_span(c)] if s]
     frames = []
     for image in images:
         image["caption"], image["figure_text_chunk_ids"] = None, []
@@ -78,3 +87,91 @@ def link_figures(chunks: List[Dict[str, Any]], images: List[Dict[str, Any]]) -> 
     return {"method": METHOD, "status": "COMPLETED", "images": len(images), "captions_linked": captions,
             "figure_text_chunks": sum(len(image["figure_text_chunk_ids"]) for image in images),
             "evaluation": "NOT_EVALUATED"}
+
+
+def table_caption_geometry(caption, frame, *, max_gap=MAX_CAPTION_GAP_PT):
+    """Return side and gap for a caption primarily aligned with the frame."""
+    if not (valid_bbox(caption) and valid_bbox(frame)):
+        return None
+    overlap = min(caption[2], frame[2]) - max(caption[0], frame[0])
+    if overlap < .5 * (caption[2] - caption[0]):
+        return None
+    position, gap = ("below", caption[1] - frame[3]) if caption[1] >= frame[3] else (
+        "above", frame[1] - caption[3])
+    return (position, round(gap, 2)) if gap >= 0 and round(gap, 2) <= max_gap else None
+
+
+def table_caption_unit(text, unit, caption, frame):
+    """A short unit line may sit between an upper caption and its table."""
+    geometry = table_caption_geometry(unit, frame)
+    return bool(geometry and geometry[0] == "above" and unit[1] >= caption[3] and _TABLE_UNIT.fullmatch(text))
+
+
+def _intervening_content(caption, frame, position, obstacles):
+    left, right = max(caption[0], frame[0]), min(caption[2], frame[2])
+    top, bottom = (caption[3], frame[1]) if position == "above" else (frame[3], caption[1])
+    return top < bottom and any(
+        min(right, box[2]) > max(left, box[0]) and min(bottom, box[3]) > max(top, box[1])
+        for box in obstacles
+    )
+
+
+def link_table_captions(chunks: List[Dict[str, Any]], tables: List[Dict[str, Any]]) -> None:
+    """Attach unambiguous source references without moving or repeating text."""
+    if not tables:
+        return
+    placed_by_page = defaultdict(list)
+    table_chunks = {table["chunk_id"]: table for table in tables}
+    for chunk in chunks:
+        span = _single_span(chunk)
+        if span and valid_bbox(span["bbox"]):
+            placed_by_page[span["page"]].append((chunk, span))
+
+    for entries in placed_by_page.values():
+        frames = [(chunk, span["bbox"]) for chunk, span in entries if chunk["chunk_id"] in table_chunks]
+        if not frames:
+            continue
+        image_boxes = [span["bbox"] for chunk, span in entries if chunk["type"] == "image"]
+        matches = defaultdict(list)
+        for caption, span in entries:
+            if (caption["type"] != "paragraph" or caption.get("role") or caption.get("callout_id")
+                    or len(span["block_ids"]) != 1):
+                continue
+            label = caption["text_corrected"]
+            table_label = bool(_TABLE_CAPTION.match(label))
+            if not table_label and not _CHART_CAPTION.match(label):
+                continue
+            box = span["bbox"]
+            if not table_label and any(table_caption_geometry(box, image) for image in image_boxes):
+                continue
+            candidates = []
+            for table, frame in frames:
+                if table["section_id"] != caption["section_id"]:
+                    continue
+                geometry = table_caption_geometry(box, frame, max_gap=MAX_TABLE_CAPTION_GAP_WITH_UNIT_PT)
+                if geometry is None:
+                    continue
+                position, gap = geometry
+                unit = None
+                if position == "above":
+                    units = [chunk for chunk, other in entries if chunk["type"] == "paragraph" and not chunk.get("role")
+                             and chunk["section_id"] == caption["section_id"] and len(other["block_ids"]) == 1
+                             and table_caption_unit(chunk["text_corrected"], other["bbox"], box, frame)]
+                    if len(units) == 1:
+                        unit = units[0]
+                if gap > MAX_CAPTION_GAP_PT and unit is None:
+                    continue
+                obstacles = (other["bbox"] for chunk, other in entries
+                             if chunk is not caption and chunk is not table and chunk is not unit)
+                if not _intervening_content(box, frame, position, obstacles):
+                    candidates.append((table["chunk_id"], position, gap, unit))
+            if len(candidates) == 1:
+                table_id, position, gap, unit = candidates[0]
+                link = {"chunk_id": caption["chunk_id"], "position": position, "gap_pt": gap,
+                        "method": TABLE_CAPTION_METHOD, "label": "table" if table_label else "chart"}
+                if unit is not None:
+                    link["unit_chunk_id"] = unit["chunk_id"]
+                matches[table_id].append(link)
+        for table_id, captions in matches.items():
+            if len(captions) == 1:
+                table_chunks[table_id]["caption"] = captions[0]

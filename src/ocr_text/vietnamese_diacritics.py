@@ -17,7 +17,9 @@ _PHRASES = (
     "lợi nhuận sau thuế", "lợi nhuận trước thuế", "doanh thu thuần",
     "kết quả kinh doanh", "hoạt động kinh doanh", "vốn chủ sở hữu",
     "tài sản cố định", "lưu chuyển tiền tệ", "bất động sản",
+    "chuyển đổi số", "đổi mới", "an ninh mạng",
 )
+DEFAULT_PHRASES = _PHRASES
 _TONES = frozenset("\u0300\u0301\u0303\u0309\u0323")
 _WORDS = re.compile(r"(?:[^\W\d_]|[\u0300-\u036f])+", re.UNICODE)
 _SYLLABLE = re.compile(r"(?:ngh|ng|gh|ch|tr|ph|th|kh|nh|qu|gi|[bcdđghklmnpqrstvx])?[aeiouy]+(?:ng|nh|ch|[cmnpt])?\Z")
@@ -28,6 +30,25 @@ def _fold(word: str) -> str:
                    if not unicodedata.combining(c)).replace("đ", "d")
 
 
+def build_terms(phrases: tuple[str, ...] | list[str], min_words: int = 2) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Build folded term tuples for multi-word or compound Vietnamese phrases."""
+    terms = []
+    seen = set()
+    for phrase in phrases:
+        phrase_clean = unicodedata.normalize("NFC", phrase.strip())
+        if not phrase_clean:
+            continue
+        words = phrase_clean.split()
+        if len(words) < min_words:
+            continue
+        folded_words = tuple(map(_fold, words))
+        key = (phrase_clean.casefold(), folded_words)
+        if key not in seen:
+            seen.add(key)
+            terms.append((phrase_clean, folded_words))
+    return tuple(terms)
+
+
 _TERMS = tuple((phrase, tuple(map(_fold, phrase.split()))) for phrase in _PHRASES)
 
 
@@ -36,7 +57,8 @@ def is_diacritic_only_change(original: str, candidate: str) -> bool:
     return " ".join(_fold(original).split()) == " ".join(_fold(candidate).split())
 
 
-def diacritic_suspicions(text: str) -> list[str]:
+def diacritic_suspicions(text: str, phrases: tuple[str, ...] | list[str] | None = None,
+                         extra_phrases: tuple[str, ...] | list[str] | None = None) -> list[str]:
     """Return review reasons for context mismatches or impossible tone stacks.
 
     Match whole words separated only by whitespace. Numbers, codes, punctuation,
@@ -47,7 +69,14 @@ def diacritic_suspicions(text: str) -> list[str]:
     words = list(_WORDS.finditer(clean))
     folded = [_fold(m.group()) for m in words]
     reasons = []
-    for phrase, term in _TERMS:
+    if extra_phrases:
+        combined = tuple(dict.fromkeys([*(phrases or _PHRASES), *extra_phrases]))
+        terms = build_terms(combined)
+    elif phrases is not None:
+        terms = build_terms(phrases)
+    else:
+        terms = _TERMS
+    for phrase, term in terms:
         size = len(term)
         for start in range(len(words) - size + 1):
             if tuple(folded[start:start + size]) != term:
@@ -56,7 +85,7 @@ def diacritic_suspicions(text: str) -> list[str]:
             if any(not clean[a.end():b.start()].isspace() for a, b in zip(matches, matches[1:])):
                 continue
             actual = " ".join(m.group().casefold() for m in matches)
-            if actual != phrase:
+            if actual != phrase.casefold():
                 reasons.append(f"{DIACRITIC_REASON_PREFIX}: '{actual}' (expected term: '{phrase}')")
 
     # A Vietnamese syllable has at most one tone. Restrict this check to
@@ -69,3 +98,45 @@ def diacritic_suspicions(text: str) -> list[str]:
         ):
             reasons.append(f"{DIACRITIC_REASON_PREFIX}: multiple tone marks in '{word}'")
     return list(dict.fromkeys(reasons))
+
+
+def diacritic_suspicion_occurrences(text: str, phrases: tuple[str, ...] | list[str] | None = None) -> list[dict]:
+    """Return structured anomaly occurrences with character offsets and expected terms."""
+    clean = unicodedata.normalize("NFC", text)
+    words = list(_WORDS.finditer(clean))
+    folded = [_fold(m.group()) for m in words]
+    occurrences = []
+    terms = _TERMS if phrases is None else build_terms(phrases)
+    for phrase, term in terms:
+        size = len(term)
+        for start in range(len(words) - size + 1):
+            if tuple(folded[start:start + size]) != term:
+                continue
+            matches = words[start:start + size]
+            if any(not clean[a.end():b.start()].isspace() for a, b in zip(matches, matches[1:])):
+                continue
+            actual = " ".join(m.group().casefold() for m in matches)
+            if actual != phrase.casefold():
+                occurrences.append({
+                    "expected_term": phrase,
+                    "actual_term": actual,
+                    "match_start": matches[0].start(),
+                    "match_end": matches[-1].end(),
+                    "reason": f"{DIACRITIC_REASON_PREFIX}: '{actual}' (expected term: '{phrase}')",
+                    "anomaly_type": "context_mismatch"
+                })
+
+    for match in words:
+        word = match.group()
+        nfd = unicodedata.normalize("NFD", word.casefold())
+        if sum(c in _TONES for c in nfd) > 1 and _SYLLABLE.fullmatch(_fold(word)) and all(
+            c in "abcdefghijklmnopqrstuvwxyzđ" or unicodedata.combining(c) for c in nfd
+        ):
+            occurrences.append({
+                "word": word,
+                "match_start": match.start(),
+                "match_end": match.end(),
+                "reason": f"{DIACRITIC_REASON_PREFIX}: multiple tone marks in '{word}'",
+                "anomaly_type": "multiple_tones"
+            })
+    return occurrences

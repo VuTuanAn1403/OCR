@@ -45,7 +45,7 @@ def test_config_hash_uses_default_str():
 
 
 def test_keyword_v1_snapshot_hash():
-    snapshot = dictionary_snapshot(PROJECT_ROOT / "config/keywords.txt", "v1")
+    snapshot = dictionary_snapshot(PROJECT_ROOT / "config/keywords-v1-original.txt", "v1")
     assert snapshot["snapshot_sha256"] == SNAPSHOT_V1
 
 
@@ -59,7 +59,7 @@ def test_keyword_v1_snapshot_survives_git_checkout(tmp_path, autocrlf):
     keywords.parent.mkdir()
     # Git stores text as LF; the checkout must recover the bytes used by the
     # existing v1 receipts on both Linux and Windows, regardless of Git defaults.
-    keywords.write_bytes((PROJECT_ROOT / "config/keywords.txt").read_bytes().replace(b"\r\n", b"\n"))
+    keywords.write_bytes((PROJECT_ROOT / "config/keywords-v1-original.txt").read_bytes().replace(b"\r\n", b"\n"))
 
     def run_git(*args):
         subprocess.run([git, "-c", f"core.autocrlf={autocrlf}", "-c", "core.safecrlf=false", *args],

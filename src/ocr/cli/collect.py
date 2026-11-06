@@ -17,9 +17,11 @@ def main():
     lock.add_argument("--sources", required=True)
     lock.add_argument("--assignments", required=True)
     lock.add_argument("--output", required=True)
+    lock.add_argument("--audit", type=Path, help="Reviewed template and near-duplicate groups for splits-v2")
     draft = subs.add_parser("drafts")
     draft.add_argument("--sources", required=True)
     draft.add_argument("--splits", required=True)
+    draft.add_argument("--audit", type=Path, help="Original split audit required for splits-v2")
     draft.add_argument("--output", required=True)
     draft.add_argument("--pages", type=int, default=50)
     draft.add_argument("--seed", type=int, default=42)
@@ -32,11 +34,11 @@ def main():
             print(f"Collected {len(result)} source PDFs; unknown metadata requires human verification")
         elif args.command == "splits":
             assignments = json.loads(Path(args.assignments).read_text(encoding="utf-8"))
-            lock_company_splits(Path(args.sources), assignments, Path(args.output))
+            lock_company_splits(Path(args.sources), assignments, Path(args.output), audit=args.audit)
             print(f"Locked company splits: {args.output}")
         else:
             result = prepare_gt_drafts(Path(args.sources), Path(args.splits), Path(args.output), pages=args.pages,
-                seed=args.seed, source_root=Path(args.source_root) if args.source_root else None)
+                seed=args.seed, source_root=Path(args.source_root) if args.source_root else None, audit=args.audit)
             print(f"Prepared {result['selected_pages']} UNANNOTATED drafts; these are not ground truth")
     except (OSError, ValueError, TypeError, KeyError) as exc:
         parser.error(str(exc))

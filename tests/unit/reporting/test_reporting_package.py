@@ -15,7 +15,7 @@ from ocr_reporting.validation import validate_document_workbook
 from ocr_reporting.workbooks import export_document, matrix_bytes, verify_document, verify_matrix
 
 ROOT = Path(__file__).resolve().parents[3]
-SNAPSHOT = dictionary_snapshot(ROOT / "config/keywords.txt", "v1")
+SNAPSHOT = dictionary_snapshot(ROOT / "config/keywords-v1-original.txt", "v1")
 
 
 def report_for(tmp_path, text, doc_id="doc"):
@@ -25,16 +25,18 @@ def report_for(tmp_path, text, doc_id="doc"):
     return out, count_report(doc_id, None, out / "result.md", SNAPSHOT, [1])
 
 
-def test_document_workbook_rows_totals_and_policy_line(tmp_path):
+def test_document_workbook_summary_citations_and_policy_metadata(tmp_path):
     out, report = report_for(tmp_path, "Internet di động; chuyển đổi số")
     export_document(report, SNAPSHOT, out)
     validate_document_workbook(out, report, SNAPSHOT)
     book = openpyxl.load_workbook(out / "count_keywords.xlsx", data_only=True)
     sheet = book.active
-    rows = list(sheet.iter_rows(min_row=5, max_row=4 + 88, values_only=True))
-    assert [r[1] for r in rows] == SNAPSHOT["display_columns"] and [r[2] for r in rows] == report["display_counts"]
-    assert sheet.cell(5 + 88, 3).value == report["total_display_matches"]
-    assert "literal_v1" in sheet["A3"].value and f"canonical={report['total_canonical_matches']}" in sheet["A3"].value
+    assert book.sheetnames == ["Tong_hop", "Trich_dan_chi_tiet"]
+    assert [c.value for c in sheet[1]][1:] == SNAPSHOT["display_columns"]
+    assert [c.value for c in sheet[2]][1:] == report["display_counts"]
+    metadata = json.loads(book.properties.description)
+    assert metadata["counting_policy"] == "literal_v1" and metadata["total_canonical_matches"] == report["total_canonical_matches"]
+    assert book["Trich_dan_chi_tiet"].max_row == report["total_canonical_matches"] + 1
     book.close()
 
 
@@ -42,7 +44,7 @@ def test_modified_document_workbook_is_detected(tmp_path):
     out, report = report_for(tmp_path, "Internet di động")
     export_document(report, SNAPSHOT, out)
     book = openpyxl.load_workbook(out / "count_keywords.xlsx")
-    book.active.cell(5, 3).value = 99
+    book.active.cell(2, 3).value = 99
     book.save(out / "count_keywords.xlsx")
     with pytest.raises(ValueError):
         verify_document(out / "count_keywords.xlsx", report, SNAPSHOT)

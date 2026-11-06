@@ -32,6 +32,7 @@ ANALYSIS_CODE = (
     "src/ocr_keywords/",
     "src/ocr_pipeline/keyword_finalization.py",
     "src/ocr_pipeline/analysis_run.py",
+    "src/ocr_pipeline/alias_finalization.py",
     "src/ocr_pipeline/artifact_validation.py",
     "src/ocr_pipeline/keyword_validation.py",
     # Legacy keyword counting and the compatibility aliases of moved modules.

@@ -68,7 +68,7 @@ include-package-data = false
 
 [tool.setuptools.dynamic]
 # Read statically from the file (setuptools AST), never imported under this name.
-version = { attr = "ocr_document.manifest_exporter.PIPELINE_VERSION" }
+version = { attr = "ocr_runtime.version.PIPELINE_VERSION" }
 
 # Module boundaries (config/module_map.json). Run: lint-imports (from the repository root).
 # Each internal package absent from the table's allowed-dependency column is

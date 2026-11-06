@@ -5,8 +5,7 @@ from ocr_contracts.document import ExtractedDocument
 from ocr_contracts.schema import PAGE_SCHEMA_VERSION
 from ocr_runtime.fingerprint import source_fingerprint
 from ocr_runtime.models import model_fingerprint, model_hashes
-
-PIPELINE_VERSION = "6.3.0.dev1"
+from ocr_runtime.version import PIPELINE_VERSION
 
 class ManifestExporter:
     """

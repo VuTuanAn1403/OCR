@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from ocr_document.ids import Item
+from ocr_document.column_continuity import join_column_continuations
 
 METHOD = "heuristic-v1"
 DOCUMENT_ROLE_METHOD = "heuristic-v2-document-roles"
@@ -32,7 +33,7 @@ PAGE_BODY_MIN_CHARS = 300  # enough body text to trust a page's own font median
 REPEAT_WINDOW_PAGES = 4    # same title again within this many pages = running title
 RUNNING_TITLE_TOP_RATIO = 0.15
 _EXCLUDED_TYPES = {"header", "footer", "running_header", "running_footer", "page_number",
-                   "caption", "formula", "list"}
+                   "caption", "formula", "list", "pull_quote", "callout"}
 _SENTENCE_END = (".", ":", ";", "?", "!")
 _BULLETS = ("-", "+", "*", "•", "–", "●", "▪")
 _VI_LETTERS = set("ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ")
@@ -70,6 +71,9 @@ class Line:
     structure_needs_review: bool = False
     column_id: Optional[str] = None
     article_group_id: Optional[str] = None
+    source_id: Optional[str] = None
+    callout_id: Optional[str] = None
+    table_source_unresolved: bool = False
 
     @property
     def height(self) -> float:
@@ -113,9 +117,10 @@ class TocInfo:
 
 @dataclass
 class Paragraph:
-    kind: str  # "paragraph" | "list_item"
+    kind: str  # "paragraph" | "list_item" | "pull_quote"
     lines: List[Line]
     text: str
+    continuations: List[dict] = field(default_factory=list)
 
     @property
     def item_ids(self) -> List[str]:
@@ -196,6 +201,8 @@ def _is_english(text: str) -> bool:
 
 
 def _translation_candidate(line: Line, body: Optional[float] = None) -> bool:
+    if line.table_source_unresolved:
+        return False
     text = line.text.strip()
     if not _is_english(text) or len(text.split()) > 12 or text.endswith(_SENTENCE_END):
         return False
@@ -210,6 +217,8 @@ def rejection_reason(line: Line, previous: Sequence[Line] = ()) -> Optional[str]
     preceding lines (a signature block may put a stamp between title and name)."""
     if len(line.bbox) != 4:
         return "unplaced"
+    if line.table_source_unresolved:
+        return "unresolved_table_source"
     text = line.text.strip()
     numbering = parse_numbering(text)
     if _is_bullet(text):
@@ -295,6 +304,9 @@ def detect_toc(pages: Sequence[Sequence[Line]], max_page_index: int = 8) -> Opti
     toc_pages: List[int] = []
     entries: List[Tuple[str, int]] = []
     for lines in list(pages)[:max_page_index]:
+        lines = _toc_lines(lines)
+        if not lines:
+            continue
         found = _toc_entries(lines)
         titled = any(_TOC_TITLE.search(line.text) for line in lines[: max(3, len(lines) // 3)])
         titled = titled or any(line.block_type.casefold().replace("-", "_") == "document_index"
@@ -309,7 +321,21 @@ def _toc_entries(lines: Sequence[Line]) -> List[Tuple[str, int]]:
     return [(title, page) for title, page, _ in _toc_entries_with_sources(lines)]
 
 
+def _toc_lines(lines: Sequence[Line]) -> List[Line]:
+    # A real index can itself be extracted as a table. Retain explicit index
+    # evidence; only an implicit index must ignore unresolved table content.
+    explicit = any(line.block_type.casefold().replace("-", "_") == "document_index"
+                   or line.text.strip().casefold() in {"mục lục", "table of contents", "contents"}
+                   for line in lines)
+    chapters = {line.text.strip().casefold() for line in lines
+                if re.fullmatch(r"chương\s+(?:[IVXLC]+|\d+)", line.text.strip(), re.I)}
+    navigation = len(chapters) >= 3 and sum(bool(_TOC_LINE.match(line.text.strip()))
+                                          for line in lines if line.text.strip().casefold() not in chapters) >= 6
+    return list(lines) if explicit or navigation else [line for line in lines if not line.table_source_unresolved]
+
+
 def _toc_entries_with_sources(lines: Sequence[Line]) -> List[Tuple[str, int, List[str]]]:
+    lines = _toc_lines(lines)
     entries = []
     numbers = [line for line in lines if len(line.bbox) == 4 and re.fullmatch(r"\d{1,3}", line.text.strip())]
     for line in lines:
@@ -487,7 +513,12 @@ def _starts_new_paragraph(previous: Line, line: Line) -> bool:
     if previous.font_size and line.font_size and abs(previous.font_size - line.font_size) > 1.5:
         return True
     gap = line.bbox[1] - previous.bbox[3]
-    if line.page != previous.page or gap < 0:
+    # Detector boxes of successive baselines can overlap slightly. Such overlap
+    # is not a column break, including title-cased names split across lines.
+    small_overlap = (line.page == previous.page and line.bbox[1] > previous.bbox[1]
+                     and line.block_type == previous.block_type
+                     and gap >= -.25 * min(previous.height, line.height))
+    if line.page != previous.page or (gap < 0 and not small_overlap):
         # Page or column break: continue only an unfinished sentence.
         return previous.text.rstrip().endswith(_SENTENCE_END) or not _starts_lowercase(line.text)
     if gap > 0.6 * previous.height:
@@ -517,15 +548,18 @@ def _join(lines: Sequence[Line]) -> str:
 
 # ------------------------------------------------------------------- build --
 
-def _line(item: Item, needs_review: bool = False) -> Line:
+def _line(item: Item, needs_review: bool = False, *, table_source_unresolved: bool = False) -> Line:
     block = item.block
     return Line(item_id=item.id, page=item.page, text=block.text, bbox=item.bbox,
-                font_size=block.font_size, is_bold=bool(block.is_bold), block_type=block.block_type,
+                font_size=block.font_size, is_bold=bool(block.is_bold),
+                block_type="pull_quote" if block.callout_id else block.block_type, callout_id=block.callout_id,
                 source=block.source, confidence=block.confidence, quality_score=block.quality_score,
                 confidence_source=block.confidence_source, text_raw=getattr(block, "text_raw", None),
                 correction_source=getattr(block, "correction_source", None), page_height=item.page_height,
-                structure_needs_review=needs_review or len(item.bbox) != 4 or bool(block.review_reason_codes), column_id=block.column_id,
-                article_group_id=block.article_group_id)
+                structure_needs_review=(needs_review or len(item.bbox) != 4 or bool(block.review_reason_codes)
+                                        or (bool(block.fallback_reason) and not block.reviewed)), column_id=block.column_id,
+                article_group_id=block.article_group_id, source_id=block.source_id,
+                table_source_unresolved=table_source_unresolved)
 
 
 def _overlapping_tables(item: Item, tables: Sequence[Item]) -> List[Item]:
@@ -541,7 +575,15 @@ def _overlapping_tables(item: Item, tables: Sequence[Item]) -> List[Item]:
     )]
 
 
-def _inside_table(item: Item, tables: Sequence[Item]) -> bool:
+def _inside_table(item: Item, tables: Sequence[Item], *, require_occurrence: bool = False) -> bool:
+    if require_occurrence:
+        # The document pass already made a one-to-one ownership decision.
+        # A substring search here would bypass it and erase repeated sources.
+        sid = item.block.source_id
+        return bool(sid) and any(
+            sid in table.table.provenance.get("source_occurrence_mapping", {})
+            and sid in table.table.provenance.get("derived_from_source_ids", [])
+            for table in _overlapping_tables(item, tables))
     # Geometry alone cannot prove that the table model retained this text.
     # Require an exact normalized phrase match, preserving numeric punctuation.
     text = " ".join(unicodedata.normalize("NFC", item.block.text).casefold().split())
@@ -573,12 +615,19 @@ def build_structure(items_by_page: Sequence[Sequence[Item]], *, layout_method: s
                 dropped[item.id] = block.block_type
             elif not block.text.strip():
                 dropped[item.id] = "empty"
-            elif _inside_table(item, tables):
+            elif _inside_table(item, tables, require_occurrence=layout_method == "region_tree_graph_v1"):
                 dropped[item.id] = "table_cell"
             elif block.block_type == "formula":
                 sequence.append(("item", item))
             else:
-                sequence.append(("line", _line(item, needs_review=bool(_overlapping_tables(item, tables)))))
+                overlaps = bool(_overlapping_tables(item, tables))
+                # Restored business text inside a table remains visible and
+                # reviewable. Its numbering must not create a document section
+                # while the table/source ownership is still unresolved.
+                unresolved = (layout_method == "region_tree_graph_v1" and overlaps
+                              and bool({"TABLE_SOURCE_UNMAPPED", "TABLE_FURNITURE_CONFLICT"}
+                                       .intersection(block.review_reason_codes)))
+                sequence.append(("line", _line(item, needs_review=overlaps, table_source_unresolved=unresolved)))
 
     lines = [value for kind, value in sequence if kind == "line"]
     body = body_font_size(lines)
@@ -605,7 +654,10 @@ def build_structure(items_by_page: Sequence[Sequence[Item]], *, layout_method: s
             recent = []
             continue
         line = value
-        if line.item_id in toc_item_ids or (line.page in toc_pages and _TOC_TITLE.search(line.text)):
+        if (not line.callout_id and (line.item_id in toc_item_ids
+                or (line.page in toc_pages and _TOC_TITLE.search(line.text)
+                    and (not line.table_source_unresolved or line.text.strip().casefold() in
+                         {"mục lục", "table of contents", "contents"})))):
             # A TOC page can also contain an introduction. Suppress index
             # rows, not every line on the page.
             dropped[line.item_id] = "toc_entry"
@@ -643,13 +695,14 @@ def build_structure(items_by_page: Sequence[Sequence[Item]], *, layout_method: s
     def flush() -> None:
         if not paragraph:
             return
-        text = _join(paragraph)
+        callout = paragraph[0].callout_id
+        text = " ".join(line.text.strip() for line in paragraph) if callout else _join(paragraph)
         if not text.strip("".join(_BULLETS) + " "):
             # A lone bullet glyph or rule: decoration, not content.
             for line in paragraph:
                 dropped[line.item_id] = "decoration"
         else:
-            kind = "list_item" if _is_bullet(paragraph[0].text) else "paragraph"
+            kind = "pull_quote" if callout else "list_item" if _is_bullet(paragraph[0].text) else "paragraph"
             flow.append(("paragraph", Paragraph(kind, list(paragraph), text)))
         paragraph.clear()
 
@@ -671,6 +724,11 @@ def build_structure(items_by_page: Sequence[Sequence[Item]], *, layout_method: s
             continue
         if line.item_id in heading_lines or line.item_id in dropped:
             continue
+        if paragraph and paragraph[-1].callout_id != line.callout_id:
+            flush()
+        if line.callout_id:
+            paragraph.append(line)
+            continue
         # A bare bullet glyph on its own line prefixes the next line.
         if paragraph and paragraph[-1].text.strip() in _BULLETS:
             paragraph.append(line)
@@ -679,6 +737,8 @@ def build_structure(items_by_page: Sequence[Sequence[Item]], *, layout_method: s
             flush()
         paragraph.append(line)
     flush()
+    if layout_method == "region_tree_graph_v1":
+        flow = join_column_continuations(flow, _join)
     return DocStructure(body, sections, toc, flow, dropped)
 
 

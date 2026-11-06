@@ -17,7 +17,7 @@ from zipfile import BadZipFile
 from ocr_artifacts.atomic_io import atomic_write_bytes, atomic_write_json
 from ocr_artifacts.hashing import sha256_file as sha256
 from ocr_contracts.processing import IdentityMismatch, PublicationError
-from ocr_keywords.contract import count_report, validate_report
+from ocr_keywords.contract import count_report, validate_report, dictionary_snapshot
 from ocr_reporting.workbooks import export_document, verify_document
 from ocr_runtime import fingerprint
 
@@ -71,7 +71,10 @@ def discover_sources(paths) -> list[dict]:
         source = Path(source).resolve()
         if not source.is_dir():
             raise FileNotFoundError(f"Analysis source not found: {source}")
-        for doc_id, directory, original in _expected_documents(source):
+        expected = _expected_documents(source)
+        if len(records) + len(expected) > 1048574:
+            raise ValueError("Input snapshot exceeds XLSX row capacity")
+        for doc_id, directory, original in expected:
             if _key(doc_id) in seen:
                 raise ValueError(f"Colliding document ID {doc_id} in {directory} and {seen[_key(doc_id)]}")
             seen[_key(doc_id)] = directory
@@ -94,8 +97,6 @@ def discover_sources(paths) -> list[dict]:
                             "source_error": error, "total_pages": original.get("total_pages"),
                             "source_review": original.get("source_review", "NOT_EVALUATED"),
                             "duplicate_of": original.get("duplicate_of"), "counts": None})
-    if len(records) > 1048574:
-        raise ValueError("Input snapshot exceeds XLSX row capacity")
     return records
 
 
@@ -150,13 +151,13 @@ def verify_source(directory: Path) -> dict:
     return {**verified, "via_analysis_run": [*source.get("via_analysis_run", []), str(directory)]}
 
 
-def _reusable_report(source_dir: Path, analysis: str, snapshot, text_path, doc_id, pdf_sha256):
+def _reusable_report(source_dir: Path, analysis: str, snapshot, text_path, doc_id, pdf_sha256, *, citation_source_dir=None):
     try:
         receipt = read(source_dir / "keyword_receipt.json")
         if receipt.get("analysis_fingerprint") != analysis or receipt["report_sha256"] != sha256(source_dir / "keyword_counts.json"):
             return None
         report = read(source_dir / "keyword_counts.json")
-        validate_report(report, snapshot, text_path, doc_id, pdf_sha256)
+        validate_report(report, snapshot, text_path, doc_id, pdf_sha256, citation_source_dir=citation_source_dir)
         return report
     except (OSError, ValueError, KeyError, TypeError):
         return None
@@ -165,8 +166,65 @@ def _reusable_report(source_dir: Path, analysis: str, snapshot, text_path, doc_i
 class AnalysisProcessor:
     """`process_batch` processor that imports instead of running OCR."""
 
-    def __init__(self):
+    def __init__(self, alias_decisions=None, *, alias_rules=None, dictionary=None, alias_rules_snapshot=None):
         self.counted, self.reused = [], []
+        self._citation_sources = {}
+        from ocr_keywords.alias_map import AliasDecision, freeze_alias_decisions
+        self.decision_snapshot = freeze_alias_decisions(alias_decisions)
+        self._decision_path = Path(alias_decisions).resolve() if isinstance(alias_decisions, (str, Path)) else None
+        self.decisions = (None if self.decision_snapshot is None else
+                          tuple(AliasDecision.model_validate(item) for item in self.decision_snapshot["decisions"]))
+        from ocr_keywords.global_rules import freeze_rules, validate_frozen_rules
+        if alias_rules is not None and alias_rules_snapshot is not None:
+            raise ValueError("Provide an alias rule file or a frozen snapshot, not both")
+        self.rules_snapshot = (freeze_rules(alias_rules, dictionary) if alias_rules is not None else
+                               json.loads(json.dumps(alias_rules_snapshot)))
+        self._rules_path = Path(alias_rules).resolve() if alias_rules is not None else None
+        if self.rules_snapshot is not None:
+            validate_frozen_rules(self.rules_snapshot, dictionary)
+
+    def verify_decision_source(self):
+        if self._rules_path is not None:
+            try:
+                valid = sha256(self._rules_path) == self.rules_snapshot["source_sha256"]
+            except OSError:
+                valid = False
+            if not valid:
+                raise IdentityMismatch("Alias rules input changed during analysis; use a new output")
+        if self._decision_path is not None:
+            try:
+                valid = sha256(self._decision_path) == self.decision_snapshot["source_sha256"]
+            except OSError:
+                valid = False
+            if not valid:
+                raise IdentityMismatch("Alias decisions input changed during analysis; use a new output")
+
+    def _two_tier(self, report, snapshot, text, source_dir=None):
+        from ocr_keywords.tiered import build_tiered_report
+        return build_tiered_report(report, snapshot, text, decisions=self.decisions,
+                                  decision_snapshot=self.decision_snapshot, rules=self.rules_snapshot,
+                                  source_dir=source_dir)
+
+    def verify_existing(self, record, snapshot, output):
+        """Read back the companion before ledger acceptance or reuse."""
+        directory = Path(output) / record["id"]
+        expected = self._two_tier(read(directory / "keyword_counts.json"), snapshot,
+                                  (directory / "result.md").read_text(encoding="utf-8"),
+                                  self.citation_source_directory(record, directory) if self.rules_snapshot is not None else None)
+        actual = read(directory / "keyword_two_tier.json")
+        expected.pop("reconciled_at_utc")
+        actual.pop("reconciled_at_utc", None)
+        if actual != expected:
+            raise ValueError("Two-tier companion differs from verified source/decisions")
+
+    def citation_source_directory(self, record, directory):
+        """Use the verified extraction origin, also for chained/resumed analyses."""
+        provenance = self._citation_sources.get(record["id"])
+        if provenance is None:
+            provenance = verify_source(Path(record["source_dir"]))
+        if provenance["result_md_sha256"] != sha256(Path(directory) / "result.md"):
+            raise IdentityMismatch("Citation source differs from the imported Markdown")
+        return Path(provenance["source_dir"])
 
     def __call__(self, record, snapshot, output, *, resume, force_ocr, max_attempts=2):
         from ocr_pipeline.completion import clear_completed, mark_completed
@@ -178,16 +236,19 @@ class AnalysisProcessor:
             raise ValueError(f"Analysis source rejected: {type(exc).__name__}: {exc}") from exc
         if provenance["result_md_sha256"] != record["input_sha256"]:
             raise IdentityMismatch(f"INPUT_CHANGED: {record['input_path']}")
+        self._citation_sources[record["id"]] = provenance
         clear_completed(out)
         out.mkdir(parents=True, exist_ok=True)
         text = (source_dir / "result.md").read_bytes()
         atomic_write_bytes(out / "result.md", text)
         analysis = fingerprint.code_fingerprints()["analysis"]
-        report = _reusable_report(source_dir, analysis, snapshot, out / "result.md", record["id"], record["pdf_sha256"])
+        citation_source = Path(provenance["source_dir"])
+        report = _reusable_report(source_dir, analysis, snapshot, out / "result.md", record["id"], record["pdf_sha256"],
+                                  citation_source_dir=citation_source)
         origin = "reused" if report is not None else "counted"
         if report is None:
             report = count_report(record["id"], record["pdf_sha256"], out / "result.md", snapshot,
-                                  provenance["selected_pages"])
+                                  provenance["selected_pages"], citation_source_dir=citation_source)
             self.counted.append(record["id"])
         else:
             self.reused.append(record["id"])
@@ -202,9 +263,13 @@ class AnalysisProcessor:
                 export_document(report, snapshot, out)
         except OSError as exc:
             raise PublicationError(f"Per-document Excel cannot be published: {exc}") from exc
-        validate_report(report, snapshot, out / "result.md", record["id"], record["pdf_sha256"])
+        validate_report(report, snapshot, out / "result.md", record["id"], record["pdf_sha256"], citation_source_dir=citation_source)
         atomic_write_json(out / "keyword_validation.json", {"schema_version": "keyword-validation-v1",
                                                             "status": "PASS", "report_sha256": report_sha})
+        # Tier 2 companion artifact: diacritic alias candidates and two-tier reconciliation
+        md_text = (out / "result.md").read_text(encoding="utf-8")
+        two_tier = self._two_tier(report, snapshot, md_text, citation_source)
+        atomic_write_json(out / "keyword_two_tier.json", two_tier)
         atomic_write_json(out / "source.json", {
             "schema_version": SOURCE_SCHEMA, "document_id": record["id"], "pdf_sha256": record["pdf_sha256"],
             "result_md_sha256": sha256(out / "result.md"), "extraction": {k: v for k, v in provenance.items()
@@ -216,23 +281,34 @@ class AnalysisProcessor:
                 "completion_sha256": sha256(out / "COMPLETED.json"), "validation": provenance["validation"]}
 
 
-def run_analysis(sources, output, keywords_path, *, keyword_set_version="v1", resume=False,
-                 retry_failed=False, processor=None):
+def run_analysis(sources, output, keywords_path, *, keyword_set_version=None, resume=False,
+                 retry_failed=False, processor=None, alias_decisions=None, alias_rules=None):
     from ocr_pipeline.batch import process_batch
+    snapshot = dictionary_snapshot(keywords_path, keyword_set_version)
+    keyword_set_version = snapshot["keyword_set_version"]
     sources = [Path(s).resolve() for s in sources]
     output = Path(output).resolve()
     for source in sources:
         if output == source or output.is_relative_to(source) or source.is_relative_to(output):
             raise ValueError(f"Analysis output must be separate from its sources: {output} / {source}")
+    if processor is not None and (alias_decisions is not None or alias_rules is not None):
+        raise ValueError("Alias decisions/rules require the standard AnalysisProcessor")
+    proc = processor or AnalysisProcessor(alias_decisions=alias_decisions, alias_rules=alias_rules, dictionary=snapshot)
     pinned = {k: v for k, v in fingerprint.code_fingerprints().items() if k != "extraction"}
 
     def identity_check():
         current = {k: v for k, v in fingerprint.code_fingerprints().items() if k != "extraction"}
         if current != pinned:
             raise IdentityMismatch("Analysis or publication code changed during the analysis run")
+        if isinstance(proc, AnalysisProcessor):
+            proc.verify_decision_source()
 
     config = {"mode": RUN_MODE, "sources": [str(s) for s in sources], "keyword_set_version": keyword_set_version,
-              "counting_policy": "literal_v1", "code_fingerprints": pinned}
-    return process_batch(sources[0], output, config, keywords_path, processor or AnalysisProcessor(),
+              "counting_policy": "literal_v1", "code_fingerprints": pinned,
+              "alias_decisions": proc.decision_snapshot if isinstance(proc, AnalysisProcessor) else None}
+    if isinstance(proc, AnalysisProcessor) and proc.rules_snapshot is not None:
+        config["alias_rules"] = proc.rules_snapshot
+    return process_batch(sources[0], output, config, keywords_path, proc,
                          resume=resume, retry_failed=retry_failed, identity_check=identity_check,
+                         frozen_dictionary=snapshot,
                          snapshot_inputs=lambda _: discover_sources(sources))

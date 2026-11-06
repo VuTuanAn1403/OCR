@@ -1,6 +1,6 @@
 # Canonical configuration of the one supported pipeline; versioned files are aliases.
 config_schema: ocr-profiles-v1
-pipeline: v6.3
+pipeline: v7.0
 profiles:
   unified_gpu_full_ocr:
     profile: unified_gpu_full_ocr
@@ -39,9 +39,14 @@ profiles:
     fallback_enabled: false
     # Same GPU recognizer; only lines with Vietnamese diacritic review hints.
     diacritic_retry: {enabled: true, upscale_dpi: 300, max_regions_per_page: 5, max_region_ratio: 0.15}
+    # Image proposals only: protected numbers are retained for human review.
+    short_token_retry: {enabled: true, upscale_dpi: 400, max_regions_per_page: 3}
     min_confidence: 0.80
     numeric_retry_threshold: 0.85
     orientation_fallback_enabled: false
+    # Per-line 180-degree candidates for uncertain horizontal readings.
+    horizontal_180_retry_threshold: 0.90
+    table_stitch: {method: auto_v1}
     vector_table_min_native_score: 0.90
     skip_vector_tables_on_restricted_pdf: true
     two_up_detection_enabled: false

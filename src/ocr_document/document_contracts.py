@@ -20,7 +20,7 @@ from ocr_contracts.region import ContentType
 from ocr_document.json_exporter import JSONExporter
 from ocr_document.manifest_exporter import PIPELINE_VERSION
 from ocr_document.markdown_exporter import MarkdownExporter
-from ocr_document.figures import METHOD as FIGURE_LINK_METHOD, link_figures
+from ocr_document.figures import METHOD as FIGURE_LINK_METHOD, link_figures, link_table_captions
 from ocr_document.ids import Item, document_items
 from ocr_document.financial_checks import (
     METHOD as FINANCIAL_CHECKS_METHOD, balance_identity_checks, continuation_candidate, multi_value_cells,
@@ -31,6 +31,7 @@ from ocr_document.section_tree import (
 )
 from ocr_artifacts.atomic_io import atomic_write_text
 from ocr_document.source_identity import valid_bbox
+from ocr_document.table_hierarchy import infer_row_hierarchy
 
 logger = logging.getLogger(__name__)
 
@@ -83,8 +84,11 @@ def language_detection(text: str) -> dict:
 
 
 def _block_needs_review(block) -> bool:
-    """TextBlock or section_tree.Line: unscored or low-quality text needs review."""
-    return bool(getattr(block, "structure_needs_review", False)) or block.quality_score is None or block.quality_score < REVIEW_QUALITY
+    """Retain independent unresolved gates alongside the weighted quality score."""
+    pending_gate = not getattr(block, "reviewed", False) and bool(
+        getattr(block, "fallback_reason", None) or getattr(block, "review_reason_codes", []))
+    return (bool(getattr(block, "structure_needs_review", False)) or pending_gate
+            or block.quality_score is None or block.quality_score < REVIEW_QUALITY)
 
 
 def _confidence_source(value: Optional[float], source: Optional[str] = None) -> str:
@@ -107,6 +111,8 @@ def _cell_json(item: Item, cell, device: str) -> Dict[str, Any]:
             "review_reason": "cell_bbox_unavailable" if not valid_cell else None,
             "spans": _spans([(item.page, item.id, bbox)]) if bbox else [],
             "source": item.table.engine, "device": device, "confidence": cell.confidence,
+            **{name: getattr(cell, name) for name in ("column_header", "row_header", "row_section")
+               if getattr(cell, name) is not None},
             "confidence_source": _confidence_source(cell.confidence, cell.confidence_source)}
 
 
@@ -126,6 +132,7 @@ def _item_json(item: Item, device: str) -> Dict[str, Any]:
         return {"id": item.id, "kind": "b", "bbox": item.bbox, "block_type": b.block_type,
                 "text_raw": b.text if getattr(b, "text_raw", None) is None else b.text_raw,
                 "text_corrected": b.text, "correction_source": getattr(b, "correction_source", None),
+                **({"recognition_provenance": b.recognition_provenance} if b.recognition_provenance else {}),
                 "source": b.source, "engine": b.engine, "device": device,
                 "confidence": b.confidence, "confidence_source": _confidence_source(b.confidence, b.confidence_source),
                 "quality_score": b.quality_score, "font_size": b.font_size, "is_bold": b.is_bold,
@@ -139,6 +146,7 @@ def _item_json(item: Item, device: str) -> Dict[str, Any]:
                 "confidence_source": _confidence_source(t.confidence, t.confidence_source),
                 "num_rows": t.num_rows, "num_cols": t.num_cols, "needs_review": bool(t.needs_review),
                 "html_path": t.provenance.get("html_artifact"),
+                **({"table_orientation": t.provenance["table_orientation"]} if "table_orientation" in t.provenance else {}),
                 "cells": [_cell_json(item, c, device) for c in t.cells]}
     if item.kind == "f":
         f = item.formula
@@ -158,11 +166,15 @@ def build_extraction_json(doc: ExtractedDocument, items_by_page: Sequence[Sequen
     pages = []
     for page, items in zip(doc.pages, items_by_page):
         space, transforms = _coordinate_space(page)
+        bridge = page.metadata.get("ocr_structure_bridge", {})
         pages.append({"page": page.page_num, "width": page.width, "height": page.height,
                       "page_type": page.page_type.value, "coordinate_space": space, "transforms": transforms,
                       **{key: page.metadata.get(key) for key in (
                           "logical_page_id", "physical_page_id", "ordered_item_ids", "layout_family",
                           "layout_tree", "article_groups", "order_edges", "layout_review", "text_evidence", "source_dispositions")},
+                      **({"ocr_structure_bridge": bridge} if bridge.get("orientation_placements") else {}),
+                      **({"source_reconciliation_method": page.metadata["source_reconciliation_method"]}
+                         if "source_reconciliation_method" in page.metadata else {}),
                       "items": [{**_item_json(item, device),
                                  **page.metadata.get("source_identity", {}).get("items", {}).get(item.id, {}),
                                  **page.metadata.get("item_assignments", {}).get(item.id, {}),
@@ -294,6 +306,7 @@ def _duplicate_formula_blocks(structure: DocStructure) -> set:
 
 
 def build_document_json(doc: ExtractedDocument, structure: DocStructure, device: str) -> Dict[str, Any]:
+    schema = _schema(doc, SCHEMA_DOCUMENT)
     duplicates = _duplicate_formula_blocks(structure)
     sections: Dict[str, Dict[str, Any]] = {}
     extents = _section_extents(structure)
@@ -340,10 +353,15 @@ def build_document_json(doc: ExtractedDocument, structure: DocStructure, device:
         if item.kind == "t":
             chunk = _table_chunk(item, current, device)
             add_chunk(chunk)
+            cells = chunk.pop("cells")
+            hierarchy = infer_row_hierarchy(cells) if schema == "doc-v2-layout" else None
             tables.append({"table_id": item.id, "chunk_id": chunk["chunk_id"], "section_id": current,
                            "pages": [item.page], "num_rows": item.table.num_rows, "num_cols": item.table.num_cols,
                            "has_merged_cells": chunk["has_merged_cells"], "engine": item.table.engine,
-                           "html_path": item.table.provenance.get("html_artifact"), "cells": chunk.pop("cells")})
+                           "html_path": item.table.provenance.get("html_artifact"), "cells": cells,
+                           **({"table_orientation": item.table.provenance["table_orientation"]}
+                              if "table_orientation" in item.table.provenance else {}),
+                           **({"row_hierarchy": hierarchy} if hierarchy else {})})
         elif item.kind in ("f", "b"):  # Docling formula, or a text block typed as formula
             text = item.formula.latex if item.kind == "f" else item.block.text
             raw_text = text if item.kind == "f" or getattr(item.block, "text_raw", None) is None else item.block.text_raw
@@ -375,6 +393,8 @@ def build_document_json(doc: ExtractedDocument, structure: DocStructure, device:
             for key in ("role", "figure_id", "caption", "figure_text_chunk_ids"):
                 entry.pop(key, None)
         figure_links = {"method": FIGURE_LINK_METHOD, "status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}
+    if schema == "doc-v2-layout" and figure_links["status"] == "COMPLETED":
+        link_table_captions(chunks, tables)
     try:
         consistency = _table_consistency(doc, structure, tables, chunks)
     except Exception as exc:  # flag-only checks must never cost the export
@@ -384,7 +404,7 @@ def build_document_json(doc: ExtractedDocument, structure: DocStructure, device:
         consistency = {"method": FINANCIAL_CHECKS_METHOD, "status": "FAILED",
                        "error": f"{type(exc).__name__}: {exc}"}
     ordered = sorted(sections.values(), key=lambda s: (s["section_id"] != preamble, s["section_id"]))
-    return {"schema_version": _schema(doc, SCHEMA_DOCUMENT), "doc_id": doc.document_id, "doc_sha16": doc.file_hash,
+    return {"schema_version": schema, "doc_id": doc.document_id, "doc_sha16": doc.file_hash,
             "source": {"sha256_16": doc.file_hash, "file_name": Path(doc.file_path).name},
             "extraction": "extraction.json", "sections": ordered, "chunks": chunks,
             "tables": tables, "formulas": formulas, "images": images,
@@ -454,14 +474,18 @@ def _paragraph_chunk(paragraph: Paragraph, section_id: str, device: str) -> Dict
     dehyphenated = joined_corrected != paragraph.text
     if dehyphenated:
         sources.add("line_wrap_dehyphenation")
-    return {"chunk_id": paragraph.lines[0].item_id, "section_id": section_id, "type": paragraph.kind,
+    callout = paragraph.lines[0].callout_id
+    return {"chunk_id": paragraph.lines[0].item_id, "section_id": section_id,
+            "type": "paragraph" if callout else paragraph.kind,
+            **({"callout_id": callout} if callout else {}),
             "lang": detect_language(paragraph.text), "language_detection": language_detection(paragraph.text),
             "text_raw": raw_text, "text_corrected": paragraph.text,
             "correction_source": "+".join(sorted(sources)) if sources else None,
+            **({"continuations": paragraph.continuations} if paragraph.continuations else {}),
             "spans": _spans([(line.page, line.item_id, line.bbox) for line in paragraph.lines]),
             "source": _source([line.source for line in paragraph.lines]), "device": device,
             "confidence": confidence, "confidence_source": confidence_source,
-            "needs_review": dehyphenated or any(_block_needs_review(line) for line in paragraph.lines)}
+            "needs_review": bool(callout) or dehyphenated or any(_block_needs_review(line) for line in paragraph.lines)}
 
 
 def _table_chunk(item: Item, section_id: str, device: str) -> Dict[str, Any]:
@@ -482,8 +506,10 @@ def _table_chunk(item: Item, section_id: str, device: str) -> Dict[str, Any]:
 
 # ---------------------------------------------------------------- markdown --
 
-def render_document_md(doc: ExtractedDocument, structure: DocStructure, assets_mode: str) -> str:
+def render_document_md(doc: ExtractedDocument, structure: DocStructure, assets_mode: str, table_stitch=None) -> str:
     out: List[str] = []
+    logical = {entry["table_ids"][0]: entry for entry in (table_stitch or {}).get("logical_tables", [])}
+    following = {key for entry in logical.values() for key in entry["table_ids"][1:]}
     duplicates = _duplicate_formula_blocks(structure)
     diagram_pages = ({p.page_num: p for p in doc.pages if p.diagrams}
                      if doc is not None and doc.manifest.get("document_layout", {}).get("method") == "region_tree_graph_v1" else {})
@@ -501,6 +527,9 @@ def render_document_md(doc: ExtractedDocument, structure: DocStructure, assets_m
                 out.append(f"*{_escape(value.heading.title_en)}*")
         elif kind == "paragraph":
             text = value.text
+            if value.kind == "pull_quote":
+                out.append("\n".join(f"> {line}" for line in _escape(text).splitlines()))
+                continue
             if value.lines and all(line.block_type in ("header", "footer") for line in value.lines):
                 label = "Header" if value.lines[0].block_type == "header" else "Footer"
                 out.append(f"> **{label}**: {_escape(text)}")
@@ -513,6 +542,14 @@ def render_document_md(doc: ExtractedDocument, structure: DocStructure, assets_m
         else:
             item: Item = value
             if item.kind == "t":
+                if item.id in following:
+                    continue
+                if item.id in logical:
+                    from ocr_document.table_stitch import render_projected_markdown
+                    out.append(render_projected_markdown(logical[item.id]["projection"]))
+                    path = logical[item.id]["html_path"]
+                    out.append(f"*Bảng nối qua các trang; cần rà soát ranh giới hàng. [HTML đầy đủ]({path})*")
+                    continue
                 pipe = item.table.to_pipe_table().strip()
                 if pipe:
                     out.append(pipe)
@@ -550,23 +587,35 @@ def _overlaps(a: Sequence[float], b: Sequence[float], threshold: float = 0.5) ->
 
 # ------------------------------------------------------------------- write --
 
-def write_document_contracts(doc: ExtractedDocument, doc_dir: Path, assets_mode: str) -> None:
+def write_document_contracts(doc: ExtractedDocument, doc_dir: Path, assets_mode: str) -> Optional[dict]:
     """Write the four C3.7 files. extraction.json is always written. A failure
     in the structure heuristics is recorded in structure.json and the stale
     document files are removed, so V6 validation fails and names the cause
     instead of shipping an outdated document.json."""
     device = doc.manifest.get("device", "cpu")
     items_by_page = document_items(doc)
-    JSONExporter.save_json(build_extraction_json(doc, items_by_page, device), doc_dir / "extraction.json")
+    extraction_json = build_extraction_json(doc, items_by_page, device)
+    JSONExporter.save_json(extraction_json, doc_dir / "extraction.json")
+    table_stitch = None
     try:
         layout_method = doc.manifest.get("document_layout", {}).get("method", "legacy")
         structure = build_structure(items_by_page, layout_method=layout_method,
                                     furniture_method=doc.manifest.get("furniture", {}).get("method"))
         document_json = build_document_json(doc, structure, device)
+        from ocr_runtime.config import table_stitch_settings
+        if layout_method == "region_tree_graph_v1" and table_stitch_settings(doc.manifest.get("configuration", {}))["method"] == "auto_v1":
+            from ocr_document.auto_table_stitch import build_auto_stitches
+            table_stitch = build_auto_stitches(extraction_json, document_json)
+            if table_stitch["decisions"]:
+                document_json["table_stitch"] = table_stitch
+            joined = {key for group in table_stitch["logical_tables"] for key in group["table_ids"]}
+            for entry in (*document_json["tables"], *document_json["chunks"]):
+                if entry.get("table_id", entry.get("chunk_id")) in joined:
+                    entry["needs_review"] = True
         consumed = {ref for section in document_json.get("sections", []) for span in section.get("spans", []) for ref in span.get("block_ids", [])}
         consumed.update(ref for chunk in document_json.get("chunks", []) for span in chunk.get("spans", []) for ref in span.get("block_ids", []))
         structure_json = build_structure_json(doc, structure, consumed=consumed)
-        markdown = render_document_md(doc, structure, assets_mode)
+        markdown = render_document_md(doc, structure, assets_mode, table_stitch)
     except Exception as exc:  # recorded for validation; see docstring
         logger.exception("Structure step failed for %s", doc.document_id)
         JSONExporter.save_json({"schema_version": _schema(doc, SCHEMA_STRUCTURE), "doc_sha16": doc.file_hash,
@@ -577,3 +626,9 @@ def write_document_contracts(doc: ExtractedDocument, doc_dir: Path, assets_mode:
     JSONExporter.save_json(structure_json, doc_dir / "structure.json")
     JSONExporter.save_json(document_json, doc_dir / "document.json")
     atomic_write_text(doc_dir / "document.md", markdown)
+    if table_stitch and table_stitch["logical_tables"]:
+        from ocr_document.table_stitch import render_preview_html
+        for index, group in enumerate(table_stitch["logical_tables"], 1):
+            atomic_write_text(doc_dir / "structures/tables" / f"logical-{index:04d}.html",
+                              render_preview_html(group["projection"]))
+    return table_stitch

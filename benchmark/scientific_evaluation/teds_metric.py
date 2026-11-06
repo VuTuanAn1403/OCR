@@ -206,6 +206,8 @@ def evaluate_table_collection(
 
     if n_gt == 0 and n_pred == 0:
         return {
+            "teds_sum": 0.0,
+            "teds_structure_sum": 0.0,
             "mean_teds": None,
             "mean_teds_struct": None,
             "matched_mean_teds": None,
@@ -224,6 +226,8 @@ def evaluate_table_collection(
 
     if n_gt == 0 and n_pred > 0:
         return {
+            "teds_sum": 0.0,
+            "teds_structure_sum": 0.0,
             "mean_teds": None,
             "mean_teds_struct": None,
             "matched_mean_teds": None,
@@ -242,6 +246,8 @@ def evaluate_table_collection(
 
     if n_gt > 0 and n_pred == 0:
         return {
+            "teds_sum": 0.0,
+            "teds_structure_sum": 0.0,
             "mean_teds": 0.0,
             "mean_teds_struct": 0.0,
             "matched_mean_teds": None,
@@ -291,6 +297,8 @@ def evaluate_table_collection(
     mean_teds_struct = sum(penalized_struct) / len(penalized_struct) if penalized_struct else 0.0
 
     return {
+        "teds_sum": sum(matched_teds),
+        "teds_structure_sum": sum(matched_teds_struct),
         "mean_teds": round(mean_teds, 4),
         "mean_teds_struct": round(mean_teds_struct, 4),
         "matched_mean_teds": round(matched_mean, 4) if matched_mean is not None else None,

@@ -19,6 +19,7 @@ import yaml
 from ocr_artifacts.digest import sha256_json_unicode
 
 from ocr_runtime.paths import default_profile_path
+from ocr_runtime.version import PIPELINE
 
 DEFAULT_CONFIG_PATH = default_profile_path()
 
@@ -28,7 +29,8 @@ class ConfigError(ValueError):
 
 
 CONFIG_SCHEMA = "ocr-profiles-v1"
-PIPELINES = ("v6.3", "v6.2", "legacy")
+UNIFIED_PIPELINES = (PIPELINE, "v6.3")
+PIPELINES = (*UNIFIED_PIPELINES, "v6.2", "legacy")
 
 
 def _declaration(data: Dict[str, Any], path: Path) -> Dict[str, Any]:
@@ -62,7 +64,9 @@ def _profile_source(path: Path) -> Tuple[Path, Dict[str, Any]]:
         declarations.append(_declaration(data, path))
         if "profiles_file" not in data:
             final = declarations[-1]
-            if any(any(final.get(k) != value for k, value in declaration.items())
+            if any(any(final.get(k) != value
+                       and not (k == "pipeline" and value == "v6.3" and final.get(k) == PIPELINE)
+                       for k, value in declaration.items())
                    for declaration in declarations[:-1]):
                 raise ConfigError(f"Profile config reference has conflicting declaration: {path}")
             return path, data
@@ -127,6 +131,13 @@ def document_layout_settings(config: Dict[str, Any]) -> Dict[str, Any]:
         raise ConfigError("document_layout.min_gap must be finite and positive")
     furniture_settings(value)
     return {"method": "legacy", **value}
+
+
+def table_stitch_settings(config: Dict[str, Any]) -> Dict[str, Any]:
+    value = config.get("table_stitch", {"method": "disabled"})
+    if not isinstance(value, dict) or set(value) != {"method"} or value["method"] not in ("disabled", "auto_v1"):
+        raise ConfigError("table_stitch accepts only method: disabled | auto_v1")
+    return dict(value)
 
 
 def resolve_config_path(config_path: Optional[str | Path] = None) -> Path:

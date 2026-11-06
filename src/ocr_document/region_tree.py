@@ -11,6 +11,7 @@ import statistics
 from dataclasses import dataclass, field
 
 from ocr_document.source_identity import valid_bbox
+from ocr_document.pull_quote import METHOD as PULL_QUOTE_METHOD, identify_pull_quote
 
 METHOD = "region_tree_graph_v1"
 _LABEL = re.compile(r"^(mã cổ phiếu|vốn điều lệ|địa chỉ|điện thoại|fax|email|website|"
@@ -61,6 +62,47 @@ def _rows(items):
 
 def _row_order(items):
     return [b for row in _rows(items) for b in row]
+
+
+def _supported_columns(items, height, min_gap):
+    """Recover a prose gutter obscured by a few fused detector lines.
+
+    Never split a source box. Broad crossing lines remain atomic band barriers;
+    smaller overhangs are assigned by their centers. This is a reviewable
+    layout proposal, not evidence that the fused lines themselves are correct.
+    """
+    text_items = [b for b in items if b.kind == "b"]
+    if len(text_items) < 8:
+        return None
+    # Atomic structures cannot vote for a prose gutter. A table overlapping
+    # the last baselines must not force all preceding prose into row order.
+    # Crossing structures are retained below as indivisible band barriers.
+    height = statistics.median(b.bbox[3] - b.bbox[1] for b in text_items)
+    width = statistics.median(b.bbox[2] - b.bbox[0] for b in text_items)
+    narrow = [b for b in text_items if b.bbox[2] - b.bbox[0] <= 1.6 * width]
+    narrow_ids = {b.id for b in narrow}
+    ordered = sorted(narrow, key=lambda b: (sum(b.bbox[::2]) / 2, b.id))
+    gaps = [(sum(right.bbox[::2]) / 2 - sum(left.bbox[::2]) / 2, i)
+            for i, (left, right) in enumerate(zip(ordered, ordered[1:]), 1)
+            if i >= 3 and len(ordered) - i >= 3]
+    if not gaps:
+        return None
+    gap, index = max(gaps)
+    if gap < max(2 * height, .4 * width):
+        return None
+    left, right = ordered[:index], ordered[index:]
+    if any(sum(len(b.text.split()) >= 3 for b in group) < .6 * len(group) for group in (left, right)):
+        return None
+    left_edge = statistics.median(b.bbox[2] for b in left)
+    right_edge = statistics.median(b.bbox[0] for b in right)
+    if right_edge - left_edge < max(min_gap, .2 * height):
+        return None
+    cut = (left_edge + right_edge) / 2
+    spans = [b for b in items if b.id not in narrow_ids and b.bbox[0] < cut < b.bbox[2]]
+    span_ids = {b.id for b in spans}
+    groups = [[b for b in items if b.id not in span_ids and sum(b.bbox[::2]) / 2 < cut],
+              [b for b in items if b.id not in span_ids and sum(b.bbox[::2]) / 2 >= cut]]
+    return (groups, sorted(spans, key=lambda b: (b.bbox[1], b.id))) if all(groups) else None
 
 
 _NUMBER_CELL = re.compile(r"(?:[+−–-]?\s*\(?\d[\d\s.,]*\)?\s*%?|[−–-]|n/a)", re.I)
@@ -164,6 +206,22 @@ def infer_region_tree(items: list[LayoutItem], *, min_gap: float = 3.0,
         if depth >= max_depth or node_count + len(group) > max_nodes:
             result.review.append({"code": "LAYOUT_COMPLEXITY_LIMIT", "item_ids": [b.id for b in group]})
             ordered, node["type"] = _row_order(group), "review"
+        elif callout := identify_pull_quote(group, min_gap=min_gap):
+            quote, columns, box = callout
+            node["type"] = "pull_quote_columns"
+            max_columns = max(max_columns, 2)
+            for i, child in enumerate(columns):
+                node["children"].append(walk(child, f"{path}.{i}", depth + 1, f"{path}-column-{i + 1}", article))
+            quote_id = f"{path}.2"
+            quote_items = [b.id for b in quote]
+            node["children"].append({"id": quote_id, "type": "pull_quote", "item_ids": quote_items, "bbox": box})
+            result.ordered_ids.extend(quote_items)
+            for item_id in quote_items:
+                result.assignments[item_id] = {"parent_region_id": quote_id, "column_id": None,
+                                               "article_group_id": article, "callout_id": quote_id}
+            result.review.append({"code": "PULL_QUOTE_SEPARATED", "method": PULL_QUOTE_METHOD,
+                                  "region_id": quote_id, "item_ids": quote_items, "bbox": box})
+            return node
         elif _is_borderless_table(group):
             ordered, node["type"] = _row_order(group), "borderless_table"
         elif _is_form(group):
@@ -195,6 +253,31 @@ def infer_region_tree(items: list[LayoutItem], *, min_gap: float = 3.0,
                 if 1 < headed_columns < len(groups):
                     result.review.append({"code": "AMBIGUOUS_ARTICLE_GROUP", "region_id": path,
                                           "item_ids": [b.id for b in group]})
+                return node
+            supported = _supported_columns(group, height, min_gap) if not xg else None
+            if supported:
+                groups, spans = supported
+                result.review.append({"code": "PROVISIONAL_COLUMN_GUTTER", "region_id": path,
+                                      "item_ids": [b.id for b in group]})
+                if spans:
+                    node["type"] = "provisional_column_bands"
+                    remaining = [b for g in groups for b in g]
+                    for span in spans:
+                        center = (span.bbox[1] + span.bbox[3]) / 2
+                        above = [b for b in remaining if (b.bbox[1] + b.bbox[3]) / 2 < center]
+                        if above:
+                            node["children"].append(walk(above, f"{path}.{len(node['children'])}", depth + 1, column, article))
+                        node["children"].append(walk([span], f"{path}.{len(node['children'])}", depth + 1, column, article))
+                        above_ids = {b.id for b in above}
+                        remaining = [b for b in remaining if b.id not in above_ids]
+                    if remaining:
+                        node["children"].append(walk(remaining, f"{path}.{len(node['children'])}", depth + 1, column, article))
+                else:
+                    node["type"] = "column_group"
+                    max_columns = max(max_columns, len(groups))
+                    for i, child in enumerate(groups):
+                        node["children"].append(walk(child, f"{path}.{i}", depth + 1,
+                                                     f"{path}-column-{i + 1}", article))
                 return node
             if band:
                 cut = sum(widest_y) / 2

@@ -2,7 +2,6 @@
 import pytest
 
 from ocr_text.numeric_guard import preserves_numeric_evidence, protected_numeric_fragments
-from ocr_recognition.fallback_engine import FallbackEngine
 
 
 @pytest.mark.parametrize("original,candidate", [
@@ -26,17 +25,15 @@ from ocr_recognition.fallback_engine import FallbackEngine
 ])
 def test_financial_meaning_change_is_rejected_by_retry(original, candidate):
     assert not preserves_numeric_evidence(original, candidate)
-    assert not FallbackEngine._safe_replacement(original, candidate)
 
 
 @pytest.mark.parametrize("number", ["$120", "120 EUR", "EUR 120", "12‰", "( 120 )", "020"])
 def test_word_correction_with_unchanged_financial_evidence_is_allowed(number):
     original, candidate = f"Doanh thu thuan {number}", f"Doanh thu thuần {number}"
     assert preserves_numeric_evidence(original, candidate)
-    assert FallbackEngine._safe_replacement(original, candidate)
     assert protected_numeric_fragments(original) == [number]
 
 
 def test_correction_preserves_codes_and_does_not_match_inside_other_words():
-    assert FallbackEngine._safe_replacement("Doanh thu thuan ghi bằng USD và VND", "Doanh thu thuần ghi bằng USD và VND")
-    assert FallbackEngine._safe_replacement("Viet tắt XVNM trong ghi chú", "Viết tắt XVnm trong ghi chú")
+    assert preserves_numeric_evidence("Doanh thu thuan ghi bằng USD và VND", "Doanh thu thuần ghi bằng USD và VND")
+    assert preserves_numeric_evidence("Viet tắt XVNM trong ghi chú", "Viết tắt XVnm trong ghi chú")

@@ -34,6 +34,9 @@ def _excel_counts(directory):
     workbook = load_workbook(directory / "count_keywords.xlsx", data_only=True)
     try:
         sheet = workbook.active
+        if sheet.cell(1, 1).value == "File_name":
+            return {sheet.cell(1, c).value: sheet.cell(2, c).value
+                    for c in range(2, sheet.max_column + 1)}
         return {sheet.cell(r, 2).value: sheet.cell(r, 3).value
                 for r in range(5, sheet.max_row)}
     finally:

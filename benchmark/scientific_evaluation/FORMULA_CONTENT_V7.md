@@ -38,4 +38,4 @@ Mỗi khóa có `status` là `MATCH`, `ERROR`, `NOT_APPLICABLE` hoặc `UNRESOLV
 
 Thêm `--critical-template` khi có `--pairs` và `--alignment` để tạo `critical-template.json` trong output mới. Phiếu có nguồn từng cặp, giữ danh tính và khai báo trống, bảy nhóm đều `UNRESOLVED`. Với alignment holdout, bản nộp cần `status: SUBMITTED`, `actor_type: HUMAN`, `source_images_checked: true` và thời điểm rà đến thời điểm xử lý. Bản DRAFT, khai báo AI hoặc thiếu xác nhận xem ảnh bị từ chối.
 
-Trạng thái `MEASURED_DECLARED_REVIEWS` cho biết file khai báo bao phủ mọi cặp và loại. Xác minh danh tính, tính độc lập và ngưỡng phát hành thuộc protocol nghiệm thu. [Phạm vi v7.0](../../Cai%20Tien/11_NGHIEM_THU_CONG_THUC_V70.md) · [Lệnh replay holdout](FORMULA_HOLDOUT_REPLAY_V7.md).
+Trạng thái `MEASURED_DECLARED_REVIEWS` cho biết file khai báo bao phủ mọi cặp và loại. Xác minh danh tính, tính độc lập và ngưỡng phát hành thuộc protocol nghiệm thu. [Phạm vi v7.0](../../cai%20tien%20v2/09_LUU_TRU_CAI_TIEN_V7.md#ct-11) · [Lệnh replay holdout](FORMULA_HOLDOUT_REPLAY_V7.md).

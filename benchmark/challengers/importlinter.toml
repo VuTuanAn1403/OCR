@@ -1,0 +1,26 @@
+# V8-041: production code never imports challenger adapters.
+#
+# This is a separate import-linter configuration on purpose. pyproject.toml treats
+# `benchmark` as an external package, and import-linter cannot name a subpackage of an
+# external package. Making `benchmark` a root package there would expose the existing
+# lazy import ocr_document.validation -> benchmark.accuracy_first and break three
+# product contracts, so the challenger boundary is checked here instead:
+#
+#   lint-imports --config benchmark/challengers/importlinter.toml
+#
+# with PYTHONPATH = <checkout>/src and <checkout> (tests/unit/test_import_contracts.py).
+
+[tool.importlinter]
+root_packages = ["src", "benchmark", "ocr_contracts", "ocr_artifacts", "ocr_keywords", "ocr_reporting", "ocr_runtime",
+                 "ocr_text", "ocr_pdf_io", "ocr_recognition", "ocr_layout", "ocr_structure", "ocr_document",
+                 "ocr_pipeline", "ocr_workers"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+id = "challengers"
+name = "Production code and the evaluators never import challenger adapters, directly or indirectly"
+type = "forbidden"
+source_modules = ["src", "ocr_contracts", "ocr_artifacts", "ocr_keywords", "ocr_reporting", "ocr_runtime", "ocr_text",
+                  "ocr_pdf_io", "ocr_recognition", "ocr_layout", "ocr_structure", "ocr_document", "ocr_pipeline",
+                  "ocr_workers", "benchmark.scientific_evaluation", "benchmark.qa"]
+forbidden_modules = ["benchmark.challengers"]

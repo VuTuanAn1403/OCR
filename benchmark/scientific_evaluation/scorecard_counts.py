@@ -50,6 +50,8 @@ def _text_counts(unit_id, metric, details, reference_sha256):
             return {"unit_id": unit_id, "status": "NOT_EVALUATED", "reason": "REFERENCE_MARKS_REQUIRE_ADJUDICATION",
                     "evidence": {"reference_sha256": reference_sha256, "diacritic_gate": marks}}
         evidence["diacritic_gate"] = marks
+        if "dser_strict" in details["details"]:
+            evidence["dser_strict"] = details["details"]["dser_strict"]
     counts = aggregate_text_metrics([details])["counts"][metric]
     return _count(unit_id, details["status"], counts["errors"], counts["reference_length"],
                   reference_sha256=reference_sha256, detail=details["details"][metric], **evidence)

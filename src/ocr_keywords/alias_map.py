@@ -26,6 +26,9 @@ def _fold(word: str) -> str:
                    if not unicodedata.combining(c)).replace("đ", "d")
 
 
+SINGLE_WORD_VARIANT_POLICY = "single-word-variant-review-v1"
+SINGLE_WORD_VARIANT_REASON = ("Single-word diacritic variant: Vietnamese homographs are common, "
+                              "so it is listed for review and never counted")
 ALIAS_DECISION_SCHEMA = "alias-decision-v2"
 ALIAS_BUNDLE_SCHEMA = "alias-decisions-bundle-v2"
 TWO_TIER_REPORT_SCHEMA = "keyword-two-tier-v2"
@@ -86,6 +89,48 @@ def _candidate_id(keyword_id: str, start: int, end: int, observed: str) -> str:
     return "cand-" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:16]
 
 
+def _canonical_entries(keywords_or_snapshot) -> list[tuple[str, str]]:
+    if isinstance(keywords_or_snapshot, dict) and "canonical_keywords" in keywords_or_snapshot:
+        return [(k["id"], k["keyword"]) for k in keywords_or_snapshot["canonical_keywords"]]
+    return [("kw-" + hashlib.sha256(k.casefold().encode()).hexdigest()[:16], k)
+            for k in KeywordCounter.unique_keywords(keywords_or_snapshot)]
+
+
+def find_single_word_variants(text: str, keywords_or_snapshot, max_examples: int = 3) -> list[dict]:
+    """List words that fold to a one-word keyword but differ in diacritics (V8-031).
+
+    Alias candidates need at least two words because one folded word is too often a
+    different Vietnamese word ("ma", "má", "mà"). Without this list a one-word keyword
+    read with a wrong accent disappears silently. Rows are review evidence only: they
+    never change literal, alias or pending counts.
+    """
+    clean = unicodedata.normalize("NFC", text)
+    by_fold = {}
+    for match in _WORDS.finditer(clean):
+        by_fold.setdefault(_fold(match.group()), []).append(match)
+    variants = {}
+    for keyword_id, keyword in _canonical_entries(keywords_or_snapshot):
+        phrase = unicodedata.normalize("NFC", keyword.strip())
+        if len(phrase.split()) != 1 or not _WORDS.fullmatch(phrase):
+            continue
+        term, exact = _fold(phrase), phrase.casefold()
+        for match in by_fold.get(term, ()):
+            observed = match.group()
+            if observed.casefold() == exact:
+                continue
+            key = keyword_id, observed.casefold()
+            row = variants.setdefault(key, {
+                "keyword_id": keyword_id, "keyword": phrase, "observed_variant": observed.casefold(),
+                "occurrences": 0, "examples": [], "review_status": "NOT_EVALUATED", "counted": False,
+                "reason": SINGLE_WORD_VARIANT_REASON, "offset_space": "nfc"})
+            row["occurrences"] += 1
+            if len(row["examples"]) < max_examples:
+                row["examples"].append({"observed_text": observed, "match_start": match.start(),
+                                        "match_end": match.end(),
+                                        "context": clean[max(0, match.start() - 60):match.end() + 60]})
+    return [variants[key] for key in sorted(variants)]
+
+
 def find_alias_candidates(text: str, keywords_or_snapshot,
                           literal_matches: list | None = None,
                           min_words: int = 2) -> list[AliasCandidate]:
@@ -98,11 +143,7 @@ def find_alias_candidates(text: str, keywords_or_snapshot,
     4. Candidate offsets are in NFC; supplied literal offsets are NFC+casefold.
     """
     clean = unicodedata.normalize("NFC", text)
-    if isinstance(keywords_or_snapshot, dict) and "canonical_keywords" in keywords_or_snapshot:
-        canonical_entries = [(k["id"], k["keyword"]) for k in keywords_or_snapshot["canonical_keywords"]]
-    else:
-        canonical_entries = [("kw-" + hashlib.sha256(k.casefold().encode()).hexdigest()[:16], k)
-                             for k in KeywordCounter.unique_keywords(keywords_or_snapshot)]
+    canonical_entries = _canonical_entries(keywords_or_snapshot)
 
     # Collect literal match spans to prevent double counting
     literal_spans = {key: set() for key, _ in canonical_entries}

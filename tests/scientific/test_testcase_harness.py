@@ -6,9 +6,17 @@ from pathlib import Path
 import pytest
 
 
+HARNESS = Path(__file__).resolve().parents[2] / "Test case" / "scientific_benchmark_harness.py"
+
+
 @pytest.fixture
 def harness(monkeypatch):
-    path = Path(__file__).resolve().parents[2] / "Test case" / "scientific_benchmark_harness.py"
+    # V8-170: the user removed the untracked Test case/ folder on 08/11/2026. Skip
+    # instead of erroring, so the counterexamples return as soon as the harness is
+    # restored or moved under benchmark/ (a copy remains in checkpoint commit fcb78f9).
+    if not HARNESS.is_file():
+        pytest.skip("V8-170: Test case/scientific_benchmark_harness.py is absent")
+    path = HARNESS
     spec = importlib.util.spec_from_file_location("testcase_harness", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

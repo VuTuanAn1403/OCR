@@ -1,11 +1,17 @@
-"""Point-estimate gate for one frozen output stream and annotated scope."""
+"""Exact-bound diacritic gate for one frozen output stream and annotated scope.
+
+The status follows spec 04 (V8-022): PASS needs the one-sided Clopper-Pearson upper bound
+of the gate error rate to be <= 1e-4. ``point_status`` keeps the former point comparison.
+DSER_strict counts are reported beside DER_VN_v1 on the same alignment (V8-020).
+"""
 import argparse
 from collections.abc import Mapping
 import json
 from pathlib import Path
 import unicodedata
 
-from .ocr_metric import COMBINING_SHAPE_MARKS, COMBINING_TONE_MARKS, compute_der_detailed
+from .exact_bounds import upper_bound_gate
+from .ocr_metric import COMBINING_SHAPE_MARKS, COMBINING_TONE_MARKS, compute_der_detailed, compute_dser_strict_detailed
 
 _VIETNAMESE_MARKS = COMBINING_SHAPE_MARKS.keys() | COMBINING_TONE_MARKS.keys()
 
@@ -23,6 +29,9 @@ def evaluate_diacritic_acceptance(
     expected_ids: set[str],
     references: Mapping[str, str | None],
     predictions: Mapping[str, str | None],
+    *,
+    confidence: float = .95,
+    design_effect: float | None = None,
 ) -> dict:
     """Compare source-aligned units. An explicit empty string is a transcription."""
     missing_reference = sorted(key for key in expected_ids if references.get(key) is None)
@@ -31,6 +40,8 @@ def evaluate_diacritic_acceptance(
     comparable = expected_ids - set(missing_reference) - set(missing_prediction)
     totals = dict.fromkeys(("ref_diacritics", "diacritic_errors", "shape_errors",
                             "tone_errors", "stroke_errors", "insertion_errors", "uncomposed_prediction_marks"), 0)
+    strict = dict.fromkeys(("ref_slots", "dser_errors", "base_mismatch_slots", "deleted_slots",
+                            "spurious_marks", "uncomposed_prediction_marks"), 0)
     invalid_reference = []
     for key in sorted(comparable):
         if _uncomposed_marks(references[key]):
@@ -40,16 +51,25 @@ def evaluate_diacritic_acceptance(
         for field in totals.keys() & details.keys():
             totals[field] += details[field]
         totals["uncomposed_prediction_marks"] += _uncomposed_marks(predictions[key])
+        strict_details = compute_dser_strict_detailed(references[key], predictions[key])
+        for field in strict:
+            strict[field] += strict_details[field]
 
     denominator = totals["ref_diacritics"]
     errors = totals["diacritic_errors"] + totals["uncomposed_prediction_marks"]
     complete = bool(expected_ids) and not (missing_reference or missing_prediction or unexpected or invalid_reference)
-    status = "NOT_EVALUATED"
+    point_status, bound = "NOT_EVALUATED", None
     if complete and denominator:
-        status = "PASS" if errors * 10_000 <= denominator else "FAIL"
+        point_status = "PASS" if errors * 10_000 <= denominator else "FAIL"
+        if errors <= denominator:
+            bound = upper_bound_gate(errors, denominator, confidence=confidence, deff=design_effect)
     return {
-        "method": "der-vn-preservation-point-v1",
-        "status": status,
+        "method": "der-vn-preservation-upper-bound-v2",
+        # More gate errors than slots is already a failed rate, not a binomial count.
+        "status": bound["status"] if bound else point_status if point_status == "FAIL" else "NOT_EVALUATED",
+        "point_status": point_status,
+        "bound": bound,
+        "dser_strict": {**strict, "dser": strict["dser_errors"] / strict["ref_slots"] if strict["ref_slots"] else None},
         "expected_units": len(expected_ids),
         "compared_units": len(comparable) - len(invalid_reference),
         "missing_reference_ids": missing_reference,

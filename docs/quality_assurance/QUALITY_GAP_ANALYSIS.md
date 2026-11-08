@@ -14,7 +14,7 @@ Ngày 07/11/2026; identity/phạm vi/test tại [CURRENT_ARCHITECTURE](CURRENT_A
 
 **Cập nhật triển khai sau audit:** [registry v1](../../benchmark/qa/README.md) đã có schema/version, import operator review, kiểm evidence root/hash, append-only revision và CLI. Đây là lát cắt QA-02; adapter mọi evaluator/backlog và tích hợp decision chất lượng còn thiếu. Phát hiện audit dưới đây phản ánh thời điểm trước đợt code đó.
 
-**Đã có:** [`03_BACKLOG_CAI_TIEN.csv`](../../Cai%20Tien/03_BACKLOG_CAI_TIEN.csv), [trace kiểm thử](../../Cai%20Tien/05_TRACE_KIEM_THU.csv), review queue, các JSON diagnostic và evaluator có source ID/hash riêng. Backlog cũ có mốc lịch sử; trạng thái “OPEN” trong CSV không có nghĩa mọi fix vẫn thiếu ở checkout hiện tại.
+**Đã có:** [`03_BACKLOG_CAI_TIEN.csv`](../../cai%20tien%20v2/09_LUU_TRU_CAI_TIEN_V7.md#ct-03), [trace kiểm thử](../../cai%20tien%20v2/09_LUU_TRU_CAI_TIEN_V7.md#ct-05), review queue, các JSON diagnostic và evaluator có source ID/hash riêng. Backlog cũ có mốc lịch sử; trạng thái “OPEN” trong CSV không có nghĩa mọi fix vẫn thiếu ở checkout hiện tại.
 
 **Khoảng trống chức năng:** tra `error_registry`, `error.registry`, `root_cause`, `taxonomy` trong source/benchmark/scripts/config chưa tìm thấy schema/CLI registry thống nhất nối symptom → evidence → reproduction → cause → fix → regression → benchmark. Đây là phạm vi tìm kiếm, không khẳng định mọi hồ sơ hiện có vô dụng.
 
@@ -42,7 +42,7 @@ Detection snapshot, raw/evidence, layout/source dispositions và review crops đ
 
 **Cần làm:** một occurrence keyword thiếu có thể do detector, recognizer, ownership, order hoặc counting; không gán E03 chỉ vì Markdown thiếu dòng. Sai ô có thể do hình học, bridge placement, table model hoặc reconciliation. Chỉ nâng `root_cause` từ null khi có trace và counterexample cô lập đúng biên. Tái dùng frozen bridge fix và auto stitch đã có; không tạo patch theo tên công ty/trang.
 
-Đầu mối: [phiên bridge](../../scratch/dev_sessions/20261106-bridge-frozen-sources/session.md), [rotation/retry](../../scratch/dev_sessions/20261106-retry-alias-rotation/session.md), [bản đối chiếu](../../Cai%20Tien/15_DOI_CHIEU_KIEN_TRUC_OCR_20261107.md). Những bằng chứng này chưa được phát lại và không được gán identity code/runtime mới.
+Đầu mối: [phiên bridge](../../scratch/dev_sessions/20261106-bridge-frozen-sources/session.md), [rotation/retry](../../scratch/dev_sessions/20261106-retry-alias-rotation/session.md), [bản đối chiếu](../../cai%20tien%20v2/09_LUU_TRU_CAI_TIEN_V7.md#ct-15). Những bằng chứng này chưa được phát lại và không được gán identity code/runtime mới.
 
 ## QA-G06 — Review/revision chưa thành vòng sửa đã được nghiệm thu — P1
 

@@ -1,5 +1,5 @@
 """
-Academic OCR Metrics: CER, WER, and DER_VN_v1 (Diacritic Error Rate for Vietnamese).
+Academic OCR Metrics: CER, WER, DER_VN_v1 and DSER_strict (Vietnamese diacritic slot errors).
 Adheres strictly to RESEARCH_PROTOCOL_V5.md Section 4 & Section 7, and ANTIGRAVITY_ACCURACY_IMPLEMENTATION.md.
 
 Key guarantees:
@@ -18,6 +18,10 @@ Key guarantees:
      * stroke: bar for 'đ' / 'Đ' (explicitly handles non-NFD decomposable stroke)
    - Denominator N_diacritic_GT is the total active diacritic slots in ground truth.
    - Sequence-aligned evaluation with deletion, substitution, and insertion penalties.
+   - A slot on a substituted base letter counts as a diacritic error, which inflates DER.
+6. DSER_strict (V8-020, cai tien v2/04 section 3):
+   - Same slots and alignment as DER_VN_v1; base-letter substitutions are reported as
+     ``base_mismatch_slots`` instead of diacritic errors. Deleted GT slots stay errors.
 """
 
 from typing import List, Dict, Any, Tuple, Optional
@@ -290,14 +294,13 @@ def compute_der_detailed(
     Denominator N_diacritic_GT is the sum of active diacritic slots in GT text.
     Slots are: shape (ă, â, ê, ô, ơ, ư), tone (sắc, huyền, hỏi, ngã, nặng), and stroke (đ/Đ).
     """
-    ref_norm = normalize_text_policy(reference, policy=policy)
-    pred_norm = normalize_text_policy(prediction, policy=policy)
-
-    ref_chars = list(ref_norm)
-    pred_chars = list(pred_norm)
-
+    ref_chars = list(normalize_text_policy(reference, policy=policy))
+    pred_chars = list(normalize_text_policy(prediction, policy=policy))
     _, _, _, _, aligned_pairs = levenshtein_align(ref_chars, pred_chars)
+    return _der_v1_from_pairs(aligned_pairs, policy)
 
+
+def _der_v1_from_pairs(aligned_pairs, policy: str) -> Dict[str, Any]:
     ref_diacritic_count = 0
     shape_errors = 0
     tone_errors = 0
@@ -367,6 +370,90 @@ def compute_der_detailed(
         "insertion_errors": insertion_errors,
         "policy": policy,
     }
+
+
+_SLOT_KINDS = ("shape", "tone", "stroke")
+
+
+def _dser_strict_from_pairs(aligned_pairs, policy: str) -> Dict[str, Any]:
+    """Score diacritic slots without charging base-letter substitutions as diacritic errors.
+
+    - Same-base pair: a GT slot with a different (or absent) predicted value is a slot error;
+      a predicted mark where GT has none is a spurious mark.
+    - Different-base pair: GT slots go to ``base_mismatch_slots`` (a character error, reported
+      beside DSER and in CER), never to the DSER numerator.
+    - Deleted GT character: every slot it carried is a deleted slot and counts as an error.
+    - Inserted character: its marks are character insertions, reported but not DSER errors.
+    - Combining marks left uncomposed after NFC are counted on the prediction side.
+    """
+    ref_slots = 0
+    slot_errors = dict.fromkeys(_SLOT_KINDS, 0)
+    deleted_slots = base_mismatch_slots = spurious_marks = inserted_char_marks = 0
+    uncomposed_marks = 0
+    for r_c, p_c in aligned_pairs:
+        ref = _extract_vietnamese_diacritic_slots(r_c)
+        pred = _extract_vietnamese_diacritic_slots(p_c)
+        if p_c in COMBINING_TONE_MARKS or p_c in COMBINING_SHAPE_MARKS:
+            uncomposed_marks += 1
+        ref_present = [kind for kind, value in zip(_SLOT_KINDS, ref[1:]) if value is not None]
+        pred_present = [kind for kind, value in zip(_SLOT_KINDS, pred[1:]) if value is not None]
+        ref_slots += len(ref_present)
+        if r_c is None:
+            inserted_char_marks += len(pred_present)
+            continue
+        if p_c is None:
+            deleted_slots += len(ref_present)
+            continue
+        if ref[0] != pred[0]:
+            base_mismatch_slots += len(ref_present)
+            continue
+        for index, kind in enumerate(_SLOT_KINDS, start=1):
+            if ref[index] is not None and ref[index] != pred[index]:
+                slot_errors[kind] += 1
+            elif ref[index] is None and pred[index] is not None:
+                spurious_marks += 1
+    errors = sum(slot_errors.values()) + deleted_slots + spurious_marks + uncomposed_marks
+    return {
+        "metric": "DSER_strict",
+        "dser": round(errors / ref_slots, 6) if ref_slots else None,
+        "status": "MEASURED" if ref_slots else "NO_DIACRITICS_IN_REFERENCE",
+        "dser_errors": errors,
+        "ref_slots": ref_slots,
+        "shape_errors": slot_errors["shape"],
+        "tone_errors": slot_errors["tone"],
+        "stroke_errors": slot_errors["stroke"],
+        "deleted_slots": deleted_slots,
+        "spurious_marks": spurious_marks,
+        "uncomposed_prediction_marks": uncomposed_marks,
+        "base_mismatch_slots": base_mismatch_slots,
+        "inserted_char_marks": inserted_char_marks,
+        "policy": policy,
+    }
+
+
+def compute_dser_strict_detailed(
+    reference: str,
+    prediction: str,
+    policy: str = "visible_strict_v1"
+) -> Dict[str, Any]:
+    """DSER_strict (V8-020): diacritic slot error rate that excludes base-letter substitutions."""
+    ref_chars = list(normalize_text_policy(reference, policy=policy))
+    pred_chars = list(normalize_text_policy(prediction, policy=policy))
+    _, _, _, _, aligned_pairs = levenshtein_align(ref_chars, pred_chars)
+    return _dser_strict_from_pairs(aligned_pairs, policy)
+
+
+def compute_diacritic_metrics(
+    reference: str,
+    prediction: str,
+    policy: str = "visible_strict_v1"
+) -> Dict[str, Any]:
+    """Report DER_VN_v1 and DSER_strict on one character alignment (specification 04, section 3)."""
+    ref_chars = list(normalize_text_policy(reference, policy=policy))
+    pred_chars = list(normalize_text_policy(prediction, policy=policy))
+    _, _, _, _, aligned_pairs = levenshtein_align(ref_chars, pred_chars)
+    return {"der_vn_v1": _der_v1_from_pairs(aligned_pairs, policy),
+            "dser_strict": _dser_strict_from_pairs(aligned_pairs, policy)}
 
 
 def compute_der(reference: str, prediction: str, policy: str = "visible_strict_v1") -> float:

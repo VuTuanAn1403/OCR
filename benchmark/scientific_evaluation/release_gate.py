@@ -21,6 +21,7 @@ from ocr_pipeline.backend import ocr_identity
 from .canonical_predictions import collect_predictions
 from .coco_layout import MANDATORY_CLASSES
 from .drift_sampling import PLAN_SCHEMA as DRIFT_PLAN_SCHEMA, validate_drift_plan
+from .exact_bounds import DIACRITIC_ERROR_RATE_MAXIMUM, upper_bound_gate
 from .formula_counts import METRICS as FORMULA_METRICS, recompute_for_gate
 from .native_diacritic_replay import check_native_readiness, recompute_native_diacritics
 from .protocol_preflight import formula_scope_issues, preflight
@@ -100,8 +101,13 @@ def _keyword_occurrence_gate(inputs, candidate):
             "units": units}
 
 
-def _ocr_diacritic_point_gate(inputs, candidate):
-    """Apply specification 09 to unrounded, source-recomputed OCR counts."""
+def _ocr_diacritic_bound_gate(inputs, candidate):
+    """Apply spec 04 (V8-022) to unrounded, source-recomputed OCR counts.
+
+    PASS needs the one-sided Clopper-Pearson upper bound of (slot errors + uncomposed
+    marks) / slots, on counts deflated by the locked design effect, to be <= 1e-4.
+    A point estimate at or under 1e-4 with too few slots stays NOT_EVALUATED.
+    """
     planned = {row["unit_id"] for row in inputs.get("sample", {}).get("units", []) if "der" in row["metrics"]}
     provided = {}
     for row in candidate.get("records_by_metric", {}).get("der", []):
@@ -121,10 +127,20 @@ def _ocr_diacritic_point_gate(inputs, candidate):
         errors += values[0] + values[2]
         denominator += values[1]
     complete = bool(planned) and not unscored
-    status = "NOT_EVALUATED"
-    if complete and denominator:
-        status = "PASS" if errors * 10000 <= denominator else "FAIL"
-    return {"method": "der-vn-preservation-point-v1", "stream": "ocr_markdown", "status": status,
+    confidence = ((inputs.get("protocol") or {}).get("statistics") or {}).get("confidence_level")
+    deff = ((inputs.get("plan") or {}).get("ocr_diacritics") or {}).get("design_effect")
+    bound, reason = None, None
+    if not (type(confidence) is float and 0 < confidence < 1):
+        reason = "LOCKED_CONFIDENCE_LEVEL_REQUIRED"
+    elif complete and denominator and errors > denominator:
+        reason = "POINT_ESTIMATE_ABOVE_MAXIMUM"
+    elif complete and denominator:
+        bound = upper_bound_gate(errors, denominator, maximum_rate=DIACRITIC_ERROR_RATE_MAXIMUM,
+                                 confidence=confidence, deff=deff, require_design_effect=True)
+        reason = bound["reason"]
+    status = bound["status"] if bound else "FAIL" if reason == "POINT_ESTIMATE_ABOVE_MAXIMUM" else "NOT_EVALUATED"
+    return {"method": "der-vn-preservation-upper-bound-v2", "stream": "ocr_markdown", "status": status,
+            "reason": reason, "bound": bound,
             "expected_units": len(planned), "evaluated_units": len(planned) - len(unscored), "unscored_unit_ids": unscored,
             "gate_errors": errors if complete else None, "reference_diacritics": denominator if complete else None,
             "observed_gate_errors": errors, "observed_reference_diacritics": denominator,
@@ -161,7 +177,7 @@ def _quality(inputs, args):
                        "NOT_EVALUATED" if coverage is None else "PASS" if coverage >= minimum else "FAIL"))
     keyword_occurrences = _keyword_occurrence_gate(inputs, counts[1])
     checks.append(keyword_occurrences["status"])
-    diacritic_preservation = _ocr_diacritic_point_gate(inputs, counts[1])
+    diacritic_preservation = _ocr_diacritic_bound_gate(inputs, counts[1])
     checks.append(diacritic_preservation["status"])
     native_preservation = recompute_native_diacritics(inputs)
     checks.append(native_preservation["status"])

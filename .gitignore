@@ -9,6 +9,8 @@
 .venv-v62/
 .venv-v62-clean/
 .venv-cpu-benchmark/
+# V8 challenger environments, one per candidate (cai tien v2/05 section 1).
+/.venv-v8-*/
 .pytest_tmp/
 models/docling/
 venv/
@@ -130,7 +132,9 @@ output/*
 reports/
 research_notes/
 CLEANUP_RESPORT.md
-.claude/
+# Local Claude settings stay private; shared project skills are tracked.
+/.claude/*
+!/.claude/skills/
 Noi dung nghien cuu.pdf
 Doi_Chieu/
 Test case/

@@ -15,7 +15,7 @@ Cập nhật sau audit: đã thêm [QA Registry offline v1](../../benchmark/qa/R
 
 ## Phạm vi và cách lấy bằng chứng
 
-Đã đọc thiết kế chuẩn, quy ước [AGENTS](../../AGENTS.md), [quy trình phát triển](../development/README.md), khai báo import trong [pyproject](../../pyproject.toml) và tra mã/caller/test liên quan. Không nạp toàn bộ corpus, model, JSON hoặc lịch sử output. [Bản đối chiếu trước](../../Cai%20Tien/15_DOI_CHIEU_KIEN_TRUC_OCR_20261107.md) là đầu mối; 12 focus của phiên đó được đối chiếu lại, không dùng riêng HEAD để suy mọi byte giống nhau.
+Đã đọc thiết kế chuẩn, quy ước [AGENTS](../../AGENTS.md), [quy trình phát triển](../development/README.md), khai báo import trong [pyproject](../../pyproject.toml) và tra mã/caller/test liên quan. Không nạp toàn bộ corpus, model, JSON hoặc lịch sử output. [Bản đối chiếu trước](../../cai%20tien%20v2/09_LUU_TRU_CAI_TIEN_V7.md#ct-15) là đầu mối; 12 focus của phiên đó được đối chiếu lại, không dùng riêng HEAD để suy mọi byte giống nhau.
 
 `VERIFIED` trong audit chỉ có nghĩa theo mệnh đề đã kiểm. Có hàm/test không phải accuracy; có record review không chứng minh review bắt đủ lỗi. “Chưa tìm thấy” chỉ áp dụng vùng source/benchmark/scripts/config đã tra, không chứng minh toàn bộ dự án không thể có công cụ bên ngoài.
 
@@ -48,7 +48,7 @@ JSON/Markdown/TXT, workbook keyword và ma trận là đầu ra hiện có. PDF 
 
 Lượt `20261107-qa-audit-governance`: **152 passed**, exit 0, 20,08 giây theo pytest. 11 file kiểm import, collect/splits, protocol, source overlap, human annotations, retry, detection và scorecard/release. [Lệnh/identity](../../scratch/runs/20261107-qa-audit-governance/run.json), [JUnit](../../scratch/runs/20261107-qa-audit-governance/evidence/junit.xml).
 
-Probe preflight chạy đúng [mẫu protocol DRAFT hiện có](../../Cai%20Tien/templates/benchmark_acceptance_protocol.example.yaml): CLI exit **1**, `NOT_READY_FOR_ACCEPTANCE_MEASUREMENT`, vì chưa `LOCKED`; quality giữ `NOT_EVALUATED`. Đây là kết quả từ chối mong đợi, không phải lỗi cần sửa để ép qua. [Probe](../../scratch/dev_sessions/20261107-qa-repository-audit/draft-preflight-probe.json).
+Probe preflight chạy đúng [mẫu protocol DRAFT hiện có](templates/benchmark_acceptance_protocol.example.yaml): CLI exit **1**, `NOT_READY_FOR_ACCEPTANCE_MEASUREMENT`, vì chưa `LOCKED`; quality giữ `NOT_EVALUATED`. Đây là kết quả từ chối mong đợi, không phải lỗi cần sửa để ép qua. [Probe](../../scratch/dev_sessions/20261107-qa-repository-audit/draft-preflight-probe.json).
 
 125 test của phiên đối chiếu trước có artifact riêng, không cộng vào 152 và không gọi là chạy lại. Hash 12 focus trước được kiểm lại ở [đối chiếu](../../scratch/dev_sessions/20261107-qa-repository-audit/previous-review-focus-check.json); phạm vi này không là code/model closure toàn dự án.
 

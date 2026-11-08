@@ -16,7 +16,7 @@ Annotation dùng `schema_version: ocr-formula-page-annotations-v1`. `documents` 
 
 Các dự đoán gồm item `kind=f` và text block có role công thức, theo trạng thái extraction. Tập ứng viên vẫn giữ block suppressed trong báo cáo để truy nguồn. Candidate không có bbox hợp lệ tính dư trên trang đã gán nhãn. Căn một-một tối đa số cặp rồi tối đa tổng IoU. Sau khi căn, prediction trùng vùng GT được tính FP kể cả khi vùng ignore chồng lên đó. Một prediction còn lại được ignore nếu IoU với vùng ignore đạt ngưỡng. Các tổng TP/FP/FN chỉ tính trên những trang đã gán nhãn. Hộp trùng vị trí chỉ cho biết đã định vị, còn `reference_placement` phân tầng theo nhãn nguồn.
 
-Text formula giữ nội dung raw và bản corrected, xuất `TEXT` cho bộ chấm cặp. Công thức trong đoạn thường hay ô bảng có thể đi qua hồ sơ span ở dưới. `equation_label` giữ riêng và cần kiểm critical cùng nội dung, dấu, quan hệ, phân số, số và chỉ số. [Phạm vi v7.0](../../Cai%20Tien/11_NGHIEM_THU_CONG_THUC_V70.md).
+Text formula giữ nội dung raw và bản corrected, xuất `TEXT` cho bộ chấm cặp. Công thức trong đoạn thường hay ô bảng có thể đi qua hồ sơ span ở dưới. `equation_label` giữ riêng và cần kiểm critical cùng nội dung, dấu, quan hệ, phân số, số và chỉ số. [Phạm vi v7.0](../../cai%20tien%20v2/09_LUU_TRU_CAI_TIEN_V7.md#ct-11).
 
 ## Truy xuất biểu thức nằm trong block hoặc ô bảng
 

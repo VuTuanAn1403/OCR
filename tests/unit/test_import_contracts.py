@@ -31,12 +31,15 @@ ALLOWED["ocr_workers"] = set(ALLOWED) - {"ocr_keywords", "ocr_reporting"}
 ALLOWED["ocr_pipeline"] = set(ALLOWED) - {"ocr_workers"}
 
 
-def _lint(checkout, *contracts):
+CHALLENGER_CONFIG = Path("benchmark/challengers/importlinter.toml")
+
+
+def _lint(checkout, *contracts, config=Path("pyproject.toml")):
     executable = shutil.which("lint-imports", path=str(Path(sys.executable).parent)) or shutil.which("lint-imports")
     assert executable, "import-linter is required for tests (pip install -e .[test])"
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1",
            "PYTHONPATH": os.pathsep.join([str(checkout / "src"), str(checkout)])}
-    command = [executable, "--no-cache", "--config", str(checkout / "pyproject.toml")]
+    command = [executable, "--no-cache", "--config", str(checkout / config)]
     for contract in contracts:
         command.extend(["--contract", contract])
     return subprocess.run(command, cwd=checkout, env=env, capture_output=True,
@@ -144,6 +147,41 @@ def test_import_linter_rejects_forbidden_external_runtime(boundary_checkout, sou
     output = _details(result)
     assert result.returncode == 1, output
     assert f"{source}._boundary_violation -> {target}" in output
+
+
+def test_challenger_contract_is_kept():
+    # V8-041: a separate configuration, because pyproject.toml cannot name benchmark.challengers.
+    result = _lint(ROOT, config=CHALLENGER_CONFIG)
+    output = _details(result)
+    assert result.returncode == 0, output
+    assert "Contracts: 1 kept, 0 broken." in output
+
+
+def _benchmark_module(checkout, name, source=""):
+    location = checkout
+    for part in name.split(".")[:-1]:
+        location /= part
+        location.mkdir(exist_ok=True)
+        (location / "__init__.py").touch()
+    (location / f"{name.split('.')[-1]}.py").write_text(source, encoding="utf-8")
+
+
+@pytest.mark.parametrize("source", ["ocr_pipeline", "ocr_document", "src", "benchmark.scientific_evaluation"])
+def test_challenger_contract_rejects_indirect_imports_through_benchmark(boundary_checkout, source):
+    (boundary_checkout / CHALLENGER_CONFIG).parent.mkdir(parents=True)
+    shutil.copy2(ROOT / CHALLENGER_CONFIG, boundary_checkout / CHALLENGER_CONFIG)
+    _benchmark_module(boundary_checkout, "benchmark.challengers._target")
+    _benchmark_module(boundary_checkout, "benchmark.scientific_evaluation.__init__")
+    _benchmark_module(boundary_checkout, "benchmark.qa._bridge", "import benchmark.challengers._target\n")
+    if source.startswith("benchmark."):
+        _benchmark_module(boundary_checkout, f"{source}._boundary_violation", "import benchmark.qa._bridge\n")
+    else:
+        _module(boundary_checkout, f"{source}._boundary_violation", "import benchmark.qa._bridge\n")
+    result = _lint(boundary_checkout, config=CHALLENGER_CONFIG)
+    output = _details(result)
+    assert result.returncode == 1, output
+    assert f"{source}._boundary_violation -> benchmark.qa._bridge" in output
+    assert "benchmark.qa._bridge -> benchmark.challengers._target" in output
 
 
 def test_legacy_exclusions_are_documented():

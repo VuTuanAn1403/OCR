@@ -11,7 +11,7 @@ from benchmark.qa.evidence import file_digest
 from benchmark.qa.paired_effects import run, summarize, verdict
 
 ROOT = Path(__file__).resolve().parents[2]
-DRAFT = ROOT / "Cai Tien/templates/benchmark_acceptance_protocol.example.yaml"
+DRAFT = ROOT / "docs/quality_assurance/templates/benchmark_acceptance_protocol.example.yaml"
 
 
 def counts(side, rows, metric="cer"):

@@ -22,6 +22,7 @@ from .cluster_statistics import company_cluster_bootstrap
 from .diacritic_acceptance import evaluate_diacritic_acceptance, uncomposed_vietnamese_marks
 from .evaluation_protocol import aggregate_text_metrics, text_metrics
 from .scorecard_counts import _source
+from .exact_bounds import clopper_pearson_upper, effective_counts, zero_event_interval
 from .stratified_scorecard import _adequate_interval, _precision_plan, _require
 
 SCOPE_SCHEMA = "ocr-native-diacritic-scope-v1"
@@ -59,13 +60,33 @@ def _confidence(inputs, records):
         min_companies=max(design["required_companies"], statistics["minimum_independent_clusters"]),
         retain_zero_denominators=True)
     ci = result["candidate_ci_unadjusted"]
+    errors = result["counts"]["candidate_numerator"]
+    slots = result["counts"]["reference_denominator"]
+    confidence = statistics["confidence_level"]
+    deff = design.get("design_effect")
+    exact = None
+    if slots and float(errors).is_integer() and float(slots).is_integer():
+        k_eff, n_eff = effective_counts(int(errors), int(slots), deff)
+        exact = clopper_pearson_upper(k_eff, n_eff, confidence) if n_eff else None
+    if errors == 0 and ci is not None:
+        # Zero events: the percentile interval is [0, 0]; only a locked design effect
+        # turns the exact in-sample bound into a clustered claim (spec 04 section 4).
+        ci = zero_event_interval(0, int(slots), confidence, deff) if slots else None
+    elif errors and ci is not None and exact is not None and exact > ci["upper"]:
+        # Few company clusters understate the tail; the exact bound is a floor.
+        ci = {**ci, "upper": exact, "method": "max(bootstrap_percentile, clopper_pearson)"}
     adequate = (_adequate_interval(ci, design["maximum_ci_width"])
                 and len(result["counts_by_document"]) >= design["minimum_documents"]
                 and result["counts"]["reference_denominator"] >= design["minimum_denominator"])
     marginal = {key: result[key] for key in ("company_count", "counts_by_company", "counts_by_document", "counts",
                                             "paired_units", "unscored_units", "seed", "resamples", "confidence_level")}
-    marginal.update(error_rate=result.get("candidate"), error_rate_ci_unadjusted=ci)
+    marginal.update(error_rate=result.get("candidate"), error_rate_ci_unadjusted=ci,
+                    exact_upper_bound=exact, design_effect=deff)
+    reason = None
+    if errors == 0 and deff is None:
+        reason = "LOCKED_DESIGN_EFFECT_REQUIRED"
     return {"status": ("PASS" if ci["upper"] <= .0001 else "FAIL") if adequate else "NOT_EVALUATED",
+            "reason": reason,
             "method": "company_percentile_absolute_unadjusted", "threshold_error_rate_maximum": .0001,
             "sampling_plan": design, "marginal_confidence": marginal}
 
@@ -196,10 +217,14 @@ def recompute_native_diacritics(inputs):
                                 "text_raw": block.text_raw, "text_nfc": block.text} for block in blocks]}
     raw_report = evaluate_diacritic_acceptance(expected, references, raw_text)
     nfc_report = evaluate_diacritic_acceptance(expected, references, nfc_text)
-    confidence = _confidence(inputs, records) if nfc_report["status"] == "PASS" else {
+    # The complete point measurement admits the clustered bound in ``_confidence``, which
+    # also applies the exact Clopper-Pearson floor; the stream report's own in-sample
+    # bound is reported but not required twice.
+    point = nfc_report["point_status"]
+    confidence = _confidence(inputs, records) if point == "PASS" else {
         "status": "NOT_EVALUATED", "reason": "COMPLETE_PASSING_NATIVE_POINT_MEASUREMENT_REQUIRED"}
-    status = ("FAIL" if "FAIL" in (nfc_report["status"], confidence["status"]) else
-              "PASS" if nfc_report["status"] == confidence["status"] == "PASS" else "NOT_EVALUATED")
+    status = ("FAIL" if "FAIL" in (point, confidence["status"]) else
+              "PASS" if point == confidence["status"] == "PASS" else "NOT_EVALUATED")
     if parser_warnings and status != "FAIL":
         status = "NOT_EVALUATED"
     _require(all(sha256_file(path) == digest for path, digest in watched.items()), "Native evidence changed during measurement")

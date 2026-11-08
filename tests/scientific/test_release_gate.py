@@ -19,7 +19,7 @@ def test_draft_stops_before_opening_holdout():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[2]
-    draft = root / "Cai Tien/templates/benchmark_acceptance_protocol.example.yaml"
+    draft = root / "docs/quality_assurance/templates/benchmark_acceptance_protocol.example.yaml"
     report = release_gate.run_gate(SimpleNamespace(protocol=draft, artifact_index=None))
     assert report["release_status"] == "NOT_EVALUATED"
     assert report["preflight"]["status"] == "NOT_READY_FOR_ACCEPTANCE_MEASUREMENT"
@@ -102,7 +102,8 @@ def test_formula_quality_recomputes_sources_before_the_shared_family(monkeypatch
     events = []
     formula = {side: {"side": side} for side in ("baseline", "candidate")}
     source_evidence = {"status": "SOURCE_COUNTS_RECOMPUTED", "unsupported_references": []}
-    der_count = {"unit_id": "diacritics", "status": "MEASURED", "numerator": 0, "denominator": 10000,
+    # 29,956 slots is the smallest N whose exact bound passes with zero errors (spec 04).
+    der_count = {"unit_id": "diacritics", "status": "MEASURED", "numerator": 0, "denominator": 29956,
                  "evidence": {"diacritic_gate": {"uncomposed_reference_marks": 0, "uncomposed_prediction_marks": 0}}}
 
     def replay(inputs, args):
@@ -128,7 +129,9 @@ def test_formula_quality_recomputes_sources_before_the_shared_family(monkeypatch
                                    {"unit_id": "diacritics", "metrics": ["der"]}]},
               "protocol": {"scope": {"declared_modalities": ["text", "numeric_cells", "tables", "reading_order", "keywords", "formulas"],
                  "formula_scope_decision": {"decision": "IN_SCOPE", "reason": "Controlled fixture"}},
-                           "thresholds": {"declared_gt_evaluation_coverage_minimum": 1}}}
+                           "thresholds": {"declared_gt_evaluation_coverage_minimum": 1},
+                           "statistics": {"confidence_level": .95}},
+              "plan": {"ocr_diacritics": {"design_effect": 1.0}}}
     args = SimpleNamespace(baseline_keyword_alignments=None, candidate_keyword_alignments=None)
     result = release_gate._quality(inputs, args)
     assert events == ["source-replay", "baseline", "candidate", "whole-family"]
@@ -136,7 +139,7 @@ def test_formula_quality_recomputes_sources_before_the_shared_family(monkeypatch
     source_evidence["unsupported_references"].append({"reference_id": "fixture", "format": "MATHML"})
     assert release_gate._quality(inputs, args)["status"] == "NOT_EVALUATED"
     source_evidence["unsupported_references"].clear()
-    der_count["numerator"] = 2
+    der_count["numerator"] = 4
     failed = release_gate._quality(inputs, args)
     assert failed["status"] == "FAIL"
     assert failed["diacritic_preservation_gate"]["status"] == "FAIL"
@@ -209,21 +212,60 @@ def test_v70_keyword_gate_cannot_be_omitted_or_use_an_empty_sample():
     assert result["status"] == "NOT_EVALUATED" and result["missing"] is result["extra"] is None
 
 
-@pytest.mark.parametrize("denominator,expected", [(9999, "FAIL"), (10000, "PASS")])
-def test_ocr_preservation_release_gate_uses_integer_counts_at_the_9999_boundary(denominator, expected):
-    inputs = {"sample": {"units": [{"unit_id": "u", "metrics": ["der"]}]}}
-    counts = {"records_by_metric": {"der": [{"unit_id": "u", "status": "MEASURED", "numerator": 1,
+def _bound_inputs(design_effect=1.0):
+    inputs = {"sample": {"units": [{"unit_id": "u", "metrics": ["der"]}]},
+              "protocol": {"statistics": {"confidence_level": .95}}}
+    if design_effect is not None:
+        inputs["plan"] = {"ocr_diacritics": {"design_effect": design_effect}}
+    return inputs
+
+
+def _bound_counts(numerator, denominator):
+    return {"records_by_metric": {"der": [{"unit_id": "u", "status": "MEASURED", "numerator": numerator,
         "denominator": denominator, "evidence": {"diacritic_gate": {
             "uncomposed_reference_marks": 0, "uncomposed_prediction_marks": 0}}}]}}
-    assert release_gate._ocr_diacritic_point_gate(inputs, counts)["status"] == expected
+
+
+@pytest.mark.parametrize("numerator,denominator,expected,reason", [
+    (1, 9999, "FAIL", "POINT_ESTIMATE_ABOVE_MAXIMUM"),
+    # A point estimate exactly at 1e-4 no longer passes: p_U(1, 10000) is about 4.7e-4.
+    (1, 10000, "NOT_EVALUATED", "INSUFFICIENT_SLOTS_FOR_BOUND"),
+    (1, 47436, "NOT_EVALUATED", "INSUFFICIENT_SLOTS_FOR_BOUND"),
+    (1, 47437, "PASS", None),
+    (0, 29955, "NOT_EVALUATED", "INSUFFICIENT_SLOTS_FOR_BOUND"),
+    (0, 29956, "PASS", None),
+    (2, 1, "FAIL", "POINT_ESTIMATE_ABOVE_MAXIMUM"),
+])
+def test_ocr_preservation_release_gate_uses_the_exact_upper_bound(numerator, denominator, expected, reason):
+    result = release_gate._ocr_diacritic_bound_gate(_bound_inputs(), _bound_counts(numerator, denominator))
+    assert result["status"] == expected and result["reason"] == reason
+    assert result["method"] == "der-vn-preservation-upper-bound-v2"
+
+
+def test_ocr_preservation_bound_counts_uncomposed_marks_and_deflates_clusters():
+    counts = _bound_counts(0, 29956)
     counts["records_by_metric"]["der"][0]["evidence"]["diacritic_gate"]["uncomposed_prediction_marks"] = 1
-    assert release_gate._ocr_diacritic_point_gate(inputs, counts)["status"] == "FAIL"
+    assert release_gate._ocr_diacritic_bound_gate(_bound_inputs(), counts)["status"] == "NOT_EVALUATED"
+    clustered = release_gate._ocr_diacritic_bound_gate(_bound_inputs(2.0), _bound_counts(0, 29956))
+    assert clustered["status"] == "NOT_EVALUATED" and clustered["bound"]["effective_trials"] == 14978
+    assert release_gate._ocr_diacritic_bound_gate(_bound_inputs(2.0), _bound_counts(0, 59912))["status"] == "PASS"
+
+
+@pytest.mark.parametrize("change,reason", [("no_design_effect", "LOCKED_DESIGN_EFFECT_REQUIRED"),
+                                           ("no_confidence", "LOCKED_CONFIDENCE_LEVEL_REQUIRED"),
+                                           ("bad_design_effect", "INVALID_DESIGN_EFFECT")])
+def test_ocr_preservation_bound_requires_locked_statistics(change, reason):
+    inputs = _bound_inputs(None if change == "no_design_effect" else .5 if change == "bad_design_effect" else 1.0)
+    if change == "no_confidence":
+        inputs.pop("protocol")
+    result = release_gate._ocr_diacritic_bound_gate(inputs, _bound_counts(0, 100000))
+    assert result["status"] == "NOT_EVALUATED" and result["reason"] == reason
 
 
 @pytest.mark.parametrize("change", ["missing_record", "missing_marks", "invalid_gt", "missing_output", "zero_denominator"])
 def test_ocr_preservation_gate_requires_full_evaluated_scope(change):
-    inputs = {"sample": {"units": [{"unit_id": "u", "metrics": ["der"]}]}}
-    row = {"unit_id": "u", "status": "MEASURED", "numerator": 0, "denominator": 1,
+    inputs = _bound_inputs()
+    row = {"unit_id": "u", "status": "MEASURED", "numerator": 0, "denominator": 100000,
            "evidence": {"diacritic_gate": {"uncomposed_reference_marks": 0, "uncomposed_prediction_marks": 0}}}
     counts = {"records_by_metric": {"der": [row]}}
     if change == "missing_record":
@@ -236,7 +278,7 @@ def test_ocr_preservation_gate_requires_full_evaluated_scope(change):
         row["status"] = "MISSING_OUTPUT"
     else:
         row["denominator"] = 0
-    assert release_gate._ocr_diacritic_point_gate(inputs, counts)["status"] == "NOT_EVALUATED"
+    assert release_gate._ocr_diacritic_bound_gate(inputs, counts)["status"] == "NOT_EVALUATED"
 
 
 def test_release_gate_reuses_release_scope_when_loading_verified_inputs(tmp_path, monkeypatch):

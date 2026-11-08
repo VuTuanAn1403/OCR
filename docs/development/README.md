@@ -2,7 +2,7 @@
 
 Quy trình áp dụng cho toàn repository OCR PDF từ 03/11/2026. Mục tiêu là giảm kết luận thiếu bằng chứng, giảm thời gian dựng lại ngữ cảnh và tạo kết quả có thể kiểm tra sau mỗi phiên. Đây là quy trình làm việc; hiệu quả phải đo, không phải cam kết loại bỏ mọi sai sót của AI.
 
-Dùng [checklist chống ảo giác](../../Cai%20Tien/02_PHUONG_PHAP_LAM_VIEC_DU_AN_LON.md#checklist-chống-ảo-giác-trước-khi-sửa-hoặc-báo-kết-quả) khi tiếp nhận phiên cũ, làm việc trên dữ liệu lớn hoặc chuẩn bị công bố kết quả.
+Dùng [checklist chống ảo giác](../../cai%20tien%20v2/07_PHUONG_PHAP_DU_AN_LON_AI.md#2-checklist-chống-ảo-giác) khi tiếp nhận phiên cũ, làm việc trên dữ liệu lớn hoặc chuẩn bị công bố kết quả.
 
 ## 1. Chỉ nạp thông tin khi cần
 
@@ -70,6 +70,8 @@ Script kiểm ngưỡng **byte UTF-8** sau để phát hiện tài liệu phình
 | Tài liệu quy trình này | 16.000 |
 | templates/SESSION.md | 5.000 |
 
+Danh sách đầy đủ, gồm bộ v8 và skill, là `DOC_BUDGETS` trong `scripts/build_dev_context.py`; `scripts/check_knowledge_map.py` báo lỗi nếu file v8 hoặc skill chưa có mục ngân sách.
+
 Chỉ AGENTS và HANDOFF là bộ đọc khởi đầu của quy trình; CLAUDE là con trỏ nếu công cụ sử dụng nó. Chỉ số `suggested_startup_bytes` không gồm system prompt, lịch sử chat, tool output, hướng dẫn toàn cục hay hướng dẫn lồng nhau. Không quy đổi byte/ký tự sang token để báo chi phí thực.
 
 Giữ quy tắc ở một nơi. Quyết định kiến trúc cập nhật ARCHITECTURE; thao tác vận hành cập nhật README; bản đồ chỉ liên kết; HANDOFF chỉ giữ trạng thái hiện hành. Nhật ký phiên dùng [mẫu SESSION](templates/SESSION.md), lưu dưới `scratch/dev_sessions/<id>/` cùng bằng chứng. Chỉ đưa kết luận ổn định, cần chia sẻ vào tài liệu được Git theo dõi. Không nối toàn bộ nhật ký vào AGENTS/HANDOFF hoặc tái nạp báo cáo cũ mỗi phiên.
@@ -91,9 +93,9 @@ Prompt dùng lại: “Mục tiêu: …; phạm vi: …; hoàn tất khi: … . 
 
 ## 7. Chọn cải tiến từ kết quả kiểm thử
 
-[Cai Tien](../../Cai%20Tien/README.md) tổng hợp các vấn đề trong Test case theo bằng chứng và mốc đánh giá. Chọn ID trong backlog, đọc expected/actual và điều kiện nghiệm thu, kiểm lại identity rồi mới sửa. Không nạp toàn bộ các báo cáo vào đầu mỗi phiên hoặc xem kế hoạch là việc đã hoàn thành.
+[Bộ tài liệu v8](../../cai%20tien%20v2/00_README.md) tổng hợp khoảng trống, lộ trình và trạng thái; `Cai Tien/` cũ chỉ còn ở [chỉ mục lưu trữ](../../cai%20tien%20v2/09_LUU_TRU_CAI_TIEN_V7.md). Chọn ID `V8-NNN` trong [backlog](../../cai%20tien%20v2/06_BACKLOG_V8.csv), đọc điều kiện hoàn tất, kiểm lại identity rồi mới sửa; đổi trạng thái thì cập nhật registry và chạy `scripts/check_knowledge_map.py --render` rồi `--check`. Không nạp toàn bộ các báo cáo vào đầu mỗi phiên hoặc xem kế hoạch là việc đã hoàn thành.
 
-[Phương pháp áp dụng cho dự án nhiều dữ liệu](../../Cai%20Tien/02_PHUONG_PHAP_LAM_VIEC_DU_AN_LON.md) có ví dụ mệnh đề, lọc dữ liệu, bàn giao và cách thu số đo năng suất/token. Quy trình chuẩn vẫn ở tài liệu này; báo cáo tổng hợp có ngày không thay AGENTS hoặc quyết định kiến trúc. Hiệu quả định lượng chưa đo thì giữ NOT_MEASURED.
+[Phương pháp làm việc với AI](../../cai%20tien%20v2/07_PHUONG_PHAP_DU_AN_LON_AI.md) có checklist, mẫu mệnh đề, cách lọc dữ liệu và định nghĩa xong; [tối ưu đọc](../../cai%20tien%20v2/08_TOI_UU_TOKEN.md) có cách nạp theo tầng và cách thu số đo. Quy trình chuẩn vẫn ở tài liệu này; báo cáo tổng hợp có ngày không thay AGENTS hoặc quyết định kiến trúc. Hiệu quả định lượng chưa đo thì giữ NOT_MEASURED.
 
 ## Nguồn tham khảo
 

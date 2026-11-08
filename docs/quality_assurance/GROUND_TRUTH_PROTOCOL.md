@@ -2,7 +2,7 @@
 
 Ngày 07/11/2026. **DRAFT — chưa khóa corpus/split/GT, chưa phê duyệt protocol hoặc ngưỡng.** Tài liệu này chuẩn hóa cách chuẩn bị, tương thích công cụ hiện có; không tự tạo một bộ đáp án. Tình trạng chưa có người A/B đã được bàn giao: không hỏi lại phân công, không dùng AI/model output thay GT. Chất lượng corpus giữ `NOT_EVALUATED`.
 
-Nguồn chuẩn kỹ thuật: [catalog](../../src/ocr/collect/catalog.py), [ANNOTATION_V6](../../benchmark/ground_truth_tools/ANNOTATION_V6.md), [human annotations](../../benchmark/ground_truth_tools/human_annotations.py), [protocol_preflight](../../benchmark/scientific_evaluation/protocol_preflight.py) và [mẫu protocol hiện có](../../Cai%20Tien/templates/benchmark_acceptance_protocol.example.yaml). Không sửa các schema hoặc mẫu DRAFT đó để ép preflight thành công.
+Nguồn chuẩn kỹ thuật: [catalog](../../src/ocr/collect/catalog.py), [ANNOTATION_V6](../../benchmark/ground_truth_tools/ANNOTATION_V6.md), [human annotations](../../benchmark/ground_truth_tools/human_annotations.py), [protocol_preflight](../../benchmark/scientific_evaluation/protocol_preflight.py) và [mẫu protocol hiện có](templates/benchmark_acceptance_protocol.example.yaml). Không sửa các schema hoặc mẫu DRAFT đó để ép preflight thành công.
 
 ## 1. Chọn phạm vi và nguồn
 
@@ -76,7 +76,7 @@ Chạy từ root bằng Python supervisor. Các lệnh help chỉ để tra CLI;
 Lệnh mẫu preflight đã thực chạy trong audit:
 
 ```powershell
-.\.venv\Scripts\python.exe -B -m benchmark.scientific_evaluation.protocol_preflight "Cai Tien/templates/benchmark_acceptance_protocol.example.yaml"
+.\.venv\Scripts\python.exe -B -m benchmark.scientific_evaluation.protocol_preflight "docs/quality_assurance/templates/benchmark_acceptance_protocol.example.yaml"
 ```
 
 Exit 1, `NOT_READY_FOR_ACCEPTANCE_MEASUREMENT`: protocol DRAFT chưa LOCKED. [Bằng chứng](../../scratch/dev_sessions/20261107-qa-repository-audit/draft-preflight-probe.json). Chưa tạo assignments, source metadata, nhãn người, khóa dataset hoặc ngưỡng mới. Điều kiện tiếp tục là dữ liệu và hồ sơ thật đáp ứng công cụ sẵn có; phần thiếu giữ `NOT_EVALUATED`.

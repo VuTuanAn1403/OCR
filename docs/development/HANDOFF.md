@@ -1,30 +1,47 @@
 # Bàn giao
 
-Cập nhật 07/11/2026, Asia/Bangkok. Gốc `4852f53`; 08/11 đã commit lên main, chưa push. Working tree có test numeric guard do người dùng sửa trước phiên, được giữ nguyên. [Báo cáo dọn dẹp](../../CLEANUP_REPORT.md), [phiên](../../scratch/dev_sessions/20261106-project-cleanup/session.md).
+Cập nhật 09/11/2026, Asia/Bangkok. Gốc `08f7602`, chưa push. Mọi thay đổi **chưa commit**. Trạng thái: skill `ocr-pdf-knowledge-map` hoặc `scripts/check_knowledge_map.py --summary`. [Phiên 09/11](../../scratch/dev_sessions/20261109-v8-metric-keyword-challenger/session.md); [HANDOFF trước phiên](../../scratch/dev_sessions/20261109-v8-metric-keyword-challenger/handoff-before.md).
 
-QA-02 07/11: đã triển khai [Registry offline v1](../../benchmark/qa/README.md): import review, validate, revision append-only; giữ raw/source và hash evidence. [Phiên/bằng chứng](../../scratch/dev_sessions/20261107-qa-registry/session.md). 90 test chọn lọc pass; hồi quy CPU unit/scientific/legacy: 2290 pass/1 skip. Gói review lịch sử 40 mục/131 file được nhập và kiểm hash; vẫn NEEDS_REVIEW, không phải 40 lỗi xác nhận. [Sáu đặc tả QA](../quality_assurance/CURRENT_ARCHITECTURE.md) đã bỏ ignore. GT/quality NOT_EVALUATED; chưa chạy OCR/GPU. Audit trước và 152 test có phạm vi riêng ở [phiên audit](../../scratch/dev_sessions/20261107-qa-repository-audit/session.md).
+## 09/11: metric dấu, keyword, challenger (theo `cai tien v2`)
 
-08/11: CLAUDE.md nạp `@AGENTS.md`; AGENTS thêm node ID, import contracts, legacy `src/ocr`; 13 pass/16 contract ([run](../../scratch/runs/20261108-152658-95374b64/run.json)). Xóa `Cai Tien/` chưa commit (3 test cần template). Bỏ ignore `matchAt.js`; checkout sạch: 547 pass, 18 lỗi vì `Test case/` bị ignore ([run](../../scratch/runs/20261108-153425-7e563d34-clean-vendor-fix/run.json)).
+- **V8-020..022** (benchmark):
+  - `ocr_metric.py::compute_dser_strict_detailed` báo `DSER_strict` song song `DER_VN_v1` trên cùng căn chỉnh.
+  - `exact_bounds.py` có cận Clopper-Pearson; bảng cỡ mẫu của đặc tả 04 tái tạo đúng.
+  - Khi 0 lỗi: cận chính xác trên N_eff, cần `design_effect` đã khóa.
+  - Cổng OCR `release_gate.py::_ocr_diacritic_bound_gate` dùng cận trên thay ước lượng điểm.
+- **V8-031**: `alias_map.py::find_single_word_variants` liệt kê keyword một từ sai dấu trong `keyword_two_tier.json` (`single_word_variants`), không cộng vào số đếm.
+- **V8-032**: challenger `literal_v2` trong `counter.py`; sản phẩm vẫn `literal_v1`. `scripts/compare_keyword_policies.py` báo chênh lệch; chạy thật chờ extraction V8-006.
+- **V8-033**: lỗi regex "cổ ông" đã tái hiện (5 xfail strict). Chưa sửa vì đổi closure extraction.
+- **V8-040/041/043**:
+  - `benchmark/challengers/` có experiment_id, manifest identity, output canonical và catalog với cổng tải (0/8 ứng viên được tải).
+  - Contract riêng `benchmark/challengers/importlinter.toml` cấm production và evaluator import challenger.
+- **V8-110** ánh xạ E01–E13 vào `ERROR_TAXONOMY.md`. **V8-012**: `scripts/inventory_diacritic_slots.py` tái lập 1.788 slot CLW. **V8-170**: harness thiếu thì skip (18).
+- **Nguồn đã xóa**: người dùng xóa 3 tài liệu nguồn trong `cai tien v2/`. Registry ghi `git_preserved` = `08f7602`, và trình kiểm xác minh sha qua `git cat-file`.
+- **Khóa baseline mới** `BASELINE-V8-20261109-001` LOCKED, vì `src/ocr_keywords` đổi. Extraction `20e15efae22917bd` không đổi, `ocr_identity` 9 PDF trùng khóa 20261108-001.
+- **V8-006 đang chạy**: `run_batch.py --input inputs --output output/v8_baseline_20261109`, log `scratch/v8/v8_006_baseline_run_20261109.log`. Nếu bị ngắt, chạy lại với `--resume`.
 
-## Phiên dọn dẹp hiện tại
+## Kiểm tra đã chạy
 
-- Xóa 789 file sinh tự động: 301 build, 483 bytecode có source, 5 metadata pytest; 6.291.651 byte file. Không xóa source/test/config/GT/model/evidence; .cache OCR/output/scratch lịch sử giữ nguyên. Manifest từng file và bản nén build cũ ở phiên.
-- Trước sửa tài liệu, cả 815 file Git quản lý còn nguyên SHA; cuối phiên chỉ HANDOFF thay đổi có chủ đích và tạo CLEANUP_REPORT. Test người dùng SHA `20cd4a48…e020` nguyên byte. [Đối chiếu](../../scratch/dev_sessions/20261106-project-cleanup/final-preservation.json).
-- Baseline 23 pass. Hồi quy CPU unit/scientific/legacy + keyword e2e: 2245 pass/1 skip, exit 0. [JUnit](../../scratch/runs/20261106-project-cleanup-regression/evidence/junit.xml). 16 import contracts đạt; cú pháp 587 file đạt.
-- Build sdist → wheel v7.0 thành công từ bản sao scratch, 407 file gói khớp nguồn; import/CLI/keyword probe đạt. Wheel mới chỉ là artifact kiểm đóng gói CPU, chưa phát hành: [identity](../../scratch/dev_sessions/20261106-project-cleanup/build-elevated/build-verification.json). Không build Docker/chạy GPU/đo accuracy. Baseline/build đầu bị sandbox mode-0700; chạy lại quyền phù hợp ở output mới, không sửa ACL.
+- Hồi quy CPU unit/scientific/legacy: 2459 passed, 19 skipped, 5 xfailed, 0 lỗi ([run](../../scratch/runs/20261109-015750-6e8c57d7/run.json)). Sửa sau lúc run bắt đầu đã chạy lại: 453 passed, 5 xfailed ([run](../../scratch/runs/20261109-020734-d25fcf73/run.json)).
+- `lint-imports` (pyproject) và contract challengers: kept. `check_knowledge_map.py --check`: 0 lỗi.
+- Quality vẫn NOT_EVALUATED; chưa có GT độc lập.
+
+## Phát hiện mới
+
+- `src/ocr_document/validation.py` import lười `benchmark.accuracy_first` (dòng 326). Contract chính không thấy vì `benchmark` là gói external. Sửa sẽ đổi closure extraction.
+- Bash heredoc và Write tool đổi chuỗi thoát (`\\n`, `\u…`). Khi patch file có backslash, dùng `chr()`.
 
 ## Bằng chứng trước phiên: giữ nguyên, chưa đo lại
 
-[HANDOFF nguyên byte trước dọn](../../scratch/dev_sessions/20261106-project-cleanup/handoff-before-cleanup.md) giữ đầy đủ kết luận, identity và link cũ; không coi chúng là phép đo checkout hiện tại. Các đầu mối tiếp tục:
-
-- Global Alias: giữ v1 86/86; keywords SHA `63737b33…0b9800`; bản 88/87 nguyên byte ở keywords-v1-original.txt. CPU final `output/analysis_global_alias_final_20261106` có 9 PDF/938 trang, 165 literal/15 alias chấp nhận/3 loại trừ/5 Pending. [Phiên Alias/Kaggle](../../scratch/dev_sessions/20261106-alias-rules-kaggle/session.md). ZIP nguồn Kaggle cũ STALE sau sửa tài liệu, chưa chạy Kaggle thật/100–1.000 PDF.
-- GAP-03: snapshot riêng 80 trang/10 PDF dẫn xuất, đủ coverage/frame; thiếu GT hướng/nội dung/ownership. DC-02 crop retry chỉ là diagnostic target-only, không GT độc lập. [Phiên](../../scratch/dev_sessions/20261106-retry-alias-rotation/session.md).
-- DC-01: sáu VIC O2O còn sai, chỉ review/đề xuất, không đổi số. [Failure](../../scratch/dev_sessions/20261105-table-source-ownership/ppocr-probe-failure.json).
-- TAB_05: bridge thêm frozen OCR sources, AGR/ASM có cải thiện placement; còn review, auto stitch chưa nối. [Phiên](../../scratch/dev_sessions/20261106-bridge-frozen-sources/session.md).
-- TXT/MD numeric oracle và warm/resume đã có bằng chứng trước; giữ hai cache và mọi archive/output, không chạy thay thế. [Warm](../../scratch/dev_sessions/20261106-warm-resume-recheck/session.md).
+QA-02 registry offline, dọn dẹp 06/11, Global Alias v1 86/86, GAP-03/DC-01/DC-02/TAB_05: xem [HANDOFF trước phiên](../../scratch/dev_sessions/20261109-v8-metric-keyword-challenger/handoff-before.md).
 
 ## Giới hạn và bước kế tiếp
 
-User xác nhận không có người A/B; không hỏi lại phân công, không dùng AI/protocol làm GT. Nhãn nhận dạng 0/38, keyword 0/12, L5 0/13, formula 0/3; workbook chỉ chuẩn tổng, formula bắt buộc, dung sai CDM duyệt 0,0005. GT/split/quyền/protocol/ngưỡng/renderer và official OmniDocBench còn thiếu; quality NOT_EVALUATED.
+User xác nhận không có người A/B; không dùng AI hay protocol làm GT. GT, split, protocol và ngưỡng còn thiếu.
 
-Mục tiêu QA-01–09 tạm dừng. QA-03 có mã paired/report và 117 test chọn lọc đạt theo [artifact](../../scratch/runs/20261107-qa-report-contracts/run.json). Probe DRAFT giữ `NOT_READY`. Kiểm CLI detector ngoài pytest và render dashboard còn mở. [Nghiên cứu báo cáo Word](../../scratch/dev_sessions/20261107-ocr-tech-docx-review/session.md) ghi các điểm cần khóa cho benchmark PP-OCRv6, gồm recipe ONNX, crop cố định và giới hạn frame detector. GT chỉ khóa khi đủ nguồn/nhãn/hồ sơ thật. Bằng chứng scratch/output bị ignore cần lưu kèm khi bàn giao.
+1. V8-006: khi batch xong, chạy `scripts/audit_batch_outputs.py --output output/v8_baseline_20261109 --report scratch/<moi>.json --validate`, rồi `scripts/check_baseline_identity.py --lock scratch/benchmarks/BASELINE-V8-20261109-001/baseline_lock.json --output output/v8_baseline_20261109 --report scratch/<moi>.json`.
+2. Trên extraction đó: V8-032 (`compare_keyword_policies.py`), rồi V8-033 và V8-030 trên output mới.
+3. V8-013: người dùng chọn nguồn GT. V8-170: chọn phương án cuối cho harness.
+4. V8-042: gỡ `src.ocr` khỏi `matrix_runner` và `perf`.
+
+Đổi trạng thái thì sửa registry, chạy `--render` rồi `--check`. Commit khi người dùng duyệt.

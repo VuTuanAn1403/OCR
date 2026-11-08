@@ -16,3 +16,4 @@ def test_fallback_engine_allows_diacritic_correction_with_same_numbers():
     assert FallbackEngine._safe_replacement("Doanh thu thuan $120", "Doanh thu thuần $120")
     assert FallbackEngine._safe_replacement("Doanh thu thuan ghi bằng USD và VND", "Doanh thu thuần ghi bằng USD và VND")
     assert FallbackEngine._safe_replacement("Viet tắt XVNM trong ghi chú", "Viết tắt XVnm trong ghi chú")
+

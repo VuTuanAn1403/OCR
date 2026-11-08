@@ -14,6 +14,7 @@
 
 ## Ràng buộc vận hành
 - Một pipeline sản phẩm: `ocr_pipeline.cli.main`, `config/profiles.yaml`, profile `unified_gpu_full_ocr`. Config theo phiên bản là alias; baseline lịch sử phải chỉ định rõ. Không chọn native-first/CPU OCR bằng CLI.
+- Mã sản phẩm ở `src/ocr_*`. `src/ocr` là legacy đóng băng và alias tương thích: `run_ocr.py`/`run_batch.py` → `src.ocr.cli.unified` → `ocr_pipeline.cli.main`.
 - Windows dùng `.venv/Scripts/python.exe` (Python 3.11) cho supervisor/app. Worker model dùng `.venv-v62/text` và `.venv-v62/docling` với lock riêng. Không cài Docling vào `.venv`, trộn lock hoặc cài lại model đang hoạt động.
 - OCR mới yêu cầu CUDA và đủ mọi trang. CPU làm export/keyword/SQLite/analysis. Thiếu GPU phải báo lỗi. Pha A thoát cây tiến trình rồi pha B bridge OCR/Docling thoát, rồi export, receipt, một keyword finalizer, Excel, SQLite prepare, đọc kiểm ma trận, acknowledge, PDF tiếp theo.
 - Worker không import `src.ocr`, keyword hoặc reporting. Giữ import contracts trong `pyproject.toml` và `tests/unit/test_import_contracts.py`.
@@ -21,6 +22,7 @@
 ## Kiểm chứng vừa đủ
 - Chạy test sát thay đổi trước. Khi đổi hợp đồng/liên module, chạy hồi quy phù hợp:
   `.venv/Scripts/python.exe scripts/run_pytest_scratch.py tests/unit tests/scientific tests/legacy_compat -q --capture=fd`
+- Một test: thay đường dẫn bằng node ID, ví dụ `tests/unit/test_x.py::test_ten`. Đổi import giữa package: chạy `tests/unit/test_import_contracts.py`; test gọi `lint-imports` với `PYTHONPATH` gồm `src` và gốc repo (gọi trần báo thiếu `ocr_contracts`).
 - Chỉ khi cần kiểm OCR thật, dùng output mới với `scripts/smoke_unified.py --output output/<run_moi>`, rồi `scripts/audit_batch_outputs.py --output output/<run_moi> --report scratch/<audit_moi>.json --validate` bằng Python supervisor.
 - Windows pytest mode-0700 có thể cần escalation sandbox; giữ output dưới scratch, không sửa ACL. Test legacy cần dependency riêng; integration/golden có thể bỏ qua do thiếu input. Báo rõ phạm vi chưa chạy.
 - Tài liệu/trao đổi bằng tiếng Việt; mã và comment bằng tiếng Anh. Không ghi số token hay phần trăm tiết kiệm nếu chưa đo; byte tài liệu chỉ là chỉ báo kích thước.

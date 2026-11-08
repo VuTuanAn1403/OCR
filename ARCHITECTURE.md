@@ -154,6 +154,8 @@ Export thêm `result.txt` từ Markdown cuối cùng sau phép chiếu bảng. C
 
 Đối chiếu số trang, input manifest, outcome, validation, review, dấu/số, bảng, thứ tự cột và keyword mẫu. Chạy `scripts/audit_batch_outputs.py --output <batch> --report scratch/audit.json --validate`. Báo cáo phải ngoài batch. Sao lưu toàn batch sau khi dừng ghi; không sửa tay receipt/hash. Sửa OCR cần lượt output mới.
 
+QA offline nằm ở `benchmark.qa`, ngoài pipeline sản phẩm. Registry v1 tham chiếu operator review packet bằng hash, giữ source/raw/provenance, có snapshot và revision chỉ nối thêm. CLI validate chỉ xác nhận metadata/hash, không đóng gate chất lượng hoặc thay GT/release workflow. Không import registry vào worker/core. [Hướng dẫn và giới hạn](benchmark/qa/README.md).
+
 ## 12 Công nghệ và môi trường thực thi
 
 Các phiên bản dưới đây được đọc từ lock của dự án, không phải phiên bản mới nhất của thư viện. Khi triển khai, cài đúng lock theo hệ điều hành và kiểm hash; không trộn hai lock model thành một môi trường.

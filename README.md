@@ -219,5 +219,6 @@ Dự án duy trì bộ kiểm thử hồi quy nghiêm ngặt với hơn 2.200 un
 - [Bản đồ cấu trúc dự án](docs/development/PROJECT_MAP.md)
 - [Quy trình phát triển và kiểm chứng](docs/development/README.md)
 - [Hồ sơ bàn giao phiên gần nhất](docs/development/HANDOFF.md)
+- [QA Registry offline: import review, kiểm bằng chứng và revision](benchmark/qa/README.md)
 - [Hướng dẫn Commit & Push GitHub an toàn](docs/development/HUONG_DAN_COMMIT_VA_PUSH_GITHUB.md)
 - [Quy trình tự động hóa Alias Rules và kiểm thử Kaggle](Cai%20Tien/14_QUY_TRINH_TU_DONG_HOA_ALIAS_RULES_VA_KIEM_THU_KAGGLE.md)

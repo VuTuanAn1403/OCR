@@ -121,9 +121,10 @@ output/*
 /examples/*.pdf
 /*.pdf
 
-# Keep shared development guidance; other local documentation stays excluded.
+# Keep shared development and QA specifications; other local docs stay excluded.
 /docs/*
 !/docs/development/
+!/docs/quality_assurance/
 reports/
 research_notes/
 CLEANUP_RESPORT.md

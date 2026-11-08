@@ -31,6 +31,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+# Vendored CDM sources are pinned by hash in PROVENANCE.json, including lib/.
+!/benchmark/scientific_evaluation/_vendor/**/lib/
 lib64/
 parts/
 sdist/

@@ -4,7 +4,7 @@ Cập nhật 07/11/2026, Asia/Bangkok. Gốc `4852f53`; 08/11 đã commit lên m
 
 QA-02 07/11: đã triển khai [Registry offline v1](../../benchmark/qa/README.md): import review, validate, revision append-only; giữ raw/source và hash evidence. [Phiên/bằng chứng](../../scratch/dev_sessions/20261107-qa-registry/session.md). 90 test chọn lọc pass; hồi quy CPU unit/scientific/legacy: 2290 pass/1 skip. Gói review lịch sử 40 mục/131 file được nhập và kiểm hash; vẫn NEEDS_REVIEW, không phải 40 lỗi xác nhận. [Sáu đặc tả QA](../quality_assurance/CURRENT_ARCHITECTURE.md) đã bỏ ignore. GT/quality NOT_EVALUATED; chưa chạy OCR/GPU. Audit trước và 152 test có phạm vi riêng ở [phiên audit](../../scratch/dev_sessions/20261107-qa-repository-audit/session.md).
 
-08/11: CLAUDE.md nạp `@AGENTS.md`; AGENTS thêm chạy node ID, test import contracts, legacy `src/ocr`. Budget đạt. Test import contracts 13 pass, `lint-imports` 16 kept; [run](../../scratch/runs/20261108-152658-95374b64/run.json). Việc xóa `Cai Tien/` chưa commit: thiếu template làm 3 test QA fail.
+08/11: CLAUDE.md nạp `@AGENTS.md`; AGENTS thêm node ID, import contracts, legacy `src/ocr`; 13 pass/16 contract ([run](../../scratch/runs/20261108-152658-95374b64/run.json)). Xóa `Cai Tien/` chưa commit (3 test cần template). Bỏ ignore `matchAt.js`; checkout sạch: 547 pass, 18 lỗi vì `Test case/` bị ignore ([run](../../scratch/runs/20261108-153425-7e563d34-clean-vendor-fix/run.json)).
 
 ## Phiên dọn dẹp hiện tại
 

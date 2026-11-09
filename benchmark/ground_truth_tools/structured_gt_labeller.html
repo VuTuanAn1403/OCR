@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gán nhãn GT cấu trúc</title>
+<style>
+  :root { --bg:#f6f6f4; --panel:#fff; --ink:#1d1d1b; --muted:#6b6b66; --line:#d9d9d4; --accent:#2557a7; --sel:#ffcc00;
+          --td:#2557a7; --ly:#1f7a3d; --ro:#8a3fa0; --tb:#b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161615; --panel:#202020; --ink:#ececea; --muted:#a3a39e; --line:#3a3a37; --accent:#7aa7ff; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 "Segoe UI", "Noto Sans", Arial, sans-serif; }
+  header { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:8px 14px;
+           background:var(--panel); border-bottom:1px solid var(--line); }
+  header h1 { font-size:15px; margin:0 6px 0 0; }
+  button, select, input, textarea { font:inherit; color:inherit; background:var(--panel); }
+  button { border:1px solid var(--line); border-radius:6px; padding:5px 10px; cursor:pointer; }
+  button.on { border-color:var(--accent); box-shadow:inset 0 -2px 0 var(--accent); }
+  main { display:grid; grid-template-columns:minmax(0, 1fr) 340px; gap:12px; padding:12px; }
+  @media (max-width:900px) { main { grid-template-columns:1fr; } }
+  #stage { position:relative; overflow:auto; max-height:84vh; border:1px solid var(--line); background:#fff; }
+  #wrap { position:relative; transform-origin:0 0; }
+  #wrap img { display:block; user-select:none; -webkit-user-drag:none; }
+  #overlay { position:absolute; inset:0; cursor:crosshair; }
+  aside { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px; min-width:0; }
+  .item { border:1px solid var(--line); border-radius:6px; padding:6px; margin:6px 0; cursor:pointer; }
+  .item.sel { border-color:var(--sel); }
+  .item small { color:var(--muted); }
+  label.row { display:flex; gap:6px; align-items:center; margin:4px 0; }
+  textarea { width:100%; min-height:80px; border:1px solid var(--line); border-radius:4px; }
+  input[type=text] { width:100%; border:1px solid var(--line); border-radius:4px; padding:3px 5px; }
+  .warn { color:#b3261e; font-weight:600; }
+  .muted { color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Gán nhãn GT</h1>
+  <select id="page"></select>
+  <span id="tabs"></span>
+  <label class="muted">Thu phóng <input id="zoom" type="range" min="0.3" max="2" step="0.05" value="0.6"></label>
+  <label class="row"><input id="reviewed" type="checkbox"> Đã rà xong loại nhãn này trên trang</label>
+  <label class="muted">Người gán <input id="annotator" size="12"></label>
+  <button id="save">Lưu JSON</button>
+  <label><button id="loadbtn" type="button">Nạp JSON</button><input id="load" type="file" accept=".json" hidden></label>
+</header>
+<main>
+  <div id="stage"><div id="wrap"><img id="img" alt="Trang"><svg id="overlay"></svg></div></div>
+  <aside>
+    <div id="frame"></div>
+    <div id="hint" class="muted"></div>
+    <div id="pagefields"></div>
+    <div id="list"></div>
+    <div id="editor"></div>
+  </aside>
+</main>
+<script>
+"use strict";
+const SHEET = /*__SHEET__*/null;
+const STORE = "structured-gt:" + SHEET.sheet_id;
+const MODES = {text_detection:{label:"Dòng chữ", prefix:"td", color:"var(--td)"}, layout:{label:"Bố cục", prefix:"ly", color:"var(--ly)"},
+               reading_order:{label:"Thứ tự đọc", prefix:"ro", color:"var(--ro)"}, tables:{label:"Bảng", prefix:"tb", color:"var(--tb)"}};
+const HINTS = {
+  text_detection:"Kéo để vẽ hộp quanh từng dòng chữ đọc được trên ảnh. Phím I: đánh dấu ignore (chữ không đọc được, chữ trong logo).",
+  layout:"Chọn lớp rồi kéo để vẽ vùng bố cục theo taxonomy V6.",
+  reading_order:"Vẽ node theo đúng thứ tự đọc; gõ chữ của node. Bỏ 'đọc sau node trước' khi quan hệ không xác định.",
+  tables:"Vẽ khung bảng, dán HTML của bảng; ô số ghi mỗi dòng: hàng,cột,giá trị (đếm từ 0)."};
+const $ = id => document.getElementById(id);
+let labels = {schema_version:"ocr-v8-structured-gt-labels-v1", sheet_id:SHEET.sheet_id, annotator:"", saved_at:null, pages:{}};
+let pageIndex = 0, mode = "text_detection", selected = null, layoutClass = "Text", drag = null;
+const pages = SHEET.pages;
+
+function pageLabels(number) {
+  const key = String(number);
+  if (!labels.pages[key]) labels.pages[key] = {reviewed:{text_detection:false, layout:false, reading_order:false, tables:false},
+    text_detection:[], layout:[], reading_order:{nodes:[]}, tables:[], numeric_cells_complete:false};
+  return labels.pages[key];
+}
+function items(p) { return mode === "reading_order" ? p.reading_order.nodes : p[mode]; }
+function bangkokNow() { return new Date(Date.now() + 7 * 3600e3).toISOString().replace(/\.\d+Z$/, "+07:00"); }
+function persist() { try { localStorage.setItem(STORE, JSON.stringify({labels, pageIndex, mode})); } catch (e) {} }
+function restore() {
+  try { const s = JSON.parse(localStorage.getItem(STORE) || "null");
+        if (s && s.labels && s.labels.sheet_id === SHEET.sheet_id) { labels = s.labels; pageIndex = s.pageIndex || 0; mode = s.mode || mode; } }
+  catch (e) {}
+  $("annotator").value = labels.annotator || SHEET.annotator || "";
+}
+function nextId(p) {
+  const prefix = MODES[mode].prefix, used = new Set(items(p).map(i => i.id));
+  for (let n = 1; ; n++) { const id = `${prefix}-${String(n).padStart(4, "0")}`; if (!used.has(id)) return id; }
+}
+function toPoints(page, x, y) { return [x / page.zoom, y / page.zoom]; }
+function clampBox(page, box) {
+  const b = [Math.max(0, Math.min(box[0], box[2])), Math.max(0, Math.min(box[1], box[3])),
+             Math.min(page.width, Math.max(box[0], box[2])), Math.min(page.height, Math.max(box[1], box[3]))];
+  return b.map(v => Math.round(v * 1000) / 1000);
+}
+function render() {
+  const page = pages[pageIndex], p = pageLabels(page.page);
+  $("img").src = page.image;
+  $("wrap").style.transform = `scale(${$("zoom").value})`;
+  $("wrap").style.width = page.image_size[0] + "px"; $("wrap").style.height = page.image_size[1] + "px";
+  const svg = $("overlay");
+  svg.setAttribute("viewBox", `0 0 ${page.image_size[0]} ${page.image_size[1]}`);
+  svg.setAttribute("width", page.image_size[0]); svg.setAttribute("height", page.image_size[1]);
+  svg.innerHTML = "";
+  items(p).forEach((item, index) => {
+    const [x0, y0, x1, y1] = item.bbox.map(v => v * page.zoom);
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    Object.entries({x:x0, y:y0, width:x1 - x0, height:y1 - y0, fill:"none", "stroke-width":item.id === selected ? 4 : 2,
+                    stroke:item.id === selected ? "#ffcc00" : MODES[mode].color, "stroke-dasharray":item.ignore || item.iscrowd ? "6 4" : ""})
+      .forEach(([k, v]) => rect.setAttribute(k, v));
+    svg.appendChild(rect);
+    if (mode === "reading_order") {
+      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      t.setAttribute("x", x0 + 3); t.setAttribute("y", y0 + 18); t.setAttribute("fill", "#8a3fa0"); t.setAttribute("font-size", "18");
+      t.textContent = index + 1; svg.appendChild(t);
+    }
+  });
+  $("frame").innerHTML = page.supported_frame ? `<span class="muted">Trang ${page.page} · ${page.width}×${page.height} pt</span>`
+    : `<p class="warn">Trang ${page.page} có khung tọa độ chưa hỗ trợ (xoay hoặc có transform); không vẽ được.</p>`;
+  $("hint").textContent = HINTS[mode] + (mode === "text_detection" && !page.detector_input_sha256 ? " Run không có ảnh đầu vào detector cho trang này." : "");
+  $("reviewed").checked = !!p.reviewed[mode];
+  [...$("tabs").children].forEach(b => b.classList.toggle("on", b.dataset.mode === mode));
+  $("pagefields").innerHTML = "";
+  if (mode === "layout") {
+    const sel = document.createElement("select");
+    SHEET.layout_classes.forEach(c => { const o = document.createElement("option"); o.value = o.textContent = c; sel.appendChild(o); });
+    sel.value = layoutClass; sel.onchange = () => { layoutClass = sel.value; };
+    const wrap = document.createElement("label"); wrap.className = "row"; wrap.append("Lớp cho vùng mới ", sel); $("pagefields").appendChild(wrap);
+  }
+  if (mode === "tables") {
+    const wrap = document.createElement("label"); wrap.className = "row";
+    const box = document.createElement("input"); box.type = "checkbox"; box.checked = !!p.numeric_cells_complete;
+    box.onchange = () => { p.numeric_cells_complete = box.checked; persist(); };
+    wrap.append(box, " Đã ghi đủ mọi ô số của mọi bảng trên trang"); $("pagefields").appendChild(wrap);
+  }
+  renderList(p); renderEditor(p); persist();
+}
+function renderList(p) {
+  const list = $("list"); list.innerHTML = "";
+  items(p).forEach((item, index) => {
+    const div = document.createElement("div"); div.className = "item" + (item.id === selected ? " sel" : "");
+    const extra = mode === "layout" ? item.category : mode === "reading_order" ? (item.text || "(chưa gõ chữ)") : mode === "tables" ? "bảng" : (item.ignore ? "ignore" : "");
+    div.innerHTML = `<b>${mode === "reading_order" ? index + 1 + ". " : ""}${item.id}</b> <small>${extra.replace(/</g, "&lt;")}</small>`;
+    div.onclick = () => { selected = item.id; render(); };
+    list.appendChild(div);
+  });
+  if (!items(p).length) list.innerHTML = '<p class="muted">Chưa có vùng nào. Nếu trang thật sự không có, chỉ cần đánh dấu "Đã rà xong".</p>';
+}
+function field(labelText, input) { const l = document.createElement("label"); l.className = "row"; l.append(input, " " + labelText); return l; }
+function renderEditor(p) {
+  const editor = $("editor"); editor.innerHTML = "";
+  const list = items(p), index = list.findIndex(i => i.id === selected);
+  if (index < 0) return;
+  const item = list[index];
+  const check = (key, text) => { const c = document.createElement("input"); c.type = "checkbox"; c.checked = !!item[key];
+    c.onchange = () => { item[key] = c.checked; if (key === "ignore" && c.checked) item.iscrowd = false; if (key === "iscrowd" && c.checked) item.ignore = false; render(); };
+    editor.appendChild(field(text, c)); };
+  editor.appendChild(Object.assign(document.createElement("h3"), {textContent:item.id}));
+  if (mode === "text_detection") check("ignore", "ignore (không tính)");
+  if (mode === "layout") {
+    const sel = document.createElement("select");
+    SHEET.layout_classes.forEach(c => { const o = document.createElement("option"); o.value = o.textContent = c; sel.appendChild(o); });
+    sel.value = item.category; sel.onchange = () => { item.category = sel.value; render(); };
+    editor.appendChild(field("lớp", sel)); check("ignore", "ignore"); check("iscrowd", "iscrowd");
+  }
+  if (mode === "reading_order") {
+    const text = Object.assign(document.createElement("input"), {type:"text", value:item.text || "", placeholder:"Chữ của node, đọc từ ảnh"});
+    text.oninput = () => { item.text = text.value; persist(); renderList(p); };
+    editor.appendChild(text);
+    if (index > 0) { check("link", "đọc sau node trước (quan hệ xác định)"); check("adjacent", "liền ngay sau node trước"); }
+    const up = Object.assign(document.createElement("button"), {textContent:"Lên"}), down = Object.assign(document.createElement("button"), {textContent:"Xuống"});
+    up.onclick = () => { if (index > 0) { [list[index - 1], list[index]] = [list[index], list[index - 1]]; render(); } };
+    down.onclick = () => { if (index < list.length - 1) { [list[index + 1], list[index]] = [list[index], list[index + 1]]; render(); } };
+    editor.append(up, " ", down);
+  }
+  if (mode === "tables") {
+    const html = Object.assign(document.createElement("textarea"), {value:item.html || "", placeholder:"<table>...</table>"});
+    html.oninput = () => { item.html = html.value; persist(); };
+    const cells = Object.assign(document.createElement("textarea"), {placeholder:"hàng,cột,giá trị", value:(item.numeric_cells || []).map(c => `${c.row},${c.col},${c.value}`).join("\n")});
+    cells.oninput = () => { item.numeric_cells = cells.value.split(/\r?\n/).filter(l => l.trim()).map(l => { const [r, c, ...v] = l.split(","); return {row:Number(r), col:Number(c), value:v.join(",").trim()}; }); persist(); };
+    editor.append("HTML của bảng", html, "Ô chứa chữ số", cells);
+  }
+  const del = Object.assign(document.createElement("button"), {textContent:"Xóa vùng (Delete)"});
+  del.onclick = removeSelected; editor.append(document.createElement("br"), del);
+}
+function removeSelected() {
+  const p = pageLabels(pages[pageIndex].page), list = items(p), index = list.findIndex(i => i.id === selected);
+  if (index >= 0) { list.splice(index, 1); selected = null; render(); }
+}
+function svgPoint(event) {
+  const svg = $("overlay"), r = svg.getBoundingClientRect(), page = pages[pageIndex];
+  return [(event.clientX - r.left) * page.image_size[0] / r.width, (event.clientY - r.top) * page.image_size[1] / r.height];
+}
+$("overlay").addEventListener("mousedown", e => { if (!pages[pageIndex].supported_frame) return; drag = svgPoint(e); });
+$("overlay").addEventListener("mouseup", e => {
+  if (!drag) return;
+  const page = pages[pageIndex], end = svgPoint(e), start = drag; drag = null;
+  if (Math.abs(end[0] - start[0]) < 4 || Math.abs(end[1] - start[1]) < 4) return;
+  const p = pageLabels(page.page), bbox = clampBox(page, [...toPoints(page, ...start), ...toPoints(page, ...end)]);
+  const item = {id:nextId(p), bbox};
+  if (mode === "layout") Object.assign(item, {category:layoutClass, ignore:false, iscrowd:false});
+  if (mode === "text_detection") item.ignore = false;
+  if (mode === "reading_order") Object.assign(item, {text:"", link:items(p).length > 0, adjacent:false});
+  if (mode === "tables") Object.assign(item, {html:"", numeric_cells:[]});
+  items(p).push(item); selected = item.id; render();
+});
+function exportLabels() {
+  labels.annotator = $("annotator").value.trim();
+  if (!labels.annotator) { alert("Nhập tên người gán nhãn trước."); return; }
+  labels.saved_at = bangkokNow();
+  const out = JSON.parse(JSON.stringify(labels));
+  for (const p of Object.values(out.pages)) {
+    const nodes = p.reading_order.nodes;
+    p.reading_order.before_pairs = []; p.reading_order.adjacent_pairs = [];
+    nodes.forEach((n, i) => { if (i > 0 && n.link) { p.reading_order.before_pairs.push([nodes[i - 1].id, n.id]);
+      if (n.adjacent) p.reading_order.adjacent_pairs.push([nodes[i - 1].id, n.id]); } });
+  }
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], {type:"application/json"}));
+  link.download = `labels-${SHEET.sheet_id}-${labels.saved_at.replace(/[:+]/g, "")}.json`; link.click(); persist();
+}
+function setup() {
+  $("title").textContent = `Gán nhãn GT · ${SHEET.pdf} · ${SHEET.intended_partition}`;
+  pages.forEach((p, i) => { const o = document.createElement("option"); o.value = i; o.textContent = `Trang ${p.page}`; $("page").appendChild(o); });
+  Object.entries(MODES).forEach(([key, m]) => { const b = Object.assign(document.createElement("button"), {textContent:m.label});
+    b.dataset.mode = key; b.onclick = () => { mode = key; selected = null; render(); }; $("tabs").appendChild(b); });
+  $("page").onchange = () => { pageIndex = Number($("page").value); selected = null; render(); };
+  $("zoom").oninput = render;
+  $("reviewed").onchange = () => { pageLabels(pages[pageIndex].page).reviewed[mode] = $("reviewed").checked; persist(); };
+  $("annotator").onchange = () => { labels.annotator = $("annotator").value.trim(); persist(); };
+  $("save").onclick = exportLabels;
+  $("loadbtn").onclick = () => $("load").click();
+  $("load").onchange = e => e.target.files[0] && e.target.files[0].text().then(t => { const l = JSON.parse(t);
+    if (l.sheet_id !== SHEET.sheet_id) { alert("File thuộc phiếu khác."); return; } labels = l; render(); });
+  document.addEventListener("keydown", e => {
+    if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
+    if (e.key === "Delete") removeSelected();
+    else if (e.key === "Escape") { selected = null; render(); }
+    else if (e.key.toLowerCase() === "i" && mode === "text_detection" && selected) {
+      const item = items(pageLabels(pages[pageIndex].page)).find(i => i.id === selected); if (item) { item.ignore = !item.ignore; render(); } }
+  });
+  restore(); $("page").value = pageIndex; render();
+}
+setup();
+</script>
+</body>
+</html>

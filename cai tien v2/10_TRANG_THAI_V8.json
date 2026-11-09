@@ -420,9 +420,14 @@
           "path": "benchmark/ground_truth_tools/text_layer_reference.py",
           "symbol": "mark_visibility",
           "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/label_structured_gt.py",
+          "symbol": "export",
+          "label": "VERIFIED"
         }
       ],
-      "note": "Có schema, CLI intake/seal và GT tổng hợp chỉ cho stress test (V8-010); chưa có GT độc lập cho 9 PDF; nhãn 0/38, keyword 0/12, L5 0/13, công thức 0/3; chưa có công cụ gán nhãn trực quan chung (V8-150). 09/11: nguồn (b) và người duyệt đã chọn (V8-013); quy trình text layer LOCKED v1, 9 PDF là development, chưa trang nào được xác minh nên chưa là GT. 09/11 đêm: có phiếu sàng lọc, phân xử mù A/B và lọc glyph hiển thị cho text layer (protocol §7.5)."
+      "note": "Có schema, CLI intake/seal và GT tổng hợp chỉ cho stress test (V8-010); chưa có GT độc lập cho 9 PDF; nhãn 0/38, keyword 0/12, L5 0/13, công thức 0/3; công cụ gán nhãn trực quan V8-150 có từ 09/11, chưa có nhãn thật. 09/11: nguồn (b) và người duyệt đã chọn (V8-013); quy trình text layer LOCKED v1, 9 PDF là development, chưa trang nào được xác minh nên chưa là GT. 09/11 đêm: có phiếu sàng lọc, phân xử mù A/B và lọc glyph hiển thị cho text layer (protocol §7.5)."
     },
     {
       "id": "G03",
@@ -815,7 +820,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "e500470ba61a067dfaf8898ea7ea6911b222ccd23f44cf3b1143921db8c10414",
+      "sha256": "8026948ac9f3e681d62522c3148603250f4193686036e44960e976af8eb27176",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -867,7 +872,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "e50e4064fa0bec89447412ad265ef7fe4808885d730b7e2fd82148569fccbecc"
+          "sha256": "5413c316008d1819059eab0e945d4e15bd309426163a191282f9a836aa9294b6"
         }
       ]
     }

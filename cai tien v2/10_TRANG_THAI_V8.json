@@ -830,7 +830,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "305a35e0319304e1cb51738210509cf4361eac72059b34b4f02ddf7a12e11c46",
+      "sha256": "b65acfc0e4cefb728f383a87a673fda80acd3d91ac06b662521d41ccf9686892",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -878,11 +878,11 @@
         },
         {
           "path": "cai tien v2/13_DAC_TA_CHU_THIEU_THUA_SAI.md",
-          "sha256": "885921d14a6b8fea097e4843db020696b780f5317ec8115ae65c0ca972bab285"
+          "sha256": "54a21147af044601fe41180b96eb05f3e2eb1843cc3bc7fca0b4bd9a6a5f5ce9"
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "b88aa925e3ad93795c37e1358d983ac2efd1e4a4a2379695011aeb74974c4025"
+          "sha256": "59d1924bbab1e6a8977435adaa5641d1d1b3ef6a8358bc88dcbca60f3418577f"
         }
       ]
     }

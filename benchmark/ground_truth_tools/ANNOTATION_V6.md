@@ -156,7 +156,7 @@ Lưu một file `structured-page-gt-v1` cho từng tài liệu. Đầu file có 
 .venv/Scripts/python.exe scripts/run_scientific_benchmark.py --prediction output/RUN/DOC --ground-truth benchmark/ground_truth --structured-gt scratch/DOC.structure.json --output-dir scratch/DOC-score
 ```
 
-Harness trong `Test case/scientific_benchmark_harness.py` cũng nhận `--structured-gt`. Báo cáo giữ riêng điểm chữ từ `result.md`, điểm cấu trúc từ `extraction.json`, hash hai file dùng cho chấm cấu trúc và các trang thiếu đầu ra theo modality. Phần cấu trúc đối chiếu ID và tiền tố SHA-256 ghi trong extraction. Nghiệm thu cần liên kết SHA-256 đầy đủ với receipt của run, GT và protocol đã khóa. Điểm chẩn đoán có thể đo trên dữ liệu phát triển trước khi đủ điều kiện nghiệm thu.
+Harness cũ trong `Test case/` đã bị người dùng xóa ngày 08/11/2026, và các test của nó đã bỏ theo quyết định ngày 10/11 (V8-170); chỉ dùng `scripts/run_scientific_benchmark.py`. Báo cáo giữ riêng điểm chữ từ `result.md`, điểm cấu trúc từ `extraction.json`, hash hai file dùng cho chấm cấu trúc và các trang thiếu đầu ra theo modality. Phần cấu trúc đối chiếu ID và tiền tố SHA-256 ghi trong extraction. Nghiệm thu cần liên kết SHA-256 đầy đủ với receipt của run, GT và protocol đã khóa. Điểm chẩn đoán có thể đo trên dữ liệu phát triển trước khi đủ điều kiện nghiệm thu.
 
 ### Chấm bố cục vật lý
 
@@ -179,7 +179,7 @@ Sau khi khóa GT, người rà căn nguồn lập **một artifact mỗi tài li
 - Rà toàn bộ node trong trang khai báo `reviewed_spans`. Node vắng mặt bỏ khỏi `mappings`; `mappings: []` xác nhận đã rà và không có node nào khớp. Nếu còn điểm chưa rõ, giữ hồ sơ trang chưa nộp cho tới khi phân xử.
 - Cặp đúng khi mọi span của node trước kết thúc trước hoặc đúng điểm bắt đầu của span đầu tiên của node sau. Các đoạn xen kẽ tính cặp sai. Cặp liền nhau còn yêu cầu giữa hai đoạn không có nội dung khác hoặc block chen vào. Báo riêng GT node khớp, prediction block được dùng, khối thừa và cặp đúng.
 
-Truyền `--reading-order-alignment <file>` cùng `--structured-gt <file>` vào scientific runner hoặc harness. Nếu còn trang có prediction nhưng thiếu hồ sơ căn bắt buộc, aggregate giữ `NOT_EVALUATED` và ghi danh sách trang. Trang có GT mà thiếu prediction vẫn chịu lỗi trong mẫu số. Người điều phối kiểm danh tính và đối chiếu thực tế; phần mềm kiểm phạm vi, span, khai báo và hash file.
+Truyền `--reading-order-alignment <file>` cùng `--structured-gt <file>` vào scientific runner. Nếu còn trang có prediction nhưng thiếu hồ sơ căn bắt buộc, aggregate giữ `NOT_EVALUATED` và ghi danh sách trang. Trang có GT mà thiếu prediction vẫn chịu lỗi trong mẫu số. Người điều phối kiểm danh tính và đối chiếu thực tế; phần mềm kiểm phạm vi, span, khai báo và hash file.
 
 Ở scorecard dùng `--reading-order-alignments <index>`. Cổng phát hành dùng `--baseline-reading-order-alignments <index>` và `--candidate-reading-order-alignments <index>`. Mỗi index `ocr-reading-order-alignment-index-v1` có `side`, `prediction_inventory_sha256` và `documents` ánh xạ ID tài liệu sang `path` tương đối, `sha256`. Artifact dùng cho scorecard cần `intended_partition: holdout`; kết quả chấm giữ hash căn nguồn theo trang.
 

@@ -63,7 +63,7 @@ Không phải mọi lỗi ký tự đều có mức độ nghiêm trọng như n
 ### Lớp 4: Lỗi cấp độ Từ khóa (Keyword Occurrences)
 - **Thiếu lần xuất hiện (False Negative / Under-counting):** Do chữ trong từ khóa bị nhận dạng sai dấu hoặc thiếu chữ cái (ví dụ: `cổ đông` bị đọc thành `cổ đng`), dẫn đến bộ đếm từ khóa bỏ sót.
 - **Thừa lần xuất hiện (False Positive / Over-counting):** 
-  - Do cơ chế khớp chuỗi con lỏng lẻo (lỗi của `literal_v1` bắt nhầm `B2B` bên trong `B2B2C`). Đã khắc phục bằng `literal_v2` (xét ranh giới từ và khớp dài nhất).
+  - Do cơ chế khớp chuỗi con lỏng lẻo. `literal_v2` (ranh giới từ, khớp dài nhất) là challenger, chưa vào production. Ngày 10/11/2026 người dùng quyết `B2B2C` vẫn tính một lần `B2B` và một lần `B2C`, như `literal_v1`; vì vậy ở ca này ranh giới từ của `literal_v2` làm đếm thiếu (V8-100).
   - Do từ khóa lặp lại liên tục ở `Header` và `Footer` mỗi trang. Đã quy định tách riêng thành cột phụ, không cộng dồn vào thân bài.
 
 ---

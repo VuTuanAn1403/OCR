@@ -18,11 +18,27 @@
   },
   "text_detector": {
     "adapter": "onnx-db-map-v1",
-    "model_path": "models/v62/ch_PP-OCRv4_det_infer.onnx",
-    "sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+    "model_path": "models/v62/PP-OCRv6_medium_det/inference.onnx",
+    "sha256": "eb13b44b25bb36f89528b68720af8a61d9cf381176107f465db1757b65d086e1",
     "scope": "full_page",
     "max_side": 1536,
-    "gpu_mem_limit_mb": 1024
+    "gpu_mem_limit_mb": 1024,
+    "threshold": 0.2,
+    "box_threshold": 0.45,
+    "rectangle_expansion": 1.4,
+    "channel_order": "BGR",
+    "source": {
+      "repo": "PaddlePaddle/PP-OCRv6_medium_det_onnx",
+      "revision": "61323801669c338b7891481ec7bac61ce31b576a",
+      "file": "inference.onnx",
+      "license": "apache-2.0",
+      "config": "models/v62/PP-OCRv6_medium_det/inference.yml",
+      "replaces": {
+        "model_path": "models/v62/ch_PP-OCRv4_det_infer.onnx",
+        "sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9"
+      },
+      "decision": "user, 2026-11-09 (V8-065, no GT benchmark)"
+    }
   },
   "layout_model": {
     "adapter": "hf_rtdetr_torch",
@@ -31,7 +47,7 @@
     "render_dpi": 144
   },
   "files": {
-    "models/v62/ch_PP-OCRv4_det_infer.onnx": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+    "models/v62/PP-OCRv6_medium_det/inference.onnx": "eb13b44b25bb36f89528b68720af8a61d9cf381176107f465db1757b65d086e1",
     "models/vietocr/base.yml": "42511ad7fc72b4e69c8583e78046c6e41c83f3c2ad8eb85a942532acfca9d94a",
     "models/vietocr/vgg-seq2seq.yml": "1aaae4bbd7601ce465ffb7894c0f570cbf687d2d97979e054e2cbb40edd97a9a",
     "models/vietocr/vgg_seq2seq.pth": "0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db",

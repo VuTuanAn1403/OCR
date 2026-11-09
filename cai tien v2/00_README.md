@@ -22,9 +22,12 @@ Lập ngày 08/11/2026 từ HEAD `08f7602`. "v8.0" là **nhãn chương trình**
 | Làm việc với AI sao cho không ảo giác? | [07 Phương pháp dự án lớn](07_PHUONG_PHAP_DU_AN_LON_AI.md) |
 | Đọc ít mà vẫn đủ? | [08 Tối ưu token](08_TOI_UU_TOKEN.md) |
 | Tài liệu `Cai Tien/` cũ ở đâu? | [09 Lưu trữ](09_LUU_TRU_CAI_TIEN_V7.md) |
+| Thứ tự đọc tự nhiên ra sao? | [11 Đặc tả thứ tự đọc](11_DAC_TA_THU_TU_DOC_TU_NHIEN.md) |
+| Xoay trang và tách 1-UP/2-UP thế nào? | [12 Hướng và xoay trang](12_HUONG_VA_XOAY_TRANG_1UP_2UP.md) |
+| Phân loại lỗi ký tự thiếu/thừa/sai? | [13 Đặc tả thiếu thừa sai](13_DAC_TA_CHU_THIEU_THUA_SAI.md) |
 | Trạng thái máy đọc được | [10_TRANG_THAI_V8.json](10_TRANG_THAI_V8.json) (nguồn duy nhất) |
 
-Bản Word tổng hợp nội dung 00–09: `OCR_PDF_V8_BO_TAI_LIEU.docx`. Bản Word chỉ để đọc; nguồn chuẩn là Markdown. Registry lưu sha của bản Word, nên khi Markdown đổi mà chưa xuất lại thì trình kiểm báo STALE.
+Bản Word tổng hợp nội dung 00–13: `OCR_PDF_V8_BO_TAI_LIEU.docx`. Bản Word chỉ để đọc; nguồn chuẩn là Markdown. Registry lưu sha của bản Word, nên khi Markdown đổi mà chưa xuất lại thì trình kiểm báo STALE.
 
 ## Tài liệu nguồn (sha trong registry)
 

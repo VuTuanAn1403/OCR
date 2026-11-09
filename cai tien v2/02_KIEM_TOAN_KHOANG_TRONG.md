@@ -86,6 +86,7 @@ Mốc kiểm toán: HEAD `08f7602`, ngày 08/11/2026. Nguồn trạng thái duy 
 **G09 — Observability.** Có log JSON và đo RSS/VRAM đỉnh. Chưa chạy soak, chưa có dashboard thời gian thực.
 
 **G10 — Export.** Có MD/TXT/JSON, contract và Excel keyword. Chưa có DOCX (`git grep -nil docx -- src` trả về 0) và chưa có XLSX cho mọi bảng.
+- Đã sửa ngày 09/11 (V8-130): `src/ocr_reporting/structured_export.py` xuất DOCX (ô gộp bằng `gridSpan`/`vMerge`) và XLSX (merged range) từ `document.json`, có đọc ngược để kiểm round-trip. Trên 9 PDF V8-006: 815/815 bảng đạt. Đây là công cụ CPU (`scripts/export_structured_document.py`), chưa nằm trong output sản phẩm.
 
 ## Phát hiện phụ ảnh hưởng mục tiêu dấu và keyword
 

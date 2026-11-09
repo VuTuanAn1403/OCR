@@ -11,16 +11,21 @@ from ocr_text.vietnamese_diacritics import DIACRITIC_REVIEW_CODE, diacritic_susp
 
 def diacritic_retry_settings(config):
     options = config.get("diacritic_retry", {})
-    defaults = {"enabled": False, "upscale_dpi": 300, "max_regions_per_page": 5, "max_region_ratio": 0.15}
+    defaults = {"enabled": False, "upscale_dpi": 300, "max_regions_per_page": 5, "max_region_ratio": 0.15, "extra_phrases": ()}
     if not isinstance(options, dict) or set(options) - defaults.keys():
-        raise ValueError("diacritic_retry accepts enabled, upscale_dpi, max_regions_per_page, max_region_ratio")
+        raise ValueError("diacritic_retry accepts enabled, upscale_dpi, max_regions_per_page, max_region_ratio, extra_phrases")
     settings = {**defaults, **options}
+    if settings.get("extra_phrases") is None:
+        settings["extra_phrases"] = ()
     if (type(settings["enabled"]) is not bool
             or type(settings["upscale_dpi"]) is not int or not 72 <= settings["upscale_dpi"] <= 600
             or type(settings["max_regions_per_page"]) is not int or not 0 <= settings["max_regions_per_page"] <= 30
             or type(settings["max_region_ratio"]) not in (int, float)
-            or not 0 <= settings["max_region_ratio"] <= 1):
-        raise ValueError("Invalid diacritic_retry: boolean enabled, DPI 72-600, regions 0-30, ratio 0-1 required")
+            or not 0 <= settings["max_region_ratio"] <= 1
+            or not isinstance(settings["extra_phrases"], (list, tuple))
+            or any(not isinstance(p, str) for p in settings["extra_phrases"])):
+        raise ValueError("Invalid diacritic_retry: boolean enabled, DPI 72-600, regions 0-30, ratio 0-1, extra_phrases tuple/list required")
+    settings["extra_phrases"] = tuple(settings["extra_phrases"])
     return settings
 
 
@@ -31,10 +36,22 @@ def retry_diacritic_blocks(owner, page_num, blocks, candidates, suspicious_lines
     must come from recognizer output and preserve base letters and numeric text.
     """
     settings = diacritic_retry_settings(owner.config)
+    extra_phrases = settings.get("extra_phrases") or ()
+    if not extra_phrases:
+        raw = (
+            getattr(owner, "keyword_phrases", None)
+            or getattr(owner, "keywords", None)
+            or owner.config.get("keyword_phrases")
+            or owner.config.get("extra_phrases")
+            or ()
+        )
+        if isinstance(raw, (list, tuple)):
+            extra_phrases = tuple(p for p in raw if isinstance(p, str))
+
     suspect = []
     candidate_ids = {id(block) for block in candidates}
     for block in blocks:
-        reasons = diacritic_suspicions(block.text)
+        reasons = diacritic_suspicions(block.text, extra_phrases=extra_phrases)
         if not reasons:
             continue
         if DIACRITIC_REVIEW_CODE not in block.review_reason_codes:
@@ -50,7 +67,7 @@ def retry_diacritic_blocks(owner, page_num, blocks, candidates, suspicious_lines
             suspect.append(block)
     budget = min(settings["max_regions_per_page"], math.ceil(len(blocks) * settings["max_region_ratio"]))
     record = {"enabled": settings["enabled"], "suspect_lines": len(suspect), "attempted": 0,
-              "improved": 0, "lines": []}
+              "improved": 0, "lines": [], "extra_phrases_count": len(extra_phrases)}
     if not settings["enabled"]:
         return record
     for block in sorted(suspect, key=lambda b: b.quality_score if b.quality_score is not None else 0)[:budget]:
@@ -68,7 +85,7 @@ def retry_diacritic_blocks(owner, page_num, blocks, candidates, suspicious_lines
             crop, block.text, block.confidence,
             predict_image=lambda image: predict_image_counted(owner, image), diacritic_only=True)
         if result.get("improved") and (result.get("needs_review")
-                or diacritic_suspicions(result["text"])
+                or diacritic_suspicions(result["text"], extra_phrases=extra_phrases)
                 or not is_diacritic_only_change(block.text, result["text"])):
             result = {**result, "improved": False, "needs_review": True,
                       "review_reason": result.get("review_reason") or "Diacritic retry changed other line content"}
@@ -99,6 +116,6 @@ def retry_diacritic_blocks(owner, page_num, blocks, candidates, suspicious_lines
                 "image_candidates": result.get("image_candidates", [])}
         record["lines"].append(line)
         block.recognition_provenance["diacritic_retry"] = line
-        if not diacritic_suspicions(block.text) and applied:
+        if not diacritic_suspicions(block.text, extra_phrases=extra_phrases) and applied:
             block.review_reason_codes = [code for code in block.review_reason_codes if code != DIACRITIC_REVIEW_CODE]
     return record

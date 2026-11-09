@@ -4,19 +4,19 @@ Mã khóa `BASELINE-V8-20261108-001`, chụp lúc 2026-11-08 13:51:55 UTC. Trạ
 
 Manifest đầy đủ nằm ở `scratch/benchmarks/BASELINE-V8-20261108-001/baseline_lock.json` (chỉ có ở máy local; sha256 `d3276479c549ece023ce13e5dfa491a8324928814c5d485b9d6fd8247d2b28bc`). Lệnh tạo: `.venv/Scripts/python.exe -B scripts/lock_baseline.py`.
 
-## Khóa hiện hành: `BASELINE-V8-20261109-002` (09/11, HEAD `24a5558`)
+## Khóa hiện hành: `BASELINE-V8-20261109-003` (09/11, HEAD `20207a2`)
 
-Khóa 001 bên dưới chụp trước một lần sửa `src/ocr_keywords/alias_map.py` lúc 01:58. Lần sửa đó làm analysis đổi thành `556a9a221118acfe`, nên khóa 001 không còn khớp HEAD về analysis/publication. `ocr_identity` vẫn đúng.
+Khóa 003 chụp sau khi tích hợp PP-OCRv6 text detector, diacritic retry từ điển keyword (V8-030) và các sửa lỗi review.
 
 | Mục | Giá trị |
 | --- | --- |
-| Trạng thái | **LOCKED**, `problems` rỗng; chụp lúc 2026-11-08 19:16:11 UTC; working tree sạch |
-| Manifest | `scratch/benchmarks/BASELINE-V8-20261109-002/baseline_lock.json`, sha256 `750a20e64e9010d3403fd909f9591c4267387b066f787286d69bc59e7e21d5f9` |
-| Fingerprint extraction / analysis / publication | `20e15efae22917bd` / `556a9a221118acfe` / `cb48f3d161a82019` |
-| `portable_identity` | `465518dab5b48d11644a79c00d8989c1cc70af4dc5d8f2c711b357eb37ff1240` |
-| `ocr_identity` 9 PDF | Trùng từng giá trị với khóa 20261108-001 |
+| Trạng thái | **LOCKED**, `problems` rỗng; chụp lúc 2026-11-09 07:40:13 UTC |
+| Manifest | `scratch/benchmarks/BASELINE-V8-20261109-003/baseline_lock.json`, sha256 `fbd278b8b5bcc525cc0089c7c392b9967f448ea209d4191cb7398cb0faf8fded` |
+| Fingerprint extraction / analysis / publication | `ccdbe84a3691d645` / `556a9a221118acfe` / `d4fac3a93338c2ed` |
+| `portable_identity` | `9ca57543016d9c6811890fc6ed8cfbb4338efe8edfa1307e261104a6e88c2e40` |
+| Thay đổi mã nguồn ghi nhận | `models/v62/runtime-models.json`, `src/ocr_recognition/{text_detector,diacritic_retry}.py`, `src/ocr_text/vietnamese_diacritics.py` |
 
-Từ V8-033 (09/11, sửa `src/ocr_text/unicode_normalizer.py`), mã làm việc có OCR identity khác khóa này. Prediction V8-006 vẫn gắn với `24a5558`. Lần chạy dự đoán kế tiếp cần commit rồi khóa mới.
+## Khóa trước: `BASELINE-V8-20261109-002` (09/11, HEAD `24a5558`)
 
 ## Prediction baseline V8-006
 

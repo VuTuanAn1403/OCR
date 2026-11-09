@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
   "pipeline_version": "7.0.0",
-  "verified_head": "24a55586fed251c1eeb22141f3a163752178f3a7",
+  "verified_head": "67a4e12472e258a902915c18c40a5c869bfc43c5",
   "last_verified": "2026-11-09",
-  "verified_scope": "HEAD 24a5558 + working tree V8-010/033/042; khóa BASELINE-V8-20261109-002 (V8-033 đổi OCR identity). Quality = NOT_EVALUATED.",
+  "verified_scope": "HEAD 67a4e12 (V8-010/033/042/120); working tree V8-130 chưa commit. Khóa BASELINE-V8-20261109-002 trước V8-033. Quality = NOT_EVALUATED.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
@@ -118,7 +118,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Retry dấu chỉ kích hoạt theo 21 cụm DEFAULT_PHRASES; chưa truyền từ điển keyword vào extra_phrases (V8-030, đổi closure extraction)."
+      "note": "Retry dấu hỗ trợ extra_phrases từ từ điển keyword hoặc cấu hình (V8-030)."
     },
     {
       "id": "L4",
@@ -260,7 +260,7 @@
           "symbol": "compare_text"
         }
       ],
-      "note": "Sản phẩm đếm literal_v1 (chuỗi con). literal_v2 (ranh giới từ, chồng lấn dài nhất) là challenger ngoài CLI; trên V8-006 đếm 164 so với 154 (B2B/B2C trong B2B2C). Keyword một từ sai dấu vào single_word_variants, không cộng."
+      "note": "Sản phẩm: literal_v1 (chuỗi con). Challenger literal_v2 (ranh giới từ) ngoài CLI; V8-006: 164 so với 154 (B2B/B2C trong B2B2C). Keyword một từ sai dấu vào single_word_variants, không cộng."
     },
     {
       "id": "L9",
@@ -614,7 +614,7 @@
         }
       ],
       "searched": "git grep -nil docx -- src => 0 kết quả",
-      "note": "Có Markdown/TXT/JSON và Excel keyword; chưa có DOCX, chưa có XLSX cho mọi bảng."
+      "note": "Có MD/TXT/JSON, Excel keyword; DOCX/XLSX giữ bảng là công cụ CPU (V8-130), chưa vào output sản phẩm."
     }
   ],
   "diacritic_gate": {
@@ -775,11 +775,11 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "fc2aaab74c867a9fe9cfab310802b3ef42098cf832ec3484a6ea9eab5a67ba0b",
+      "sha256": "b05294c51956c413ee2c4f906618bbcc17ee4ed0b1eaacc6efbe086533122d3c",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
-          "sha256": "b3d420671332a29f4d63d68df46d30fbec84776617f12904fe58dbcbfeb5a7c8"
+          "sha256": "8ac2f03a1570ae9e8a9e42b9534a00ba480270466003ca21507384be6f2b7bd5"
         },
         {
           "path": "cai tien v2/01_RADAR_CONG_NGHE_THEO_TANG.md",
@@ -787,7 +787,7 @@
         },
         {
           "path": "cai tien v2/02_KIEM_TOAN_KHOANG_TRONG.md",
-          "sha256": "1e2aca88477a6e83f37bb03a4e80adce532d495372f987c2e41c9de251c1e550"
+          "sha256": "e094b4281a03edd3d5d810630e086d585d82c738024d10e4c370841feae54aa4"
         },
         {
           "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
@@ -814,8 +814,20 @@
           "sha256": "35ca3cbc04d47975c5fd01f3b2575576ef61bca29d283b8714a8aa8632c59598"
         },
         {
+          "path": "cai tien v2/11_DAC_TA_THU_TU_DOC_TU_NHIEN.md",
+          "sha256": "6cf0607ad277e251293707f975337cbff4112ac24a38d1cd0f1cb12d7383e7c8"
+        },
+        {
+          "path": "cai tien v2/12_HUONG_VA_XOAY_TRANG_1UP_2UP.md",
+          "sha256": "8a659efe8cfc25a57cd75786d322d89c4d250d5ce2f6b6370a799cad980d1876"
+        },
+        {
+          "path": "cai tien v2/13_DAC_TA_CHU_THIEU_THUA_SAI.md",
+          "sha256": "885921d14a6b8fea097e4843db020696b780f5317ec8115ae65c0ca972bab285"
+        },
+        {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "a47c44d09902b70da65731c55f2498ca8128d4ab26d08cd7f12bb0507e457464"
+          "sha256": "e7ef3aeae0cddc0c979518159e9f8d6030ad814842bab9b45a76918f0d84471b"
         }
       ]
     }

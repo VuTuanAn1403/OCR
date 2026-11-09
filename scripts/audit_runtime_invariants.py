@@ -34,7 +34,7 @@ import re
 import sys
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Iterator, List, Optional, Sequence
 
 SCHEMA = "ocr-v8-runtime-invariants-v2"
 NUMBER = re.compile(r"[-+]?\d[\d.,]*%?")
@@ -91,18 +91,52 @@ def audit_page(page_record: Dict, extraction_page: Optional[Dict], document: str
                 examples["numeric_text"].append({"document": document, "page": page_record.get("page_num"),
                                                  "id": item.get("id"), "text_raw": item.get("text_raw"),
                                                  "text_corrected": item.get("text_corrected")})
+    for cell in table_cell_findings(page_record, extraction_page):
+        origin, untraced, dropped, absent = cell["origin"], cell["untraced"], cell["dropped"], cell["absent"]
+        counts["table_cells"] += 1
+        if dropped:
+            counts["cells_with_numbers_missing_from_cell"] += 1
+            counts[f"cells_with_numbers_missing_from_cell_{origin}"] += 1
+            counts["numbers_missing_from_cell"] += sum(dropped.values())
+            counts["numbers_missing_from_table"] += sum(absent.values())
+            counts[f"numbers_missing_from_table_{origin}"] += sum(absent.values())
+        if cell["numbers"]:
+            counts["numeric_cells"] += 1
+            counts[f"numeric_cells_{origin}"] += 1
+            if cell["repeated_box"]:
+                counts[f"numeric_cells_repeating_an_earlier_cell_box_{origin}"] += 1
+            if not cell["mapped"]:
+                counts[f"numeric_cells_without_source_mapping_{origin}"] += 1
+        if untraced:
+            counts["cells_with_untraced_numbers"] += 1
+            counts[f"cells_with_untraced_numbers_{origin}"] += 1
+            counts["untraced_numbers"] += sum(untraced.values())
+            if cell["repeated_box"]:
+                counts["cells_with_untraced_numbers_and_a_repeated_box"] += 1
+        if (untraced or dropped) and len(examples["numeric_cells"]) < EXAMPLES:
+            examples["numeric_cells"].append({"document": document, "page": page_record.get("page_num"),
+                                              "table": cell["table_id"], "source": origin, "row": cell["row"],
+                                              "col": cell["col"], "bbox": cell["bbox"], "repeated_box": cell["repeated_box"],
+                                              "cell_text": cell["text_raw"],
+                                              "sources": [i.get("text_raw") for i in cell["sources"]],
+                                              "untraced": sorted(untraced.elements()),
+                                              "missing_from_cell": sorted(dropped.elements())})
+    return dict(counts)
+
+
+def table_cell_findings(page_record: Dict, extraction_page: Optional[Dict]) -> Iterator[Dict]:
+    """Per table cell with a box: its sources and the number tokens it cannot trace or lacks (check 4)."""
+    items = (extraction_page or {}).get("items", [])
     phase_a = [item for item in ((extraction_page or {}).get("text_evidence") or {}).get("items", []) if item.get("bbox")]
     by_source = {item.get("source_id"): item for item in phase_a}
     mapping = cell_sources(page_record)
     for table in (i for i in items if i.get("kind") == "t"):
-        origin = table.get("source") or "unknown"
         seen_boxes = set()
         table_numbers = Counter(n for cell in table.get("cells") or [] for n in numbers(cell.get("text_raw")))
         for cell in table.get("cells") or []:
             box = cell.get("bbox")
             if not box:
                 continue
-            counts["table_cells"] += 1
             cell_numbers = numbers(cell.get("text_raw"))
             box_key = tuple(round(value, 2) for value in box)
             repeated = box_key in seen_boxes
@@ -110,41 +144,17 @@ def audit_page(page_record: Dict, extraction_page: Optional[Dict], document: str
             overlapping = [i for i in phase_a if _intersection(i["bbox"], box) > 0]
             mapped_ids = mapping.get((table.get("table_id"), cell.get("row"), cell.get("col")))
             mapped = [by_source[s] for s in mapped_ids or () if s in by_source]
-            sources = {id(i): i for i in overlapping + mapped}.values()
+            sources = list({id(i): i for i in overlapping + mapped}.values())
             untraced = Counter(cell_numbers) - Counter(numbers(" ".join(i.get("text_raw") or "" for i in sources)))
             # A box copied from an earlier cell says nothing about what lies inside this cell.
             contained = [] if repeated else [i for i in overlapping if inside(i["bbox"], box) >= INSIDE_SHARE]
             dropped = Counter(numbers(" ".join(i.get("text_raw") or "" for i in contained))) - Counter(cell_numbers)
-            if dropped:
-                counts["cells_with_numbers_missing_from_cell"] += 1
-                counts[f"cells_with_numbers_missing_from_cell_{origin}"] += 1
-                counts["numbers_missing_from_cell"] += sum(dropped.values())
-                # Placed in another cell of the table, or absent from the whole table.
-                absent = dropped - (table_numbers - Counter(cell_numbers))
-                counts["numbers_missing_from_table"] += sum(absent.values())
-                counts[f"numbers_missing_from_table_{origin}"] += sum(absent.values())
-            if cell_numbers:
-                counts["numeric_cells"] += 1
-                counts[f"numeric_cells_{origin}"] += 1
-                if repeated:
-                    counts[f"numeric_cells_repeating_an_earlier_cell_box_{origin}"] += 1
-                if mapped_ids is None:
-                    counts[f"numeric_cells_without_source_mapping_{origin}"] += 1
-            if untraced:
-                counts["cells_with_untraced_numbers"] += 1
-                counts[f"cells_with_untraced_numbers_{origin}"] += 1
-                counts["untraced_numbers"] += sum(untraced.values())
-                if repeated:
-                    counts["cells_with_untraced_numbers_and_a_repeated_box"] += 1
-            if (untraced or dropped) and len(examples["numeric_cells"]) < EXAMPLES:
-                examples["numeric_cells"].append({"document": document, "page": page_record.get("page_num"),
-                                                  "table": table.get("table_id"), "source": origin, "row": cell.get("row"),
-                                                  "col": cell.get("col"), "bbox": box, "repeated_box": repeated,
-                                                  "cell_text": cell.get("text_raw"),
-                                                  "sources": [i.get("text_raw") for i in sources],
-                                                  "untraced": sorted(untraced.elements()),
-                                                  "missing_from_cell": sorted(dropped.elements())})
-    return dict(counts)
+            # Placed in another cell of the table, or absent from the whole table.
+            absent = dropped - (table_numbers - Counter(cell_numbers))
+            yield {"table_id": table.get("table_id"), "origin": table.get("source") or "unknown", "row": cell.get("row"),
+                   "col": cell.get("col"), "bbox": box, "text_raw": cell.get("text_raw"), "numbers": cell_numbers,
+                   "repeated_box": repeated, "mapped": mapped_ids is not None, "sources": sources,
+                   "contained": contained, "untraced": untraced, "dropped": dropped, "absent": absent}
 
 
 def numbers(text: Optional[str]) -> List[str]:

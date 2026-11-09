@@ -142,6 +142,9 @@ def run_document(request, *, resume=False):
              "status": "RUNNING", "parent_pid": os.getpid(), "parent_imported_torch": False,
              "device": request["device"], "initial_vram": snapshot, "events": [], "phases": {}}
     audit_path = root / "scheduler.json"
+    # V8-120: the generation directory is shared by every run of this identity, so phase
+    # logs get a per-run name; the output's gpu_scheduler.json records the exact path.
+    log_dir = root / "logs" / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{uuid.uuid4().hex[:8]}"
     acquired = False
     try:
         with lease_for_gpu(snapshot, timeout=request.get("lease_timeout", 60)):
@@ -189,7 +192,7 @@ def run_document(request, *, resume=False):
                 command = [request["text_python"], "-m", "ocr_workers.phases",
                            "--request", str(request_path), "--phase", phase]
                 (work / "exited.json").unlink(missing_ok=True)
-                result = supervised_run(command, cwd=ROOT, env=env, log_path=root / f"{phase}.log",
+                result = supervised_run(command, cwd=ROOT, env=env, log_path=log_dir / f"{phase}.log",
                                         timeout=request.get("phase_timeout", 14400), observe=observe)
                 if not valid_stage(work, phase, key, input_receipt):
                     raise RuntimeError(f"Invalid or incomplete {phase} checkpoint")

@@ -114,6 +114,11 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def is_shallow(root: Path) -> bool:
+    result = run_git(root, "rev-parse", "--is-shallow-repository")
+    return result.returncode == 0 and result.stdout.decode().strip() == "true"
+
+
 def sha256_git_blob(root: Path, commit: str, rel: str) -> str | None:
     """Hash a file as stored in a commit, LF-normalized like sha256_file; None if absent."""
     result = run_git(root, "cat-file", "blob", f"{commit}:{rel}")
@@ -281,9 +286,14 @@ def check_registry(root: Path, registry: dict, backlog_ids: set[str], report: Re
         if not exact_exists(root, rel) and isinstance(preserved, dict):
             # Removed from the working tree by the user; the mapped bytes must still be
             # readable from the named commit (`git show <commit>:<path>`).
-            stored = sha256_git_blob(root, str(preserved.get("commit", "")), rel)
+            commit = str(preserved.get("commit", ""))
+            if run_git(root, "cat-file", "-e", f"{commit}^{{commit}}").returncode and is_shallow(root):
+                # A shallow clone (CI checkout depth 1) lacks the commit: unverifiable, not missing.
+                report.not_evaluated.append(f"Preserved source commit {commit[:7]} is not in this shallow clone: {rel}")
+                continue
+            stored = sha256_git_blob(root, commit, rel)
             if stored is None:
-                report.errors.append(f"Source document missing and not in commit {preserved.get('commit')}: {rel}")
+                report.errors.append(f"Source document missing and not in commit {commit}: {rel}")
             elif stored != source.get("sha256"):
                 report.errors.append(f"Preserved source differs from its mapped sha256: {rel}")
         elif not exact_exists(root, rel):

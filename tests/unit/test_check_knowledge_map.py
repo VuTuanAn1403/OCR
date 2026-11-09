@@ -283,3 +283,17 @@ def test_source_removed_by_the_user_is_verified_in_its_commit(repo):
     assert "Preserved source differs from its mapped sha256: cai tien v2/source.md" in errors(repo)
     mutate(repo, lambda r: r["sources"][0].update(git_preserved={"commit": "0" * 40}))
     assert any(item.startswith("Source document missing and not in commit") for item in errors(repo))
+
+
+def test_preserved_source_in_a_shallow_clone_is_not_evaluated(repo, tmp_path):
+    # CI checks out depth 1: the preserving commit is absent, which is unverifiable, not missing.
+    preserving = km.run_git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+    (repo / "cai tien v2/source.md").unlink()
+    mutate(repo, lambda r: r["sources"][0].update(git_preserved={"commit": preserving}))
+    commit(repo, "remove the source")
+    assert not [item for item in errors(repo) if "source.md" in item]
+    clone = tmp_path / "shallow clone"
+    subprocess.run(["git", "clone", "-q", "--depth", "1", "--no-local", str(repo), str(clone)], check=True)
+    report = km.check(clone)[0]
+    assert not [item for item in report.errors if "source.md" in item]
+    assert any(item.endswith("not in this shallow clone: cai tien v2/source.md") for item in report.not_evaluated)

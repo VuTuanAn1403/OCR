@@ -1,6 +1,6 @@
 # Bàn giao
 
-Cập nhật 09/11/2026 đêm, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`; `3c6fdcf` đã push, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1) bật Auto-fix. Hai commit `5b4c6c5` (P1) và `c477f34` (ghim LF, dời `verified_head`) chưa push. Phần V8-060 chưa commit. Không phiên nào sửa `src/`, nên OCR identity không đổi; identity khớp khóa `BASELINE-V8-20261109-003` (extraction `ccdbe84a3691d645`, detector v6). Trạng thái dự án: skill `ocr-pdf-knowledge-map` hoặc `scripts/check_knowledge_map.py --summary`. Nhật ký: [V8-060](../../scratch/dev_sessions/20261109-v8-060-detector/session.md), [P1 khóa GT](../../scratch/dev_sessions/20261109-v8-p1-gt-lock/session.md), [rà soát chỉ tiêu](../../scratch/dev_sessions/20261109-v8-target-review/session.md).
+Cập nhật 09/11/2026 đêm, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`; `3c6fdcf` đã push, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1) bật Auto-fix. Chưa push: `5b4c6c5` (P1), `c477f34` (ghim LF), `39b0f0d` (V8-060) và commit dời `verified_head` lên `39b0f0d`. Không phiên nào sửa `src/`, nên OCR identity không đổi; identity khớp khóa `BASELINE-V8-20261109-003` (extraction `ccdbe84a3691d645`, detector v6). Trạng thái dự án: skill `ocr-pdf-knowledge-map` hoặc `scripts/check_knowledge_map.py --summary`. Nhật ký: [V8-060](../../scratch/dev_sessions/20261109-v8-060-detector/session.md), [P1 khóa GT](../../scratch/dev_sessions/20261109-v8-p1-gt-lock/session.md), [rà soát chỉ tiêu](../../scratch/dev_sessions/20261109-v8-target-review/session.md).
 
 ## 09/11 đêm: V8-060, so sánh detector v4 và v6
 
@@ -10,7 +10,7 @@ Cập nhật 09/11/2026 đêm, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword
 - **Text layer chưa xác minh (653 trang):** v4 P/R/H 0,750/0,917/0,825; v6 0,774/0,914/0,838. v6 cao hơn trên 371 trang, thấp hơn trên 135; Hmean cao hơn ở 6/7 PDF (AGR 2020 ngược lại).
 - **Quyết định:** chỉ được `INCONCLUSIVE`; chưa có GT detection, manifest thiếu 17 trường.
 - **Vận hành:** AAA hết ONNX arena (`gpu_mem_limit_mb` 1024) dưới v6 ở lần đầu, qua ở lần chạy lại từ trang 1 dù ứng dụng khác chiếm ~778 MiB VRAM. 1/2 lần thất bại, nguyên nhân chưa rõ.
-- Đã cập nhật V8-060, L2, xuất lại DOCX.
+- Đã cập nhật V8-060, L2, xuất lại DOCX; commit `39b0f0d`.
 
 ## 09/11 tối: khóa quy trình GT text layer (P1)
 
@@ -32,7 +32,7 @@ Cập nhật 09/11/2026 đêm, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword
 
 Không dùng AI hay output pipeline làm GT.
 
-1. Commit phần V8-060 và dời `verified_head` khi người dùng duyệt.
+1. Push các commit trên khi người dùng duyệt.
 2. Người dùng sàng lọc 7 PDF theo worklist (§7.4 B) để hoàn tất V8-011.
 3. Viết công cụ còn thiếu: phiếu sàng lọc và phân xử, ghép OCR với span theo bbox, ước lượng ρ, nhãn detection A/B (ưu tiên trang v4/v6 lệch nhiều, BCE và BHN).
 4. Mỗi lần chạy AAA dưới v6, ghi lại có hết arena không và VRAM của ứng dụng khác.

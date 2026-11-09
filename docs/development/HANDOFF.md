@@ -1,6 +1,6 @@
 # Bàn giao
 
-Cập nhật 10/11/2026 rạng sáng, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1); đã push tới `016ba34`, các commit sau chưa push. Không phiên nào sửa `src/`, nên OCR identity vẫn khớp khóa `BASELINE-V8-20261109-003` (extraction `ccdbe84a3691d645`, detector v6). Trạng thái: skill `ocr-pdf-knowledge-map` hoặc `scripts/check_knowledge_map.py --summary`. Nhật ký: [10/11 công cụ](../../scratch/dev_sessions/20261110-v8-goal-tools/session.md), [V8-060](../../scratch/dev_sessions/20261109-v8-060-detector/session.md), [P1 khóa GT](../../scratch/dev_sessions/20261109-v8-p1-gt-lock/session.md).
+Cập nhật 10/11/2026 rạng sáng, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1); các commit tới `bfd78c8` đã push. Không phiên nào sửa `src/`, nên OCR identity vẫn khớp khóa `BASELINE-V8-20261109-003` (extraction `ccdbe84a3691d645`, detector v6). Trạng thái: skill `ocr-pdf-knowledge-map` hoặc `scripts/check_knowledge_map.py --summary`. Nhật ký: [10/11 công cụ](../../scratch/dev_sessions/20261110-v8-goal-tools/session.md), [V8-060](../../scratch/dev_sessions/20261109-v8-060-detector/session.md), [P1 khóa GT](../../scratch/dev_sessions/20261109-v8-p1-gt-lock/session.md).
 
 ## 10/11: công cụ GT, challenger và kiểm bất biến
 
@@ -13,7 +13,7 @@ Mục tiêu người dùng giao là đưa đủ 38 mục backlog lên `DONE`. M�
 - **Hồi quy CPU tại `1ebba74`:** 2.610 passed, 19 skipped (`scratch/runs/20261110-010839-9d80fdb1`); sau khi bỏ test harness, `tests/scientific` 657 passed, 0 skipped.
 - **`IN_PROGRESS` có số liệu, chưa có GT:**
   - V8-071: thứ tự đọc R-RO-01..08, đồng thuận cặp 0,951.
-  - V8-090: adapter VLM; 137/938 trang được chọn; model bị catalog chặn.
+  - V8-090: adapter VLM; 137/938 trang được chọn; Vintern-1B-v3.5 đã ghim, chưa chạy.
   - V8-080: kiểm bất biến đặc tả 13.
   - V8-100: `literal_v2` cho 148 so với 156; 8 khác biệt đều là "B2B2C" ở VIC.
 

@@ -1,6 +1,6 @@
 # Phương pháp Ground Truth và khóa benchmark
 
-Ngày 07/11/2026. **DRAFT — chưa khóa corpus/split/GT, chưa phê duyệt protocol hoặc ngưỡng.** Tài liệu này chuẩn hóa cách chuẩn bị, tương thích công cụ hiện có; không tự tạo một bộ đáp án. Tình trạng chưa có người A/B đã được bàn giao: không hỏi lại phân công, không dùng AI/model output thay GT. Chất lượng corpus giữ `NOT_EVALUATED`.
+Ngày 07/11/2026. **DRAFT — chưa khóa corpus/split/GT, chưa phê duyệt protocol hoặc ngưỡng.** Ngoại lệ duy nhất: §7, quy trình xác minh text layer cho cổng dấu, đã LOCKED v1 ngày 09/11/2026. Tài liệu này chuẩn hóa cách chuẩn bị, tương thích công cụ hiện có; không tự tạo một bộ đáp án. Tình trạng chưa có người A/B đã được bàn giao: không hỏi lại phân công, không dùng AI/model output thay GT. Chất lượng corpus giữ `NOT_EVALUATED`.
 
 Nguồn chuẩn kỹ thuật: [catalog](../../src/ocr/collect/catalog.py), [ANNOTATION_V6](../../benchmark/ground_truth_tools/ANNOTATION_V6.md), [human annotations](../../benchmark/ground_truth_tools/human_annotations.py), [protocol_preflight](../../benchmark/scientific_evaluation/protocol_preflight.py) và [mẫu protocol hiện có](templates/benchmark_acceptance_protocol.example.yaml). Không sửa các schema hoặc mẫu DRAFT đó để ép preflight thành công.
 
@@ -83,33 +83,90 @@ Exit 1, `NOT_READY_FOR_ACCEPTANCE_MEASUREMENT`: protocol DRAFT chưa LOCKED. [B�
 
 ## 7. Nguồn GT cho cổng dấu v8 (V8-013, V8-011)
 
-**Quyết định ngày 09/11/2026 (người dùng, trong phiên chat):** cổng dấu 99,99% dùng nguồn **(b) text layer của PDF born-digital** theo [04 §5](../../cai%20tien%20v2/04_DAC_TA_DO_DAU_9999.md). Dữ liệu tổng hợp (a) chỉ dùng cho stress test. Nguồn (c) và (d) chưa chọn. Nguồn (e) vẫn bị cấm: output model, đồng thuận engine, output pipeline, nhãn AI.
+**Quy trình LOCKED v1 ngày 09/11/2026**, do người dùng quyết trong phiên chat. Khóa máy đọc là [`locks/v8_011_text_layer_procedure_lock_v1.json`](locks/v8_011_text_layer_procedure_lock_v1.json), sha256 `b0c20a846bf53fcac47cce73148f83fd523b7ed37adb5bfe8bf4b484a2bb2e0a`. File này do `scripts/lock_text_layer_procedure.py` tạo; lệnh `--verify <khóa> --pdf-root inputs` dựng lại đúng từng byte và khớp sha256 của 9 PDF (exit 0).
 
-**Chưa có:** người duyệt, custodian holdout, split, α/k và kế hoạch design effect. Vì vậy V8-013 còn `IN_PROGRESS`, mục này còn **DRAFT**, và chất lượng giữ `NOT_EVALUATED`.
+Khóa v1 chỉ cố định quy trình. Nó chưa phải gói nghiệm thu `ocr-benchmark-acceptance-proposal-v1` ở §5, và chưa thay việc khóa đủ bốn partition theo §2. Mọi trang vẫn `NOT_VERIFIED` cho tới khi người duyệt sàng lọc xong, và chất lượng giữ `NOT_EVALUATED`. Muốn đổi một mục dưới đây thì tạo khóa v2 trước khi xem kết quả đo; không sửa v1.
 
-### 7.1 Quy mô ứng viên (đã đo, chưa phải GT)
+### 7.1 Quyết định đã khóa
 
-Lệnh `scripts/inventory_text_layers.py inputs --report scratch/v8/v8_011_text_layer_inventory_2af5454_20261109.json`, chạy tại `2af5454`, cho 720/938 trang `CANDIDATE` với 345.687 slot dấu. Trang `CANDIDATE` là trang có chữ hiển thị (không phải lớp OCR ẩn), font tổ hợp có ToUnicode, và không có chẩn đoán hỏng.
+- **Nguồn:** (b) text layer của PDF born-digital, theo [04 §5](../../cai%20tien%20v2/04_DAC_TA_DO_DAU_9999.md). Nguồn (a) chỉ dùng cho stress test. Nguồn (c) và (d) chưa chọn. Nguồn (e) bị cấm: output model, đồng thuận engine, output pipeline, nhãn AI.
+- **Vai trò:** người duyệt (reviewer) và custodian holdout đều là người dùng (Git `VuTuanAn1403`). Tác nhân AI chỉ là operator: chạy công cụ tất định, tạo worklist, tính số. Operator không quyết nhãn, không điền sẵn quyết định và không mở holdout.
+- **Split:** cả 9 PDF trong `inputs/` là `development_only`, vì đều đã có exposure. AGR, ASM và VIC đã có exposure từ trước. AAA, BCE, BHN và VIC đã dùng để dựng whitelist alias ([alias-rules-kaggle](../../scratch/dev_sessions/20261106-alias-rules-kaggle/handoff-before-merge.md)). AAA và ABT có so sánh keyword before/after ([keyword-continuity](../../scratch/dev_sessions/20261103-keyword-continuity/corpus_final/report.json)). Crop của BHN đã được AI xem ([retry-alias-rotation](../../scratch/dev_sessions/20261106-retry-alias-rotation/session.md)). Holdout sẽ là PDF mới (§7.4 F).
+- **Tham số:** α = 0,05 một phía, cận Clopper-Pearson, yêu cầu p_U ≤ 10⁻⁴. Kế hoạch k = 0, nên cần N_eff ≥ 29.956. Metric chính là `DSER_strict`; báo kèm DER_VN_v1, `base_mismatch_slots`, dấu thừa và dấu chưa tổ hợp. Mệnh đề công bố theo 04 §1.
+- **Seed và thứ tự:** seed là `V8-011-LOCK-20261109`. Trong mỗi PDF, trang được xếp theo sha256 tăng dần của chuỗi `seed:pdf_sha256:page`, nên không phụ thuộc bộ sinh ngẫu nhiên của ngôn ngữ nào.
 
-| PDF | Trang ứng viên | Slot | Producer |
-| --- | ---: | ---: | --- |
-| AAA 2020 | 157/232 | 67.787 | iLovePDF |
-| ABT 2020 | 2/43 | 40 | (trống) |
-| ACL 2022 | 0/24 | 0 | SECnvtToPDF V1.0 |
-| AGR 2020 | 83/84 | 32.150 | 3-Heights PDF Security Shell / pdcat |
-| AGR 2022 | 101/102 | 33.448 | (trống) |
-| ASM 2022 | 94/164 | 29.912 | GPL Ghostscript 9.53.3 |
-| BCE 2022 | 62/62 | 23.460 | pdf |
-| BHN 2022 | 72/75 | 28.497 | PDF24 |
-| VIC 2020 | 149/152 | 130.393 | iLovePDF |
+### 7.2 Quy mô và trạng thái từng PDF
 
-### 7.2 Quy trình xác minh đề xuất (DRAFT, cần khóa trước khi đo)
+Nguồn số liệu là inventory [`v8_011_text_layer_inventory_v2_20261109.json`](../../scratch/v8/v8_011_text_layer_inventory_v2_20261109.json), sha256 `129f18dc87b1f83cc5ee7453454ce9ffddc87bda4f7e399b1270dde31632bf96`, chạy tại `2af5454`. Bản `..._2af5454_...` trùng bytes. Một trang là `CANDIDATE` khi có chữ hiển thị (không phải lớp OCR ẩn), mọi font tổ hợp đều có ToUnicode, và không có chẩn đoán hỏng. Đây vẫn chỉ là ứng viên, chưa phải GT.
 
-1. **Khóa trước khi xem kết quả OCR:** danh sách trang, seed lấy mẫu, α = 0,05, k và mệnh đề công bố theo 04 §1.
-2. **Xác minh theo producer:** với mỗi producer, người duyệt so text layer với ảnh render trên mẫu trang ngẫu nhiên (seed đã khóa) và ghi sai lệch theo loại slot. Producer có sai lệch hệ thống thì loại cả nhóm. Re-encode của iLovePDF, Ghostscript và PDF24 có thể làm hỏng ToUnicode.
-3. **Kiểm ký tự:** `scripts/check_vietnamese_charset.py` loại trang có dấu chưa tổ hợp hoặc code point lạ sau NFC.
-4. **Phạm vi hiển thị:** chỉ tính span text layer có glyph thấy được trên ảnh render (loại chữ bị cắt, chữ trắng, lớp ẩn). Chữ trong ảnh không có text layer nằm ngoài mẫu số và báo riêng.
-5. **Ghép trước khi căn:** thứ tự text layer khác thứ tự đọc của OCR. Phải ghép dòng OCR với span text layer theo bbox trước khi căn ký tự cho `DSER_strict`, nếu không lỗi thứ tự sẽ bị đếm thành lỗi xóa slot.
-6. **Split theo §2:** AGR, ASM và VIC đã có exposure, nên chỉ dùng cho development. AAA, BCE và BHN là ứng viên holdout nếu audit exposure xác nhận. ACL không có text layer.
-7. **Design effect:** ước lượng ρ theo cụm trang trên development. Với khoảng 410–430 slot mỗi trang, holdout chỉ có AAA (67.787 slot) cần ρ ≤ 0,0029 để N_eff ≥ 29.956. Holdout gồm AAA, BCE và BHN (119.744 slot) cần ρ ≤ 0,0073. Không ước lượng được ρ thì chỉ công bố mệnh đề trong mẫu.
-8. **Identity:** đo trên output mới của identity production hiện tại, tức khóa `BASELINE-V8-20261109-003` (detector PP-OCRv6_medium_det, fingerprint extraction `ccdbe84a3691d645`). Không dùng output của khóa 002 (PP-OCRv4) để kết luận về production hiện tại.
+| PDF | Producer | Trang ứng viên | Slot | Khóa v1 | Worklist sàng lọc |
+| --- | --- | ---: | ---: | --- | --- |
+| AAA 2020 | iLovePDF | 157/232 | 67.787 | Cần sàng lọc | 8 trang, 3.731 slot |
+| ABT 2020 | (trống) | 2/43 | 40 | Loại: dưới 2.995 slot | — |
+| ACL 2022 | SECnvtToPDF V1.0 | 0/24 | 0 | Loại: không có text layer | — |
+| AGR 2020 | 3-Heights PDF Security Shell / pdcat | 83/84 | 32.150 | Cần sàng lọc | 10 trang, 3.132 slot |
+| AGR 2022 | (trống) | 101/102 | 33.448 | Cần sàng lọc | 11 trang, 3.097 slot |
+| ASM 2022 | GPL Ghostscript 9.53.3 | 94/164 | 29.912 | Cần sàng lọc | 9 trang, 3.022 slot |
+| BCE 2022 | pdf | 62/62 | 23.460 | Cần sàng lọc | 4 trang, 3.226 slot |
+| BHN 2022 | PDF24 | 72/75 | 28.497 | Cần sàng lọc | 12 trang, 3.511 slot |
+| VIC 2020 | iLovePDF | 149/152 | 130.393 | Cần sàng lọc | 4 trang, 4.475 slot |
+
+Tổng cộng 7 PDF cần sàng lọc, với 58 trang và 24.194 slot. Trước sàng lọc, development còn 345.647 slot trên 717 trang có slot. Mỗi trang là một cụm: cỡ cụm trung bình m̄ = 482,07, cỡ cụm có trọng số m_w = Σm²/Σm = 835,03. Danh sách trang của từng worklist và thứ tự đầy đủ nằm trong khóa.
+
+### 7.3 Tiêu chí chọn mẫu cho mệnh đề ≥ 99,99%
+
+1. **Phạm vi:** báo cáo thường niên tiếng Việt dạng PDF born-digital, luồng OCR trên ảnh render của chính trang đó, profile `unified_gpu_full_ocr`. Không ngoại suy sang scan hay luồng native.
+2. **Đơn vị và cụm:** đơn vị là slot `DSER_strict` trên text layer sau NFC. Cụm là trang. Báo thêm k và N theo từng công ty.
+3. **Điều kiện vào mẫu**, xét lần lượt:
+   - PDF có ít nhất 2.995 slot ứng viên và đã được sàng lọc chấp nhận (§7.4 B).
+   - Trang là `CANDIDATE`, có ít nhất một slot, và text layer không còn dấu chưa tổ hợp sau NFC (`diacritic_acceptance.py::uncomposed_vietnamese_marks`, cùng chẩn đoán `UnicodeNormalizer.analyze` mà inventory đã dùng).
+   - Span có glyph thấy được trên ảnh render: không dùng render mode 3, nằm trong CropBox, không bị ảnh đè và có màu khác nền. Chữ nằm trong ảnh mà không có text layer thì ở ngoài mẫu số và được báo riêng.
+4. **Lấy toàn bộ, không lấy mẫu con:** mẫu đo gồm mọi slot đủ điều kiện của partition. Không chọn hay bỏ trang theo kết quả OCR. Sau khi đã xem kết quả đo thì không loại thêm PDF hay trang nào.
+5. **Cỡ mẫu:** custodian kiểm trước khi chạy OCR và chỉ dùng text layer. Custodian tính N và m_w của holdout. Holdout hợp lệ khi N ≥ 29.956 và ⌊N / DEFF⌋ ≥ 29.956, với DEFF = 1 + (m_w − 1)·ρ_U. Ở đây ρ_U là cận trên 95% của tương quan nội cụm theo trang, ước lượng trên development. Nếu thiếu slot thì bổ sung PDF trước khi chạy OCR. Ví dụ: với m_w = 835 và ρ_U = 0,005 thì DEFF ≈ 5,17, nên cần N khoảng 154.900 slot.
+6. **Thiếu ρ:** nếu không ước lượng được ρ trên development, chẳng hạn vì quá ít lỗi, thì chỉ công bố mệnh đề trong mẫu. Mệnh đề tổng quát khi đó giữ `NOT_EVALUATED` (04 §4).
+7. **Ghép trước khi căn:** ghép dòng OCR với span text layer theo bbox rồi mới căn ký tự. Nhờ vậy lỗi thứ tự đọc không bị đếm thành lỗi xóa slot. Slot GT không có dòng OCR tương ứng vẫn tính là lỗi xóa.
+8. **Identity:** đo trên output mới của identity đã khóa tại thời điểm đo. Production hiện là khóa `BASELINE-V8-20261109-003` (PP-OCRv6_medium_det, fingerprint extraction `ccdbe84a3691d645`). Không dùng output của khóa 002 (PP-OCRv4).
+
+### 7.4 Cơ chế người duyệt
+
+**A. Độc lập.** Người duyệt chỉ quyết dựa trên ảnh render của đúng PDF (khớp sha256), phóng to tới khi đọc rõ dấu. Màn hình duyệt không hiện confidence, nguồn của chuỗi hay tên engine.
+
+**B. Sàng lọc text layer**, làm trước khi đo và không xem output OCR. Với mỗi PDF cần sàng lọc, người duyệt đi theo worklist trong khóa. Trên từng trang, người duyệt so mọi chữ có slot dấu của text layer với ảnh và ghi một trong ba kết quả:
+- `MATCH`;
+- `MISMATCH`, kèm nguyên nhân: ToUnicode, font nhúng, ký tự bị thay, thiếu dấu, thừa dấu hoặc chữ ẩn;
+- `UNRESOLVED`. Chữ loại này không tính vào 2.995 slot; người duyệt tiếp tục với các trang sau theo `order` trong khóa.
+
+Kết luận cho từng PDF:
+- 0 `MISMATCH` trên ít nhất 2.995 slot `MATCH`: chấp nhận PDF. Khi đó cận trên 95% của tỷ lệ sai text layer là 10⁻³.
+- Có ít nhất một `MISMATCH` đã xác nhận: loại cả PDF và ghi nguyên nhân theo producer. Muốn chỉ loại theo font thay vì cả PDF thì phải có khóa v2.
+
+Sai lệch được ghi theo producer để biết phần mềm nào làm hỏng text layer. Các bước re-encode của iLovePDF, Ghostscript và PDF24 có thể làm hỏng ToUnicode.
+
+**C. Phân xử chênh lệch**, làm sau lần chạy đo. Người duyệt xem mọi slot mà OCR khác text layer: lỗi `DSER_strict`, `base_mismatch_slots`, dấu thừa và dấu chưa tổ hợp. Màn hình hiện crop ảnh và hai chuỗi A/B theo thứ tự lấy từ seed, không ghi bên nào là OCR. Quyết định được tính như sau:
+- Text layer đúng: tính là lỗi OCR.
+- OCR đúng: tính là lỗi GT. Sửa tham chiếu tại slot đó và đếm số lỗi GT riêng.
+- Cả hai đều sai: tính là lỗi OCR, đồng thời sửa tham chiếu.
+- `UNRESOLVED`: tính là lỗi OCR để giữ thế bảo thủ, và báo riêng.
+
+Sau khi phân xử không loại PDF hay trang nào. Slot mà OCR trùng text layer thì không qua phân xử. Vì vậy, nếu cả hai cùng sai giống hệt nhau thì không phát hiện được. Rủi ro đó chỉ được giới hạn bởi cận 10⁻³ của bước sàng lọc và phải được công bố.
+
+**D. Kiểm lại mù**, vì chỉ có một người duyệt. Sau ít nhất 7 ngày, người duyệt duyệt lại 10% các quyết định sàng lọc và phân xử (tối thiểu 50 mục), không xem quyết định cũ. Mẫu được chọn theo sha256 tăng dần của `seed:recheck:<decision_id>`. Báo tỷ lệ nhất quán. Mục nào lệch thì duyệt lần ba; nếu vẫn lệch thì chuyển thành `UNRESOLVED`.
+
+**E. Hồ sơ.** Mỗi quyết định là một dòng JSONL gồm: `decision_id`, `pdf_sha256`, trang, bbox và offset ký tự trong text layer, sha256 của crop, thứ tự A/B đã hiện, quyết định, nguyên nhân, người duyệt, thời điểm có timezone (Asia/Bangkok) và commit của công cụ. File được seal bằng sha256 rồi ghi vào khóa phiên bản kế tiếp. Không sửa file đã seal; cần sửa thì tạo file mới.
+
+**F. Custodian và holdout mới.** Custodian thu thập PDF born-digital tiếng Việt của các công ty ngoài AAA, ABT, ACL, AGR, ASM, BCE, BHN và VIC. Các PDF này được lưu ngoài `inputs/` và ngoài repo, kèm manifest (sha256, nguồn, ngày, timezone) ghi trước mọi lần chạy OCR. Các bước tiếp theo, theo thứ tự:
+1. Chạy `inventory_text_layers.py` trên các PDF đó.
+2. Tạo khóa holdout bằng `lock_text_layer_procedure.py --partition holdout --exclude-locked <khóa development>`. Lệnh này từ chối PDF trùng bytes; trùng công ty thì custodian tự kiểm.
+3. Sàng lọc theo mục B.
+4. Kiểm cỡ mẫu theo §7.3 mục 5.
+5. Chạy OCR **một lần** trên identity đã khóa (04 §7).
+
+Holdout nào đã bị xem hoặc dùng để chỉnh thì chuyển thành development và ghi exposure.
+
+**G. Giới hạn phải công bố.** Chỉ có một người duyệt, và người đó cũng là người phát triển, nên không đo được đồng thuận giữa người duyệt. Lỗi trùng nhau giữa OCR và text layer không phát hiện được. Quy trình chỉ áp dụng cho PDF born-digital.
+
+### 7.5 Còn thiếu trước khi đo
+
+- Người duyệt sàng lọc 7 PDF development (58 trang, 24.194 slot). Đây là phần còn lại của V8-011.
+- Các công cụ chưa có: lọc span hiển thị, ghép dòng OCR với span theo bbox, phiếu sàng lọc và phiếu phân xử, ước lượng ρ kèm cận trên. `native_diacritic_replay.py` đo luồng native, không phải bộ ghép OCR với text layer. Bản DRAFT trước đã ghi nhầm vai trò của `check_vietnamese_charset.py`: script này kiểm từ điển ký tự của model, không kiểm trang.
+- Holdout mới chưa được thu thập.

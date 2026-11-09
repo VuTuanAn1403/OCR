@@ -400,9 +400,14 @@
           "path": "benchmark/ground_truth_tools/synthetic_diacritics.py",
           "symbol": "build",
           "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/lock_text_layer_procedure.py",
+          "symbol": "build_lock",
+          "label": "VERIFIED"
         }
       ],
-      "note": "Có schema, CLI intake/seal và GT tổng hợp chỉ cho stress test (V8-010); chưa có GT độc lập cho 9 PDF; nhãn 0/38, keyword 0/12, L5 0/13, công thức 0/3; chưa có công cụ gán nhãn trực quan. 09/11: người dùng chọn nguồn (b) text layer born-digital (V8-013); kiểm kê có 720/938 trang ứng viên, 345.687 slot, chưa xác minh nên chưa là GT."
+      "note": "Có schema, CLI intake/seal và GT tổng hợp chỉ cho stress test (V8-010); chưa có GT độc lập cho 9 PDF; nhãn 0/38, keyword 0/12, L5 0/13, công thức 0/3; chưa có công cụ gán nhãn trực quan. 09/11: nguồn (b) và người duyệt đã chọn (V8-013); quy trình text layer LOCKED v1, 9 PDF là development, chưa trang nào được xác minh nên chưa là GT."
     },
     {
       "id": "G03",
@@ -626,7 +631,7 @@
   "diacritic_gate": {
     "target": "99,99%",
     "status": "NOT_EVALUATED",
-    "blocker": "Chưa có GT độc lập: cần >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788; design effect chưa khóa. Nguồn (b) đã chọn: 345.687 slot ứng viên text layer, chờ khóa quy trình xác minh, người duyệt và split (V8-011/013). Mã cổng đã dùng cận Clopper-Pearson và DSER_strict (V8-020..022).",
+    "blocker": "Chưa có GT độc lập: cần N_eff >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788. Nguồn (b): quy trình LOCKED v1 (GROUND_TRUTH_PROTOCOL §7); 9 PDF inputs là development, 345.647 slot chưa xác minh. Chờ người duyệt sàng lọc 7 PDF, công cụ ghép bbox và ước lượng rho, holdout PDF mới. Mã cổng đã dùng cận Clopper-Pearson và DSER_strict (V8-020..022).",
     "candidate_text_layer_slots": {
       "value": 345687,
       "scope": "scripts/inventory_text_layers.py trên 9 PDF inputs/ ngày 2026-11-09 tại 2af5454: 720/938 trang CANDIDATE; ứng viên chưa xác minh, không phải GT"
@@ -785,7 +790,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "70a49441586ff0ddd8af749ba193e3ce9a9f57b1571ee57be2afc5beef1b2a24",
+      "sha256": "4b94361a490b1bfc0683a81f06b95659d3d6332df3e3aa78d2993705211cc69c",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -797,7 +802,7 @@
         },
         {
           "path": "cai tien v2/02_KIEM_TOAN_KHOANG_TRONG.md",
-          "sha256": "be6ad60096449370b6f880aca6c6454209154ae09d350dfdc5adb7c07a894485"
+          "sha256": "b4903800dee2bb4cd0a2f3df1122fec5b0e41bb08ed3b257582edd9132c78614"
         },
         {
           "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
@@ -805,7 +810,7 @@
         },
         {
           "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
-          "sha256": "56a0f338cf7fba327e6e5c357b69e6ed64b8d97ec123c9430e5e85dd36c221da"
+          "sha256": "40958a650fedf427f67200b4a9a3a0fe5ebba9b4afb5084fb852ada919c5ca35"
         },
         {
           "path": "cai tien v2/05_HOP_DONG_BENCHMARK_ADAPTER.md",
@@ -837,7 +842,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "24e3bba7c455a2e657e04c7a82a8defae6446783487008e988588d75dbf0af9d"
+          "sha256": "efe44dd915253e89ebf37670b643e5d77ce06baa897341f8827596c8c9ea8104"
         }
       ]
     }

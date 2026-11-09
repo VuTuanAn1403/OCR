@@ -60,7 +60,7 @@ Mốc kiểm toán: HEAD `08f7602`, ngày 08/11/2026. Nguồn trạng thái duy 
   - L5 0/13;
   - công thức 0/3.
 - Người dùng đã xác nhận không có người gán nhãn A/B, và AI không được làm GT. Các lựa chọn còn lại nằm ở [04](04_DAC_TA_DO_DAU_9999.md) §4.
-- Quyết định ngày 09/11 (V8-013): chọn nguồn (b), text layer born-digital. `scripts/inventory_text_layers.py` đếm được 720/938 trang ứng viên với 345.687 slot. Đây là ứng viên chưa xác minh. Người duyệt và split chưa có; quy trình DRAFT ở `docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md` §7.
+- Quyết định ngày 09/11 (V8-013): chọn nguồn (b), text layer born-digital. `scripts/inventory_text_layers.py` đếm được 720/938 trang ứng viên với 345.687 slot. Đây là ứng viên chưa xác minh. Quy trình xác minh LOCKED v1 ngày 09/11 ở `docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md` §7: người dùng là người duyệt kiêm custodian, 9 PDF là development. Chưa trang nào được sàng lọc.
 
 **G03 — Layout.**
 - Đã có heuristic gutter/cột (`region_tree`), nối cột (`column_continuity`), đồ thị thứ tự đọc (`reading_order_graph`), header/footer (`document_furniture`) và caption (`figures`).

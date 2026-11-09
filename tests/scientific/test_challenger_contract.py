@@ -126,13 +126,14 @@ def test_prediction_file_must_cover_the_frozen_units_exactly_once():
     assert duplicate["status"] == "INCOMPLETE" and "record 1: duplicates record 0" in duplicate["problems"]
 
 
-def test_model_catalog_is_well_formed_and_nothing_is_downloadable_yet():
+def test_model_catalog_is_well_formed_and_only_the_pinned_candidate_is_downloadable():
     from benchmark.challengers import catalog
 
     data = catalog.load_catalog()
     assert catalog.validate_catalog(data) == []
     status = catalog.catalog_status(data)
-    assert status and not any(row["download_allowed"] for row in status.values())
+    # 10/11/2026: the user asked to pin Vintern-1B-v3.5 (revision and weights sha256 from the Hub); nothing else.
+    assert [name for name, row in status.items() if row["download_allowed"]] == ["vintern-1b-v3.5"]
     assert "restrictive or conditional licence needs licence_review" in status["doclayout-yolo"]["blockers"]
 
 

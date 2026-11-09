@@ -54,24 +54,60 @@ def test_records_keep_the_raw_string_require_review_and_keep_failures_in_the_den
 
 def test_backend_refuses_unpinned_candidates_and_never_downloads(tmp_path):
     with pytest.raises(backends.BackendUnavailable, match="revision not pinned"):
-        backends.open_backend("vintern-1b-v3.5", tmp_path)
+        backends.open_backend("paddleocr-vl-1.6", tmp_path)
     with pytest.raises(backends.BackendUnavailable, match="not a VLM candidate"):
         backends.open_backend("doclayout-yolo", tmp_path)
+    with pytest.raises(backends.BackendUnavailable, match="hf download 5CD-AI/Vintern-1B-v3_5 --revision b98f263e"):
+        backends.open_backend("vintern-1b-v3.5", tmp_path / "missing")
 
 
-def test_pinned_candidate_needs_matching_local_weights(tmp_path):
+def _pinned(tmp_path, weights_bytes=b"weights", config_bytes=b'{"a": 1}'):
     weights = tmp_path / "weights"
-    weights.mkdir()
-    (weights / "model.safetensors").write_bytes(b"weights")
+    weights.mkdir(exist_ok=True)
+    sha = __import__("hashlib").sha256(weights_bytes).hexdigest()
+    pin = {"revision": "abc123", "repository": "org/model", "download_command": "hf download org/model",
+           "files": {"model.safetensors": {"size": len(weights_bytes), "git_oid": "x", "sha256": sha},
+                     "config.json": {"size": len(config_bytes), "git_oid": backends.git_blob_sha1(config_bytes)},
+                     "README.md": {"size": 3, "git_oid": "y"}}}
+    pins = tmp_path / "pins"
+    pins.mkdir(exist_ok=True)
+    (pins / "local-vlm.json").write_text(json.dumps(pin), encoding="utf-8")
     entry = {"id": "local-vlm", "experiment_layer": "VLM", "code_licence": "MIT", "weights_licence": "MIT",
-             "licence_label": "VERIFIED", "revision": "abc123", "weights_sha256": "0" * 64}
+             "licence_label": "VERIFIED", "revision": "abc123", "weights_sha256": sha}
     catalog_path = tmp_path / "catalog.json"
     catalog_path.write_text(json.dumps({"candidates": [entry]}), encoding="utf-8")
-    with pytest.raises(backends.BackendUnavailable, match="differs from the catalog"):
-        backends.open_backend("local-vlm", weights, catalog_path)
-    entry["weights_sha256"] = backends.weights_sha256(weights)
+    return weights, pins, catalog_path, entry
+
+
+def test_local_files_must_match_the_pin_before_any_model_code_runs(tmp_path):
+    weights, pins, catalog_path, entry = _pinned(tmp_path)
+    calls = []
+    factory = lambda directory, pin: calls.append(pin["revision"]) or "backend"  # noqa: E731
+    (weights / "model.safetensors").write_bytes(b"weights")
+    with pytest.raises(backends.BackendUnavailable, match="missing config.json"):
+        backends.open_backend("local-vlm", weights, catalog_path, pins, factory)
+    (weights / "config.json").write_bytes(b'{"a": 2}')
+    with pytest.raises(backends.BackendUnavailable, match="config.json: hash differs"):
+        backends.open_backend("local-vlm", weights, catalog_path, pins, factory)
+    (weights / "config.json").write_bytes(b'{"a": 1}')
+    assert calls == []  # nothing was built while a file did not match
+    assert backends.open_backend("local-vlm", weights, catalog_path, pins, factory) == "backend"  # README is optional
+    assert calls == ["abc123"]
+    entry["revision"] = "other"
     catalog_path.write_text(json.dumps({"candidates": [entry]}), encoding="utf-8")
-    with pytest.raises(backends.BackendUnavailable, match="no inference code"):
-        backends.open_backend("local-vlm", weights, catalog_path)
-    with pytest.raises(backends.BackendUnavailable, match="never downloaded"):
-        backends.open_backend("local-vlm", Path(tmp_path / "missing"), catalog_path)
+    with pytest.raises(backends.BackendUnavailable, match="pin and catalog disagree"):
+        backends.open_backend("local-vlm", weights, catalog_path, pins, factory)
+
+
+def test_tile_grid_follows_the_model_card():
+    assert backends.tile_grid(1190, 1684, max_num=6) == (2, 3)  # portrait A4 at 144 DPI
+    assert backends.tile_grid(2382, 1684, max_num=6) == (3, 2)  # landscape spread
+    assert backends.tile_grid(448, 448, max_num=6) == (1, 1)
+
+
+def test_pinned_vintern_matches_the_catalog():
+    pin = json.loads((backends.PINS / "vintern-1b-v3.5.json").read_text(encoding="utf-8"))
+    entry = backends.candidate("vintern-1b-v3.5")
+    assert pin["revision"] == entry["revision"] and pin["files"]["model.safetensors"]["sha256"] == entry["weights_sha256"]
+    assert pin["custom_code"] == ["configuration_intern_vit.py", "configuration_internvl_chat.py", "conversation.py",
+                                  "modeling_intern_vit.py", "modeling_internvl_chat.py"]

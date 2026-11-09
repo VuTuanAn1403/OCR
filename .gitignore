@@ -139,3 +139,6 @@ Noi dung nghien cuu.pdf
 Doi_Chieu/
 Test case/
 
+
+# v8 challenger weights (downloaded by the user, verified against benchmark/challengers/vlm/pins/)
+models/v8/

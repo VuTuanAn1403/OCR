@@ -19,6 +19,9 @@ from benchmark.challengers.canonical import SCHEMA, validate_prediction
 PROMPT_V1 = ("Transcribe all text on this Vietnamese annual-report page exactly as printed, "
              "line by line, keeping every diacritic, digit, sign and separator. Do not translate, "
              "summarise or correct. Write tables row by row with cells separated by ' | '.")
+PROMPT_VI_V1 = ("Chép lại nguyên văn toàn bộ chữ trong ảnh trang báo cáo này theo từng dòng, giữ đúng dấu tiếng Việt, "
+                "chữ số, dấu và ký hiệu. Không dịch, không tóm tắt, không sửa. Bảng ghi từng hàng, các ô cách nhau bằng ' | '.")
+PROMPTS = {"en": PROMPT_V1, "vi": PROMPT_VI_V1}
 
 
 class VlmBackend(Protocol):
@@ -53,13 +56,13 @@ def page_record(document_id: str, page: int, size, image_png: bytes, backend: Vl
 
 
 def run(document_id: str, selected: Iterable[Dict], render: Callable[[int], tuple], product_text: Callable[[int], str],
-        backend: VlmBackend, run_id: str) -> List[Dict]:
+        backend: VlmBackend, run_id: str, prompt: str = PROMPT_V1) -> List[Dict]:
     """Records for the selected pages only; each record is checked against the canonical contract."""
     records = []
     for entry in selected:
         image_png, size = render(entry["page"])
         record = page_record(document_id, entry["page"], size, image_png, backend, run_id, entry["reasons"],
-                             product_text(entry["page"]))
+                             product_text(entry["page"]), prompt)
         problems = validate_prediction(record, "page_text")
         if problems:
             raise ValueError(f"page {entry['page']}: non-canonical record: {problems}")

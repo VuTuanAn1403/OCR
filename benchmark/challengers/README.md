@@ -23,7 +23,7 @@ Thiếu bất kỳ trường identity nào thì manifest là `INCONCLUSIVE`, và
 
 ## Chưa có
 
-- Revision, sha weights và VRAM đo được của từng ứng viên: ghi khi chọn ứng viên cho một pha; hiện 0/8 ứng viên được phép tải.
-- Adapter cho từng tầng `<tầng>/<ứng viên>/`: từ P3 trở đi, sau khi P1 khóa GT và protocol. Đã có thứ tự đọc rule-based và khung VLM; VLM chưa có mã suy luận cho model cụ thể nào vì chưa ứng viên nào được ghim.
+- Revision, sha weights và VRAM đo được của từng ứng viên: ghi khi chọn ứng viên cho một pha. Từ 10/11/2026 có 1/8 ứng viên được phép tải: `vintern-1b-v3.5`, ghim theo yêu cầu của người dùng (xem [`vlm/README.md`](vlm/README.md)); VRAM của nó chưa đo.
+- Adapter cho từng tầng `<tầng>/<ứng viên>/`: từ P3 trở đi, sau khi P1 khóa GT và protocol. Đã có thứ tự đọc rule-based và VLM với mã suy luận cho Vintern-1B-v3.5; model này chưa chạy lần nào.
 
 Chất lượng: `NOT_EVALUATED`.

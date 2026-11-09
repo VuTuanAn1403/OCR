@@ -34,5 +34,5 @@ Mục tiêu người dùng giao là đưa đủ 38 mục backlog lên `DONE`. M�
 1. Duyệt và khóa v2 các lựa chọn ở protocol §7.6, rồi sàng lọc 7 PDF bằng phiếu đã dựng → seal → đo → phân xử.
 2. Gán nhãn GT bằng `label_structured_gt.py`: detection (V8-060), layout/thứ tự đọc (V8-070/071), bảng (V8-080); ưu tiên worklist trong các báo cáo V8-060/071.
 3. Khi muốn sửa lỗi §4.1: đổi `src/`, khóa baseline mới và chạy batch mới.
-4. Ghim revision và sha weights cho một VLM hoặc recognizer, và cho phép tải (V8-065/090/095).
+4. VLM: Vintern-1B-v3.5 đã ghim (revision `b98f263e`, cần `trust_remote_code`); bạn tự tải, xem mã repo và chạy theo [`vlm/README.md`](../../benchmark/challengers/vlm/README.md). Recognizer, layout, parser (V8-065/070/095) chưa ghim.
 5. Push các commit mới khi người dùng duyệt.

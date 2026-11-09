@@ -1,0 +1,80 @@
+{
+  "schema_version": "ocr-v8-vlm-pin-v1",
+  "candidate": "vintern-1b-v3.5",
+  "repository": "5CD-AI/Vintern-1B-v3_5",
+  "revision": "b98f263eab246eb5269ade64edbdca8a887dc44d",
+  "licence": "MIT (model card cardData.license, 10/11/2026)",
+  "source": "https://huggingface.co/api/models/5CD-AI/Vintern-1B-v3_5/tree/b98f263eab246eb5269ade64edbdca8a887dc44d?recursive=true",
+  "retrieved_on": "2026-11-10",
+  "custom_code": [
+    "configuration_intern_vit.py",
+    "configuration_internvl_chat.py",
+    "conversation.py",
+    "modeling_intern_vit.py",
+    "modeling_internvl_chat.py"
+  ],
+  "download_command": "hf download 5CD-AI/Vintern-1B-v3_5 --revision b98f263eab246eb5269ade64edbdca8a887dc44d --local-dir models/v8/vintern-1b-v3_5",
+  "files": {
+    ".gitattributes": {
+      "size": 1519,
+      "git_oid": "a6344aac8c09253b3b630fb776ae94478aa0275b"
+    },
+    "README.md": {
+      "size": 9501,
+      "git_oid": "b8266c3f3115f0c9adebc95560de1fbd7f1375ff"
+    },
+    "added_tokens.json": {
+      "size": 790,
+      "git_oid": "dd972e4080e791eab591742c1168ee7fd6279146"
+    },
+    "config.json": {
+      "size": 5300,
+      "git_oid": "2668519f652eddcc2abbb56a52518d38c4f88887"
+    },
+    "configuration_intern_vit.py": {
+      "size": 5548,
+      "git_oid": "7e630c456eb9cf350e55bf850c3ff72f445a7e17"
+    },
+    "configuration_internvl_chat.py": {
+      "size": 3885,
+      "git_oid": "799209432caf749e77de4c889ec03fe6a32fcdf9"
+    },
+    "conversation.py": {
+      "size": 16385,
+      "git_oid": "76fcea7f331de42b6aed7e39fdf80728f9784b7f"
+    },
+    "generation_config.json": {
+      "size": 129,
+      "git_oid": "cd9a20c20b3f0f173cff8cae0392521c06342afa"
+    },
+    "merges.txt": {
+      "size": 1670344,
+      "git_oid": "8488ce08857fb9abc0dd05fd9f399d6d0234686f"
+    },
+    "model.safetensors": {
+      "size": 3752849256,
+      "git_oid": "22459d7b61fb9cb289b1f19f6ac2471205a70358",
+      "sha256": "296a16a6bf28e6d3f0fb9298deba70b3cfa1d7519f4aa326e2f862bf2e63be05"
+    },
+    "modeling_intern_vit.py": {
+      "size": 18063,
+      "git_oid": "1c5c043a4b860720b3b6e55107e8e6ecf0c573de"
+    },
+    "modeling_internvl_chat.py": {
+      "size": 15594,
+      "git_oid": "41f48cd5cb907e025725fc42ac819cf3f03c01b5"
+    },
+    "special_tokens_map.json": {
+      "size": 744,
+      "git_oid": "74ea6ef5bd52e11d45791fbab7cca3dc984942fa"
+    },
+    "tokenizer_config.json": {
+      "size": 9023,
+      "git_oid": "096d822badcaf73b141f570f46642ce486d39dd5"
+    },
+    "vocab.json": {
+      "size": 3383407,
+      "git_oid": "6bce3a0a3866c4791a74d83d78f6824c3af64ec3"
+    }
+  }
+}

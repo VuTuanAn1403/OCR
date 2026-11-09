@@ -30,15 +30,36 @@ def test_numeric_guard_counts_changed_numbers_but_not_restored_dashes():
     assert counts["provenance_missing"] == 1  # no source_id and no confidence_source
 
 
-def test_table_cells_are_traced_to_phase_a_lines():
-    page = {"page_num": 1, "evidence_blocks": [
-        {"status": "UNRESOLVED", "text": "12,5", "bbox": [10, 10, 40, 20]},
-        {"status": "UNRESOLVED", "text": "7%", "bbox": [60, 10, 80, 20]}]}
+def test_table_cells_are_traced_to_the_extraction_source_lines():
+    evidence = {"items": [{"source_id": "s1", "text_raw": "12,5", "bbox": [10, 10, 40, 20]},
+                          {"source_id": "s2", "text_raw": "7%", "bbox": [60, 10, 80, 20]},
+                          {"source_id": "s3", "text_raw": "Thực hiện 2020", "bbox": [200, 10, 260, 20]},
+                          {"source_id": "s4", "text_raw": "con ? CTCP", "bbox": [5, 50, 45, 60]}]}
+    # Lines kept only as page evidence are not the extraction's sources and are ignored.
+    page = {"page_num": 1, "evidence_blocks": [{"status": "UNRESOLVED", "text": "2016", "bbox": [5, 30, 45, 40]}],
+            "tables": [{"table_id": "t1", "provenance": {"source_occurrence_mapping": {
+                "s1": [{"row_idx": 0, "col_idx": 0}], "s3": [{"row_idx": 2, "col_idx": 0}]}}}]}
     table = {"kind": "t", "table_id": "t1", "source": "heuristic", "cells": [
-        {"row": 0, "col": 0, "text_raw": "12,5", "bbox": [5, 5, 45, 25]},      # traced
+        {"row": 0, "col": 0, "text_raw": "12,5", "bbox": [5, 5, 45, 25]},      # traced by box and mapping
         {"row": 0, "col": 1, "text_raw": "", "bbox": [55, 5, 85, 25]},         # the line's 7% is missing
-        {"row": 1, "col": 0, "text_raw": "2016", "bbox": [5, 30, 45, 40]}]}    # no phase-A line here
-    counts = audit.audit_page(page, {"items": [table]}, "DOC", _examples())
-    assert counts["table_cells"] == 3 and counts["numeric_cells_heuristic"] == 2
-    assert counts["cells_with_untraced_numeric_chars"] == 1 and counts["cells_without_phase_a_line"] == 1
-    assert counts["cells_with_numeric_chars_missing_from_cell"] == 1 and counts["numeric_chars_missing_from_cell"] == 2
+        {"row": 1, "col": 0, "text_raw": "2016", "bbox": [5, 30, 45, 40]},     # no source line here
+        {"row": 2, "col": 0, "text_raw": "Thực hiện 2020", "bbox": [5, 5, 45, 25]},  # repeated box, traced by mapping
+        {"row": 3, "col": 0, "text_raw": "con - CTCP", "bbox": [5, 50, 45, 60]}]}    # a restored dash is no number
+    counts = audit.audit_page(page, {"items": [table], "text_evidence": evidence}, "DOC", _examples())
+    assert counts["table_cells"] == 5 and counts["numeric_cells_heuristic"] == 3
+    assert counts["cells_with_untraced_numbers"] == 1 and counts["untraced_numbers"] == 1
+    assert counts["numeric_cells_repeating_an_earlier_cell_box_heuristic"] == 1
+    assert counts["numeric_cells_without_source_mapping_heuristic"] == 1
+    # Only the empty cell lacks its line's 7%; the repeated box is not read as missing 12,5.
+    assert counts["cells_with_numbers_missing_from_cell"] == 1 and counts["numbers_missing_from_cell"] == 1
+    assert counts["cells_with_numbers_missing_from_cell_heuristic"] == 1
+    assert counts["numbers_missing_from_table"] == 1  # 7% is in no cell of the table
+
+
+def test_a_number_moved_to_another_cell_is_not_missing_from_the_table():
+    evidence = {"items": [{"source_id": "s1", "text_raw": "06/2011", "bbox": [10, 10, 40, 20]}]}
+    table = {"kind": "t", "table_id": "t1", "source": "docling_tableformer", "cells": [
+        {"row": 0, "col": 0, "text_raw": "An Phát", "bbox": [5, 5, 45, 25]},
+        {"row": 0, "col": 1, "text_raw": "06/2011", "bbox": [50, 5, 90, 25]}]}
+    counts = audit.audit_page({"page_num": 1}, {"items": [table], "text_evidence": evidence}, "DOC", _examples())
+    assert counts["numbers_missing_from_cell"] == 2 and counts["numbers_missing_from_table"] == 0

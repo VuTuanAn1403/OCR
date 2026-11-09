@@ -25,7 +25,10 @@ Mục tiêu người dùng giao là đưa đủ 38 mục backlog lên `DONE`. M�
 ## Phát hiện còn mở
 
 - Đặc tả 13 §4.1: 3.652 khối chữ trong ảnh bị pha A loại (confidence thấp, ảo giác) chỉ còn trong `pages/*.json`, không vào `extraction.json` (671/938 trang). Sửa phải đổi `src/` và identity.
-- Bảng: 2.296/18.652 ô số có ký tự không truy được về dòng pha A tại vị trí ô (heuristic 349/516). Cần xem bằng mắt.
+- Bảng (audit v2, bản r1 báo nhầm 2.296 ô do đối chiếu `evidence_blocks`):
+  - Bảng heuristic chép bbox của ô đầu hàng cho cả hàng: 315/513 ô có số; 453 ô thiếu ánh xạ nguồn. Lỗi nằm ở `src/ocr_structure/document_layout_engine.py:661` (`bbox=r[0].bbox`). Cùng hàm còn sửa chữ số "12…HDPE" thành "D…" (dòng 646–647) và bỏ ô đầu "0"/"-" (dòng 651–652).
+  - Trên toàn bộ bảng, 292/17.259 ô có số không truy được; 287 ô trong số đó thuộc lỗi bbox trên.
+  - 67 số của dòng OCR nằm trong ô nhưng không có ở ô nào của bảng. Cần xem bằng mắt.
 - Cổng cũ (`diacritic_acceptance.py`, `release_gate.py`) đếm lỗi DER_VN_v1, trong khi khóa ghi `DSER_strict`.
 - `src/ocr_document/validation.py` import lười `benchmark.accuracy_first`; `runtime-models.json` ghi nhầm `V8-065`.
 

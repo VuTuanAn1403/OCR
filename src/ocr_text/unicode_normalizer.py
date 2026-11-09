@@ -118,8 +118,10 @@ class UnicodeNormalizer:
              lambda m: f"{m.group(1)} {'Động' if m.group(2)[0].isupper() else 'động'} {m.group(3)}"),
             (r'\b([hH]ội|[đĐ]ại\s+[hH]ội)\s+([ồỒ]ng)\b',
              lambda m: f"{m.group(1)} {'Đồng' if m.group(2)[0].isupper() else 'đồng'}"),
-            (r'\b([cổCổ])\s+([ôÔ]ng)\b',
-             lambda m: f"{m.group(1)} {'Đông' if m.group(2)[0].isupper() else 'đông'}"),
+            # V8-033: "cổ đông" with a lost stroke. Title-case "Ông" stays: after a broken
+            # "Công ty Cổ" line it is the honorific (Mr.), not "đông".
+            (r'\b([cC]ổ)\s+(ông)\b', lambda m: f"{m.group(1)} đông"),
+            (r'\b(CỔ)\s+(ÔNG)\b', lambda m: f"{m.group(1)} ĐÔNG"),
             (r'\b([đĐ]ã)\s+([ưƯ]ợc)\b',
              lambda m: f"{m.group(1)} {'Được' if m.group(2)[0].isupper() else 'được'}"),
             (r'\b([ởỞ]|[tT]ại)\s+([đĐ]o)\b',

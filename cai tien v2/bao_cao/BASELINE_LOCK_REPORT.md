@@ -4,20 +4,33 @@ Mã khóa `BASELINE-V8-20261108-001`, chụp lúc 2026-11-08 13:51:55 UTC. Trạ
 
 Manifest đầy đủ nằm ở `scratch/benchmarks/BASELINE-V8-20261108-001/baseline_lock.json` (chỉ có ở máy local; sha256 `d3276479c549ece023ce13e5dfa491a8324928814c5d485b9d6fd8247d2b28bc`). Lệnh tạo: `.venv/Scripts/python.exe -B scripts/lock_baseline.py`.
 
-## Khóa lại ngày 09/11: `BASELINE-V8-20261109-001`
+## Khóa hiện hành: `BASELINE-V8-20261109-002` (09/11, HEAD `24a5558`)
 
-Phiên 09/11 sửa `src/ocr_keywords` (V8-031, V8-032). Theo mục Giới hạn bên dưới, đổi `src/**/*.py` thì phải tạo khóa mới. Khóa cũ giữ nguyên, không sửa.
+Khóa 001 bên dưới chụp trước một lần sửa `src/ocr_keywords/alias_map.py` lúc 01:58. Lần sửa đó làm analysis đổi thành `556a9a221118acfe`, nên khóa 001 không còn khớp HEAD về analysis/publication. `ocr_identity` vẫn đúng.
 
 | Mục | Giá trị |
 | --- | --- |
-| Trạng thái | **LOCKED**, `problems` rỗng; chụp lúc 2026-11-08 18:52:51 UTC |
-| Manifest | `scratch/benchmarks/BASELINE-V8-20261109-001/baseline_lock.json`, sha256 `80a6855385fa1f824dfa0bd76baeb475bcc1e192d775182573f4cea3353c641d` |
-| Fingerprint extraction / analysis / publication | `20e15efae22917bd` / `3c33830f271e1c29` / `ef784a0f529f0f19` |
-| `portable_identity` | `099b6328986017b31d5957dff7b0b4e214b9cf219b2993aa3b41a8db37bc1412` (đổi, vì gồm fingerprint analysis) |
-| `ocr_identity` 9 PDF | Trùng từng giá trị với khóa 20261108-001 (so bằng script ngày 09/11) |
-| Working tree | 106 bản ghi thay đổi; sha diff phạm vi mã `94ae419d6fd97c34…` |
+| Trạng thái | **LOCKED**, `problems` rỗng; chụp lúc 2026-11-08 19:16:11 UTC; working tree sạch |
+| Manifest | `scratch/benchmarks/BASELINE-V8-20261109-002/baseline_lock.json`, sha256 `750a20e64e9010d3403fd909f9591c4267387b066f787286d69bc59e7e21d5f9` |
+| Fingerprint extraction / analysis / publication | `20e15efae22917bd` / `556a9a221118acfe` / `cb48f3d161a82019` |
+| `portable_identity` | `465518dab5b48d11644a79c00d8989c1cc70af4dc5d8f2c711b357eb37ff1240` |
+| `ocr_identity` 9 PDF | Trùng từng giá trị với khóa 20261108-001 |
 
-Extraction không đổi. Vì vậy prediction baseline của V8-006 so được với cả hai khóa theo `ocr_identity`. Phần analysis (số keyword, companion) phải so với khóa mới.
+Từ V8-033 (09/11, sửa `src/ocr_text/unicode_normalizer.py`), mã làm việc có OCR identity khác khóa này. Prediction V8-006 vẫn gắn với `24a5558`. Lần chạy dự đoán kế tiếp cần commit rồi khóa mới.
+
+## Prediction baseline V8-006
+
+| Mục | Kết quả |
+| --- | --- |
+| Output | `output/v8_baseline_20261109_r2`: 9/9 PDF `SUCCEEDED`, 938/938 trang CUDA, exit 0 |
+| Audit `--validate` | exit 0, `scratch/v8/v8_006_audit_r2_20261109.json`; validation `NEEDS_REVIEW` 0 lỗi |
+| Identity | `check_baseline_identity.py` **MATCH** 9/9 với khóa 002, `scratch/v8/v8_006_identity_r2_20261109.json` |
+| Keyword `literal_v1` | 164 lượt, trùng `keyword_counts.json`; quality `NOT_EVALUATED` |
+| Docling fallback | 3/938 trang `FAILED_FALLBACK` (AAA, ACL, ASM: worker exited). Trang ACL 22 thành công ở 5 lần chạy sau; log pha bị ghi đè nên chưa rõ nguyên nhân |
+
+Lần 1 (`output/v8_baseline_20261109`) dừng với `IdentityMismatch` vì `src/` bị sửa khi batch chạy; giữ làm bằng chứng.
+
+Khóa trung gian `BASELINE-V8-20261109-001` (analysis `3c33830f271e1c29`, manifest sha256 `80a68553…`) đã cũ về analysis; chi tiết ở bản tại `24a5558`.
 
 ## LOCKED nghĩa là gì
 
@@ -91,7 +104,7 @@ Danh sách đủ 36 file nằm trong manifest (`models.sha256`). Revision snapsh
 
 ## Giới hạn
 
-- Chưa chạy OCR. Muốn so challenger ở P3/P4 thì phải chạy baseline OCR đủ 938 trang trên output mới, rồi kiểm `ocr_identity` trong receipt khớp bảng trên.
+- Prediction baseline V8-006 có ở `output/v8_baseline_20261109_r2` (chỉ máy local). Challenger P3/P4 so với output này theo `ocr_identity`.
 - Khóa mất hiệu lực khi đổi bất kỳ thứ nào sau: `src/**/*.py`, `config/profiles.yaml`, registry hoặc file model, lock, gói trong venv worker, PDF đầu vào. Khi đó chạy lại `scripts/lock_baseline.py` để tạo khóa mới; không sửa khóa cũ.
 - GPU có 4 GB VRAM. Đây là ràng buộc khi chọn challenger: VLM từ vài tỷ tham số trở lên ở [01](../01_RADAR_CONG_NGHE_THEO_TANG.md) có thể không chạy được trên máy này (`HYPOTHESIS`, cần đo ở P7).
 - Driver CUDA và cấu hình phần cứng được ghi lại, nhưng không nằm trong `ocr_identity`.

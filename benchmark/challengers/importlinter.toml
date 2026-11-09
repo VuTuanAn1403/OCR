@@ -1,4 +1,7 @@
+# Benchmark-rooted import contracts.
+#
 # V8-041: production code never imports challenger adapters.
+# V8-042: benchmark runners never import src.ocr or the pipeline in-process (last contract).
 #
 # This is a separate import-linter configuration on purpose. pyproject.toml treats
 # `benchmark` as an external package, and import-linter cannot name a subpackage of an
@@ -24,3 +27,14 @@ source_modules = ["src", "ocr_contracts", "ocr_artifacts", "ocr_keywords", "ocr_
                   "ocr_pdf_io", "ocr_recognition", "ocr_layout", "ocr_structure", "ocr_document", "ocr_pipeline",
                   "ocr_workers", "benchmark.scientific_evaluation", "benchmark.qa"]
 forbidden_modules = ["benchmark.challengers"]
+
+# V8-042: benchmark runners reach the product only through `ocr_pipeline.cli.main` in a child
+# process (benchmark/product_run.py). They never import the legacy `src.ocr` namespace, nor the
+# pipeline or its GPU workers in-process.
+[[tool.importlinter.contracts]]
+id = "v8-runners"
+name = "Benchmark runners run the product in a child process and never import src.ocr"
+type = "forbidden"
+source_modules = ["benchmark.product_run", "benchmark.scientific_evaluation.matrix_runner", "benchmark.perf",
+                  "benchmark.evaluate"]
+forbidden_modules = ["src.ocr", "ocr_pipeline", "ocr_workers"]

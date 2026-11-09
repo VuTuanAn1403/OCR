@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 from benchmark.scientific_evaluation.cluster_statistics import company_cluster_bootstrap, holm_adjust
-from src.ocr.runtime.atomic_io import atomic_write_json
+from ocr_artifacts.atomic_io import atomic_write_json
 
 CONFIGURATIONS = ("B0", "F", "A1", "A2", "A3", "A4", "A5", "A6", "V1")
 METRICS = ("cer", "wer", "der", "teds", "f1", "numeric_errors")

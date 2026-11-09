@@ -10,7 +10,7 @@ Căn cứ: Kế hoạch Benchmark-first và So sánh công nghệ (hai DOCX lưu
 | Pha | Tên | Trạng thái | Cổng ra | Backlog |
 | --- | --- | --- | --- | --- |
 | R1 | Tài liệu nền, bản đồ kiến thức, skill | DONE | check_knowledge_map exit 0; hồi quy không có lỗi mới | V8-002, V8-003, V8-004, V8-005, V8-170 |
-| P0 | Khóa baseline | IN_PROGRESS | BASELINE_LOCK_REPORT có đủ identity | V8-001, V8-006 |
+| P0 | Khóa baseline | DONE | BASELINE_LOCK_REPORT có đủ identity | V8-001, V8-006 |
 | P1 | Ground Truth và protocol | BLOCKED | Protocol LOCKED, GT độc lập đủ cỡ mẫu | V8-010, V8-011, V8-012, V8-013 |
 | P2 | Tiền xử lý ảnh IMG-01..06 | TODO | Paired fix/harm từng biến | V8-050 |
 | P3 | Phát hiện chữ DET-01..07 | TODO | TP/FP/FN cùng snapshot | V8-060 |

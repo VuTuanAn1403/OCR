@@ -48,6 +48,8 @@ Mốc kiểm toán: HEAD `08f7602`, ngày 08/11/2026. Nguồn trạng thái duy 
   - báo cáo HTML offline trong `benchmark/qa/report_view.py`.
 - Chưa có `experiment_id`: `git grep -n experiment_id` trả về 0 kết quả.
 - Chưa có orchestrator chạy pipeline v7. `matrix_runner.py` và `benchmark/perf/run_perf.py` vẫn import `src.ocr` legacy (V8-042).
+- Đã sửa ngày 09/11 (V8-040): `benchmark/challengers/experiment.py` có `experiment_id` và manifest identity.
+- Đã sửa ngày 09/11 (V8-042): hai runner chạy sản phẩm qua `ocr_pipeline.cli.main` trong tiến trình con (`benchmark/product_run.py::run_product`). Contract `v8-runners` cấm chúng import `src.ocr`. Một số evaluator khác vẫn import `src.ocr.collect.catalog`.
 
 **G02 — GT.**
 - Đã có: schema `structured-page-gt-v1` và `keyword-source-gt-v1`, cùng CLI intake/seal cho A/B/C.

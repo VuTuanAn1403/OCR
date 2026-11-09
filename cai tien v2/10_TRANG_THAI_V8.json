@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
   "pipeline_version": "7.0.0",
-  "verified_head": "08f7602ea8bd7fa4db0775924f47ac9960306e58",
+  "verified_head": "24a55586fed251c1eeb22141f3a163752178f3a7",
   "last_verified": "2026-11-09",
-  "verified_scope": "Mã và tài liệu tại HEAD 08f7602 cùng working tree phiên 20261108 và 20261109. Extraction 20e15efae22917bd không đổi; V8-006 đang chạy. Không đo chất lượng; quality = NOT_EVALUATED.",
+  "verified_scope": "HEAD 24a5558 + working tree V8-010/033/042; khóa BASELINE-V8-20261109-002 (V8-033 đổi OCR identity). Quality = NOT_EVALUATED.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
@@ -118,7 +118,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Retry dấu chỉ kích hoạt theo 21 cụm DEFAULT_PHRASES; chưa truyền từ điển keyword vào extra_phrases (V8-030, đổi closure extraction nên làm sau V8-006)."
+      "note": "Retry dấu chỉ kích hoạt theo 21 cụm DEFAULT_PHRASES; chưa truyền từ điển keyword vào extra_phrases (V8-030, đổi closure extraction)."
     },
     {
       "id": "L4",
@@ -220,7 +220,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "V8-033 đã xác minh: regex 'cổ ông' dùng lớp một ký tự nên không bao giờ sửa 'cổ ông', còn 'ổ ông'/'c ông' bị viết lại sai; test xfail strict ở tests/unit/text/test_unicode_normalizer_co_dong.py. Bản sửa đổi OCR identity nên chờ sau V8-006."
+      "note": "V8-033 sửa 09/11: luật 'cổ ông' chỉ viết lại 'cổ ông'/'CỔ ÔNG', giữ danh xưng 'Cổ Ông'; replay V8-006: 0 dòng đổi; đổi OCR identity."
     },
     {
       "id": "L8",
@@ -260,7 +260,7 @@
           "symbol": "compare_text"
         }
       ],
-      "note": "Sản phẩm đếm literal_v1 (chuỗi con). literal_v2 (ranh giới từ, chồng lấn dài nhất) là challenger ngoài CLI; diff thật chờ V8-006. Keyword một từ sai dấu được liệt kê trong single_word_variants, không cộng."
+      "note": "Sản phẩm đếm literal_v1 (chuỗi con). literal_v2 (ranh giới từ, chồng lấn dài nhất) là challenger ngoài CLI; trên V8-006 đếm 164 so với 154 (B2B/B2C trong B2B2C). Keyword một từ sai dấu vào single_word_variants, không cộng."
     },
     {
       "id": "L9",
@@ -347,9 +347,14 @@
         {
           "path": "benchmark/challengers/importlinter.toml",
           "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/product_run.py",
+          "symbol": "run_product",
+          "label": "VERIFIED"
         }
       ],
-      "note": "Có baseline/candidate, fix/harm, HTML report, khóa BASELINE-V8-20261109-001, experiment_id, manifest identity, output canonical, contract challengers; chưa có adapter tầng; matrix_runner/perf còn dùng src.ocr (V8-042)."
+      "note": "Có baseline/candidate, fix/harm, HTML report, khóa BASELINE-V8-20261109-002, experiment_id, manifest, output canonical, contract challengers/v8-runners; chưa có adapter tầng."
     },
     {
       "id": "G02",
@@ -384,9 +389,14 @@
           "path": "scripts/inventory_diacritic_slots.py",
           "symbol": "count_slots",
           "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/ground_truth_tools/synthetic_diacritics.py",
+          "symbol": "build",
+          "label": "VERIFIED"
         }
       ],
-      "note": "Có schema và CLI intake/seal; chưa có GT độc lập cho 9 PDF; nhãn 0/38, keyword 0/12, L5 0/13, công thức 0/3; không có công cụ gán nhãn trực quan."
+      "note": "Có schema, CLI intake/seal và GT tổng hợp chỉ cho stress test (V8-010); chưa có GT độc lập cho 9 PDF; nhãn 0/38, keyword 0/12, L5 0/13, công thức 0/3; chưa có công cụ gán nhãn trực quan."
     },
     {
       "id": "G03",
@@ -523,7 +533,7 @@
           "symbol": "upper_bound_gate"
         }
       ],
-      "note": "Bootstrap cụm công ty, Holm, noninferiority đã có. V8-021/022 (09/11): 0 lỗi dùng cận Clopper-Pearson trên N_eff khi design effect đã khóa; cổng dấu luồng OCR dùng cận trên thay ước lượng điểm. Chưa ước lượng được rho vì chưa có GT development."
+      "note": "Bootstrap cụm công ty, Holm, noninferiority đã có. Từ 09/11 (V8-021/022): 0 lỗi dùng cận Clopper-Pearson trên N_eff khi design effect đã khóa; cổng dấu OCR dùng cận trên. Chưa có rho."
     },
     {
       "id": "G08",
@@ -660,7 +670,7 @@
     {
       "id": "P0",
       "title": "Khóa baseline",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "BASELINE_LOCK_REPORT có đủ identity",
       "backlog": [
         "V8-001",
@@ -765,7 +775,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "71cffcc8fce84ffc53c69565a286963302f0328398b21dcc7e19b13ce248db3a",
+      "sha256": "fc2aaab74c867a9fe9cfab310802b3ef42098cf832ec3484a6ea9eab5a67ba0b",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -777,11 +787,11 @@
         },
         {
           "path": "cai tien v2/02_KIEM_TOAN_KHOANG_TRONG.md",
-          "sha256": "2bdd3c56091e83a5c65b4bfabe46165858ac50ff2a4650343b63797e18b8935b"
+          "sha256": "1e2aca88477a6e83f37bb03a4e80adce532d495372f987c2e41c9de251c1e550"
         },
         {
           "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
-          "sha256": "989c60824997a136421cb8176af1e3747609b1018ca34bae1d18ad9abd76e52b"
+          "sha256": "144704b89b7935e8d017a4831b02e95b572d69e0e2e3c5476f4f58f3b75a9a98"
         },
         {
           "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
@@ -805,7 +815,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "7eaa31a9d6e6b00ab8c7ae0cc60ff6367b3c492d7b67245aba57f15bdf54b7f7"
+          "sha256": "a47c44d09902b70da65731c55f2498ca8128d4ab26d08cd7f12bb0507e457464"
         }
       ]
     }

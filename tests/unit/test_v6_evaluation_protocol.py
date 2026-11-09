@@ -258,55 +258,66 @@ def test_dirty_run_without_gt_is_diagnostic_not_accepted():
 
 def test_perf_quality_evaluation_is_outside_extraction_wall_clock(tmp_path, monkeypatch):
     import argparse
-    from types import SimpleNamespace
     import benchmark.perf.run_perf as perf
     clock = [0.0]
-    config_path, input_pdf = tmp_path / "profile.yaml", tmp_path / "input.pdf"
-    config_path.write_text("balanced: {}", encoding="utf-8")
+    input_pdf = tmp_path / "input.pdf"
     input_pdf.write_bytes(b"fake-pdf-for-hash")
-    class Converter:
-        def __init__(self, config):
-            self.config_path = config_path
-        def resolve_profile(self, profile, device):
-            return {"device": "cpu"}
-        def execute(self, **kwargs):
-            clock[0] += 2.0
-            doc_dir = Path(kwargs["output_dir"]) / "doc"
-            (doc_dir / "pages").mkdir(parents=True)
-            quality = SimpleNamespace(page_type="NATIVE_TEXT", time_taken_seconds=1.0,
-                                      stage_seconds={}, from_cache=False, errors=0, content_status="EXTRACTED")
-            page = SimpleNamespace(page_num=1, quality=quality, metadata={})
-            return SimpleNamespace(document_id="doc", file_path=str(input_pdf), pages=[page],
-                                   timing={"startup_seconds": 0.2, "document_latency_seconds": 2.0})
-    class Recorder:
-        def __init__(self, *args, **kwargs):
-            self.data = {"documents": [], "cache": {}, "git": {"dirty": True}}
-        def add_document(self, doc):
-            self.data["documents"].append({})
-        def write(self, path):
-            return path
-    class Memory:
-        peak_bytes = 1000
-        def __enter__(self):
-            return self
-        def __exit__(self, *args):
-            pass
+
+    def run_document(pdf, output, *, config, assets, output_mode):
+        clock[0] += 2.0
+        doc_dir = Path(output) / Path(pdf).stem
+        (doc_dir / "pages").mkdir(parents=True)
+        (doc_dir / "pages" / "page-0001.json").write_text(json.dumps(
+            {"metadata": {"docling_structure": {"status": "success"}}}), encoding="utf-8")
+        (doc_dir / "quality.json").write_text(json.dumps({"document_id": "input", "page_reports": [
+            {"page": 1, "page_type": "SCANNED_IMAGE", "time_taken_seconds": 1.0, "stage_seconds": {},
+             "from_cache": False, "errors": 0, "content_status": "EXTRACTED"}]}), encoding="utf-8")
+        (doc_dir / "manifest.json").write_text(json.dumps({
+            "device": "cuda", "summary": {"startup_seconds": 0.2, "total_time_seconds": 1.5},
+            "cache": {"pages_from_cache": []},
+            "gpu_runtime": {"model_locks": {"m": "sha"}, "stages": {"text": {"reused": False}}}}), encoding="utf-8")
+        (doc_dir / "gpu_scheduler.json").write_text(json.dumps(
+            {"phases": {"text": {"seconds": 1.0, "samples": [{"used_mib": 1200}]}}, "events": []}), encoding="utf-8")
+        return {"document_id": Path(pdf).stem, "output": str(doc_dir), "status": "COMPLETED", "returncode": 0,
+                "log": "log", "ocr_identity": "id", "pdf_sha256": "sha", "peak_rss_mb": 512.0, "wall_seconds": 2.0}
+
     def evaluate(*args):
         clock[0] += 100.0
         return {"academic_metrics": {"evaluated_pages": 1}}
-    monkeypatch.setattr(perf, "ConvertDocumentUseCase", Converter)
-    monkeypatch.setattr(perf, "RunRecorder", Recorder)
-    monkeypatch.setattr(perf, "PeakMemorySampler", Memory)
     monkeypatch.setattr(perf.time, "perf_counter", lambda: clock[0])
     monkeypatch.setattr(perf, "_evaluate", evaluate)
-    monkeypatch.setattr(perf, "_reset_peak_vram", lambda: None)
-    monkeypatch.setattr(perf, "_peak_vram_mb", lambda: None)
-    args = argparse.Namespace(config=str(config_path), profile="balanced", device="cpu", pages="1",
-                              output=str(tmp_path / "out"), repeat=2, pdf=[str(input_pdf)],
-                              assets="none", ground_truth="gt", compare=None)
-    report = perf.run(args)
+    monkeypatch.setattr(perf, "hardware_record", lambda: {"processor": "test"})
+    monkeypatch.setattr(perf.product_run, "git_state", lambda: {"commit": "abc", "dirty": True})
+    monkeypatch.setattr(perf.product_run, "code_identity", lambda: {"source_fingerprint": "s"})
+    args = argparse.Namespace(config=None, output=str(tmp_path / "out"), repeat=2, pdf=[str(input_pdf)],
+                              assets="none", output_mode="compact", ground_truth="gt", compare=None)
+    report = perf.run(args, run_document=run_document)
     assert [repeat["wall_seconds"] for repeat in report["repeats"]] == [2.0, 2.0]
     assert report["documents"][0]["quality"]["academic_metrics"]["evaluated_pages"] == 1
+    assert report["device"] == "cuda" and report["entry_point"] == "ocr_pipeline.cli.main"
+    assert report["repeats"][0]["peak_device_vram_mib"] == 1200 and report["repeats"][0]["peak_rss_mb"] == 512.0
+    assert report["pages"][0]["docling_called"] is True and report["pages"][0]["category"] == "scan"
+    readiness = report["protocol_readiness"]["checks"]
+    assert readiness["cuda_device"] and readiness["unified_profile"] and readiness["fresh_output_without_resume"]
+    assert readiness["model_hashes_recorded"] and readiness["startup_recorded_without_errors"]
+    assert report["page_latency"]["categories"]["scan"]["cpu_comparison_status"] == "NOT_EVALUATED_NON_CPU_DEVICE"
+    with pytest.raises(ValueError, match="fresh"):
+        perf.run(args, run_document=run_document)
+
+
+def test_perf_counts_failed_documents_and_reused_stages_against_readiness():
+    from benchmark.perf.run_perf import protocol_readiness
+    report = {"device": "cuda", "profile": "unified_gpu_full_ocr", "repeats": [{}, {}, {}],
+              "run_manifest": {"git": {"dirty": False, "commit": "abc"}, "models": {"m": "sha"},
+                               "cache": {"resume": False, "empty_at_start": True, "pages_from_cache": [],
+                                         "reused_stages": [["doc", "text"]]}},
+              "documents": [{"status": "FAILED", "timing": {}, "quality": None}]}
+    checks = protocol_readiness(report)["checks"]
+    assert checks["clean_commit"] and checks["cuda_device"]
+    assert checks["fresh_output_without_resume"] is False
+    assert checks["startup_recorded_without_errors"] is False
+
+
 def test_der_aggregate_retains_extra_marks_on_an_unaccented_reference():
     from benchmark.scientific_evaluation.evaluation_protocol import aggregate_text_metrics, text_metrics
 

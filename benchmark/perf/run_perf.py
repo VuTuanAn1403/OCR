@@ -1,59 +1,56 @@
 #!/usr/bin/env python3
-"""Performance run per proposal V6 section 6.5; writes perf.json.
+"""Performance run on the product pipeline (proposal V6 section 6.5, V8-042); writes perf.json.
+
+Every document runs through `ocr_pipeline.cli.main` in a child process
+(`benchmark/product_run.py`): CUDA, every page, the unified profile, a fresh
+output root per repeat and no `--resume`, so no stage or page is reused (H24).
 
 Keeps the four quantities of section 6.1 apart:
-- page latency: warm, never from cache; p50 / mean / p95 per page category;
-- document latency: open to validation.json written, export included;
+- page latency: `quality.json` page reports, never from cache; p50 / mean / p95 per page category;
+- document latency: product process start to exit (OCR, Docling, export, keywords, Excel);
 - throughput: pages / wall time of the whole repeat;
-- start-up: model loading before the first page (Docling warmed up explicitly).
+- start-up: model loading before the first page, as the product records it.
 
-Every repeat uses a fresh, empty page cache with resume off, so no timing is
-inherited from an earlier run (H24). Also reports PERF-02 (tail), PERF-05
-(start-up), PERF-06 (peak RAM incl. the Docling worker), PERF-08 (stage
-breakdown, run manifest) and PERF-09 (output size per page). With
---ground-truth, quality is measured on the same outputs.
+Also reports PERF-02 (tail), PERF-05 (start-up), PERF-06 (peak RSS of the
+product process tree; peak device VRAM from the scheduler samples), PERF-08
+(stage and phase breakdown, run manifest) and PERF-09 (output size per page).
+The CPU limits REQ-01..03 stay NOT_EVALUATED: product OCR runs only on CUDA.
+With --ground-truth, quality is measured on the same outputs.
 
 Example:
-  python benchmark/perf/run_perf.py --pdf inputs/ACC_Baocaothuongnien_2025.pdf \
-      --pages 1-10 --repeat 3 --output benchmark/results/perf/b0
+  python benchmark/perf/run_perf.py --pdf inputs/ACL_Baocaothuongnien_2022.pdf --repeat 3 --output output/<new>/perf
 """
 from __future__ import annotations
 
 import argparse
 import json
 import math
-import shutil
+import platform
 import statistics
+import subprocess
 import sys
-import tempfile
-import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
-
-import psutil
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from src.ocr.application.convert_document import ConvertDocumentUseCase  # noqa: E402
-from src.ocr.cli.run_ocr import parse_pages_arg  # noqa: E402
-from src.ocr.infrastructure.export.markdown_exporter import ASSET_MODES  # noqa: E402
-from src.ocr.runtime.atomic_io import atomic_write_json  # noqa: E402
-from src.ocr.runtime.config import ConfigError  # noqa: E402
-from src.ocr.runtime.device import VALID_DEVICES  # noqa: E402
-from src.ocr.runtime.hardware import load_hardware, preparse_hardware  # noqa: E402
-from src.ocr.runtime.run_manifest import RunRecorder, file_sha256  # noqa: E402
-from src.ocr.infrastructure.export.output_contract import OUTPUT_MODES  # noqa: E402
-from src.ocr.runtime.structured_logging import LOG_FORMATS, configure_logging  # noqa: E402
+from benchmark import product_run  # noqa: E402  (puts src/ on sys.path)
+from ocr_artifacts.atomic_io import atomic_write_json  # noqa: E402
+from ocr_runtime.config import ConfigError, config_hash  # noqa: E402
+from ocr_runtime.pipeline_policy import PROFILE  # noqa: E402
+from ocr_runtime.structured_logging import LOG_FORMATS, configure_logging  # noqa: E402
 
-PERF_SCHEMA = "perf-v1"
+PERF_SCHEMA = "perf-v2"
 # Agreed CPU requirements (REQ-01..03), applied to p50 as proposed in ADJ-05.
 CPU_P50_LIMITS = {"native": 0.15, "mixed": 1.80, "scan": 2.50}
 # Low-quality native pages are processed like scans (H13 table); the two
 # product-showcase pages of the sample were counted as scans in section 6.1.
 _CATEGORY = {"NATIVE_TEXT": "native", "MIXED": "mixed"}
 REGRESSION_TOLERANCE = 0.10  # section 6.5: >10% slower on the same hardware
+_NO_DOCLING = (None, "DISABLED", "SKIPPED_NO_STRUCTURE_CANDIDATE")
 
 
 def page_category(page_type: str) -> str:
@@ -170,155 +167,165 @@ def compare_with_previous(current: Dict[str, Any], previous: Dict[str, Any]) -> 
     return result
 
 
-class PeakMemorySampler:
-    """Samples RSS of this process plus all children (the Docling worker), PERF-06."""
-
-    def __init__(self, interval: float = 0.25):
-        self.interval = interval
-        self.peak_bytes = 0
-        self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._run, daemon=True)
-
-    def _run(self) -> None:
-        me = psutil.Process()
-        while not self._stop.is_set():
-            total = 0
-            for proc in [me, *me.children(recursive=True)]:
-                try:
-                    total += proc.memory_info().rss
-                except psutil.Error:
-                    pass
-            self.peak_bytes = max(self.peak_bytes, total)
-            self._stop.wait(self.interval)
-
-    def __enter__(self) -> "PeakMemorySampler":
-        self._thread.start()
-        return self
-
-    def __exit__(self, *exc) -> None:
-        self._stop.set()
-        self._thread.join()
-
-
 def _dir_bytes(path: Path) -> int:
     return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
 
 
-def _page_records(doc) -> List[Dict[str, Any]]:
+def hardware_record() -> Dict[str, Any]:
+    """Processor, RAM and GPU of this machine; a missing tool leaves its fields out."""
+    record: Dict[str, Any] = {"processor": platform.processor() or platform.machine() or None,
+                              "platform": platform.platform()}
+    try:
+        import psutil
+        record.update(cpu_count_physical=psutil.cpu_count(logical=False), cpu_count_logical=psutil.cpu_count(),
+                      total_ram_gb=round(psutil.virtual_memory().total / 1024 ** 3, 1))
+    except ImportError:
+        pass
+    try:
+        query = subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+                               capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return record
+    lines = query.stdout.strip().splitlines() if query.returncode == 0 else []
+    if lines:
+        name, _, memory = lines[0].rpartition(",")
+        record["gpu_name"] = name.strip()
+        try:
+            record["gpu_total_vram_gb"] = round(float(memory) / 1024, 1)
+        except ValueError:
+            pass
+    return record
+
+
+def page_records(document_dir: Path) -> List[Dict[str, Any]]:
+    """Per-page timing the product wrote to quality.json, with each page's Docling status."""
+    quality = product_run.read_json(document_dir / "quality.json")
+    if quality is None:
+        raise ValueError(f"{document_dir} has no readable quality.json")
+    document_id = quality.get("document_id") or document_dir.name
     records = []
-    for page in doc.pages:
-        q = page.quality
-        status = (page.metadata.get("docling_structure") or {}).get("status", "DISABLED")
+    for report in quality.get("page_reports") or []:
+        page = int(report["page"])
+        seconds = report.get("time_taken_seconds")
+        if not isinstance(seconds, (int, float)):
+            raise ValueError(f"{document_dir} page {page} has no time_taken_seconds")
+        page_json = product_run.read_json(document_dir / "pages" / f"page-{page:04d}.json") or {}
+        status = ((page_json.get("metadata") or {}).get("docling_structure") or {}).get("status")
         records.append({
-            "document_id": doc.document_id, "page": page.page_num, "page_type": q.page_type,
-            "category": page_category(q.page_type), "seconds": q.time_taken_seconds,
-            "stages": dict(q.stage_seconds), "from_cache": q.from_cache,
-            "docling_called": status not in ("DISABLED", "SKIPPED_NO_STRUCTURE_CANDIDATE"),
-            "errors": q.errors,
-            "content_status": q.content_status,
+            "document_id": document_id, "page": page, "page_type": report.get("page_type"),
+            "category": page_category(report.get("page_type") or ""), "seconds": float(seconds),
+            "stages": dict(report.get("stage_seconds") or {}), "from_cache": bool(report.get("from_cache")),
+            "docling_called": status not in _NO_DOCLING, "errors": report.get("errors"),
+            "content_status": report.get("content_status"),
         })
     return records
 
 
-def run(args: argparse.Namespace) -> Dict[str, Any]:
+def document_timing(document_dir: Path, run_record: Dict[str, Any]) -> Dict[str, Any]:
+    manifest = product_run.read_json(document_dir / "manifest.json") or {}
+    scheduler = product_run.read_json(document_dir / "gpu_scheduler.json")
+    summary = manifest.get("summary") or {}
+    timing: Dict[str, Any] = {"document_latency_seconds": run_record["wall_seconds"],
+                              "document_latency_scope": "product process start to exit"}
+    for key, name in (("startup_seconds", "startup_seconds"), ("total_time_seconds", "pipeline_seconds")):
+        if isinstance(summary.get(key), (int, float)):
+            timing[name] = summary[key]
+    if scheduler:
+        timing["phase_seconds"] = {name: phase.get("seconds") for name, phase in (scheduler.get("phases") or {}).items()}
+    return {"timing": timing, "manifest": manifest, "scheduler": scheduler}
+
+
+def run(args: argparse.Namespace, run_document: Callable[..., Dict[str, Any]] = product_run.run_product) -> Dict[str, Any]:
     document_ids = [Path(pdf).stem.casefold() for pdf in args.pdf]
     if len(document_ids) != len(set(document_ids)):
         raise ValueError("Performance inputs must have distinct document IDs (PDF filenames)")
-    hardware = load_hardware(args.hardware) if getattr(args, "hardware", None) else None
-    overrides = {"thread_budget": hardware.threads_per_worker, "batch_size": hardware.batch_size} if hardware else {}
-    converter = ConvertDocumentUseCase(args.config or str(Path(__file__).resolve().parents[1] / "baselines/profiles-v61.yaml"), **overrides)
-    output_mode = getattr(args, "output_mode", "legacy")
-    profile_config = converter.resolve_profile(args.profile, args.device or (hardware and hardware.device))
+    config_path, profile = product_run.base_profile(args.config)
     output = Path(args.output)
-    pages = parse_pages_arg(args.pages)
-    fresh_cache = Path(tempfile.mkdtemp(prefix="ocr-perf-cache-"))
-    recorder = RunRecorder("perf", config_path=converter.config_path, profile=args.profile,
-                           profile_config=profile_config, device=profile_config["device"],
-                           cache_dir=fresh_cache, resume=False, assets_mode=args.assets,
-                           hardware_profile=hardware.record() if hardware else None)
-    recorder.data["output_mode"] = output_mode
-    fresh_cache.rmdir()
-    recorder.data["cache"]["dir"] = "fresh empty temporary directory per repeat"
-
-    repeats, all_pages, documents = [], [], []
+    if output.exists() and any(output.iterdir()):
+        raise ValueError(f"Performance output must be fresh: {output}")
+    git = product_run.git_state()
+    repeats: List[Dict[str, Any]] = []
+    all_pages: List[Dict[str, Any]] = []
+    documents: List[Dict[str, Any]] = []
+    devices, models, pages_from_cache, reused_stages = set(), {}, [], []
+    timeout = float(profile.get("page_timeout_seconds", 120))
     for repeat in range(1, args.repeat + 1):
-        cache_dir = Path(tempfile.mkdtemp(prefix="ocr-perf-cache-"))
         repeat_dir = output / f"repeat-{repeat}"
-        if repeat_dir.exists() and any(repeat_dir.iterdir()):
-            cache_dir.rmdir()
-            raise ValueError(f"Performance output must be fresh: {repeat_dir}")
-        _reset_peak_vram()
         started = time.perf_counter()
-        repeat_pages = 0
-        repeat_documents = []
-        try:
-            with PeakMemorySampler() as memory:
-                for pdf in args.pdf:
-                    doc = converter.execute(
-                        file_path=pdf, profile_name=args.profile, pages=pages, output_dir=str(repeat_dir),
-                        resume=False, benchmark=True, device=profile_config["device"],
-                        assets_mode=args.assets, warmup=True, cache_dir=str(cache_dir),
-                        output_mode=output_mode,
-                    )
-                    recorder.add_document(doc)
-                    doc_dir = repeat_dir / doc.document_id
-                    records = _page_records(doc)
-                    all_pages.extend({**r, "repeat": repeat} for r in records)
-                    repeat_pages += len(records)
-                    entry = {
-                        "repeat": repeat, "document_id": doc.document_id, "pages": len(records),
-                        "timing": doc.timing,
-                        "output_bytes": None,
-                        "output_kb_per_page": None,
-                        "quality": None,
-                    }
-                    documents.append(entry)
-                    repeat_documents.append((entry, doc_dir, Path(doc.file_path), records,
-                                             recorder.data["documents"][-1]))
-            wall = time.perf_counter() - started
-        finally:
-            shutil.rmtree(cache_dir, ignore_errors=True)
+        runs = [run_document(pdf, repeat_dir / Path(pdf).stem, config=config_path, assets=args.assets,
+                             output_mode=args.output_mode) for pdf in args.pdf]
+        wall = time.perf_counter() - started
+        # Reading artifacts, hashing and quality evaluation stay outside the wall-clock interval.
+        repeat_pages, vram = 0, []
+        for run_record in runs:
+            document_dir = Path(run_record["output"])
+            entry: Dict[str, Any] = {
+                "repeat": repeat, "document_id": run_record["document_id"], "status": run_record["status"],
+                "returncode": run_record["returncode"], "log": run_record["log"],
+                "ocr_identity": run_record["ocr_identity"], "pdf_sha256": run_record["pdf_sha256"],
+                "peak_rss_mb": run_record["peak_rss_mb"], "pages": 0, "timing": {},
+                "output_bytes": None, "output_kb_per_page": None, "quality": None,
+            }
+            documents.append(entry)
+            if run_record["status"] != "COMPLETED":
+                continue
+            records = page_records(document_dir)
+            details = document_timing(document_dir, run_record)
+            manifest, scheduler = details["manifest"], details["scheduler"]
+            devices.add(manifest.get("device"))
+            models = models or dict((manifest.get("gpu_runtime") or {}).get("model_locks") or {})
+            pages_from_cache += [[entry["document_id"], page] for page in
+                                 (manifest.get("cache") or {}).get("pages_from_cache") or []]
+            reused_stages += [[entry["document_id"], name] for name, stage in
+                              ((manifest.get("gpu_runtime") or {}).get("stages") or {}).items() if stage.get("reused")]
+            vram.append(product_run.peak_device_vram_mib(scheduler))
+            output_bytes = _dir_bytes(document_dir)
+            entry.update(pages=len(records), timing=details["timing"], output_bytes=output_bytes,
+                         output_kb_per_page=round(output_bytes / 1024 / max(1, len(records)), 1),
+                         peak_device_vram_mib=vram[-1], quality=_evaluate(document_dir, args.ground_truth))
+            all_pages.extend({**record, "repeat": repeat} for record in records)
+            repeat_pages += len(records)
+        known_vram = [value for value in vram if value is not None]
         repeats.append({
             "repeat": repeat, "pages": repeat_pages, "wall_seconds": round(wall, 3),
             # PERF-04, one worker (W = 1, eta = 1).
             "throughput_pages_per_hour": round(repeat_pages / wall * 3600, 1) if wall else None,
-            "peak_rss_mb": round(memory.peak_bytes / 1024 ** 2, 1),
-            "peak_vram_mb": _peak_vram_mb(),
-            "peak_vram_scope": "current process only; external Docling worker excluded",
+            "peak_rss_mb": max((r["peak_rss_mb"] for r in runs if r["peak_rss_mb"] is not None), default=None),
+            "peak_rss_scope": "product process tree, including its GPU workers",
+            "peak_device_vram_mib": max(known_vram) if known_vram else None,
+            "peak_vram_scope": "device-wide used memory sampled by the product scheduler",
+            "documents_failed": sum(r["status"] != "COMPLETED" for r in runs),
         })
-        # Provenance hashing, size inventory and quality evaluation are outside
-        # the extraction wall-clock interval.
-        for entry, doc_dir, input_path, records, manifest_record in repeat_documents:
-            output_bytes = _dir_bytes(doc_dir)
-            entry.update(output_bytes=output_bytes,
-                         output_kb_per_page=round(output_bytes / 1024 / max(1, len(records)), 1))
-            page_artifacts = [{"page": record["page"],
-                               "json_sha256": file_sha256(doc_dir / "pages" / f"page-{record['page']:04d}.json"),
-                               "markdown_sha256": file_sha256(doc_dir / "pages" / f"page-{record['page']:04d}.md")}
-                              for record in records]
-            manifest_record.update(file_sha256=file_sha256(input_path), page_artifacts=page_artifacts)
-            entry["quality"] = _evaluate(doc_dir, args.ground_truth)
 
-    timeout = float(profile_config.get("page_timeout_seconds", 120))
-    startup = [d["timing"]["startup_seconds"] for d in documents if "startup_seconds" in d["timing"]]
-    latency = [d["timing"]["document_latency_seconds"] for d in documents if "document_latency_seconds" in d["timing"]]
+    device = devices.pop() if len(devices) == 1 else (None if not devices else "MIXED")
+    completed = [d for d in documents if d["status"] == "COMPLETED"]
     report = {
         "schema": PERF_SCHEMA,
-        "profile": args.profile,
-        "device": profile_config["device"],
+        "entry_point": product_run.ENTRY_POINT,
+        "profile": PROFILE,
+        "device": device,
         "assets_mode": args.assets,
-        "output_mode": output_mode,
+        "output_mode": args.output_mode,
         "repeats": repeats,
-        "page_latency": summarize_pages(all_pages, timeout, device=profile_config["device"]),
-        "document_latency_seconds": _stats(latency),
-        "startup_seconds": _stats(startup),
-        "output_kb_per_page": _stats([d["output_kb_per_page"] for d in documents]),
+        "page_latency": summarize_pages(all_pages, timeout, device=device or "unknown"),
+        "document_latency_seconds": _stats([d["timing"]["document_latency_seconds"] for d in completed]),
+        "startup_seconds": _stats([d["timing"]["startup_seconds"] for d in completed
+                                   if "startup_seconds" in d["timing"]]),
+        "output_kb_per_page": _stats([d["output_kb_per_page"] for d in completed]),
         "documents": documents,
         "pages": all_pages,
         "pages_with_errors": sum(bool(page["errors"]) for page in all_pages),
+        "run_manifest": {
+            "schema": "perf-run-manifest-v2", "entry_point": product_run.ENTRY_POINT, "git": git,
+            **product_run.code_identity(), "config_path": str(config_path),
+            "config_file_sha256": product_run.file_sha256(config_path), "profile": PROFILE,
+            "profile_config_sha256": config_hash(profile), "hardware": hardware_record(),
+            "cache": {"resume": False, "empty_at_start": True, "pages_from_cache": pages_from_cache,
+                      "reused_stages": reused_stages},
+            "models": models,
+            "inputs": [{"pdf": str(pdf), "sha256": product_run.file_sha256(Path(pdf))} for pdf in args.pdf],
+        },
     }
-    recorder.write(output / "run_manifest.json")
-    report["run_manifest"] = recorder.data
     report["protocol_readiness"] = protocol_readiness(report)
     if args.compare:
         report["comparison"] = compare_with_previous(report, json.loads(Path(args.compare).read_text(encoding="utf-8")))
@@ -330,21 +337,21 @@ def protocol_readiness(report: Dict[str, Any]) -> Dict[str, Any]:
     """Report measured evidence and pending decisions without declaring acceptance."""
     manifest = report.get("run_manifest", {})
     cache = manifest.get("cache", {})
-    models = manifest.get("models_at_finish", manifest.get("models", {}))
-    measured_quality = [doc.get("quality") for doc in report.get("documents", [])]
+    models = manifest.get("models", {})
+    documents = report.get("documents", [])
+    measured_quality = [doc.get("quality") for doc in documents]
     checks = {
-        "cpu_device": report.get("device") == "cpu",
-        "balanced_profile": report.get("profile") == "balanced",
+        "cuda_device": report.get("device") == product_run.PRODUCT_DEVICE,
+        "unified_profile": report.get("profile") == PROFILE,
         "three_repeats": len(report.get("repeats", [])) >= 3,
         "clean_commit": manifest.get("git", {}).get("dirty") is False and
                         bool(manifest.get("git", {}).get("commit")),
-        "fresh_cache_without_resume": cache.get("empty_at_start") is True and
-                                      cache.get("resume") is False and not cache.get("pages_from_cache"),
+        "fresh_output_without_resume": cache.get("empty_at_start") is True and cache.get("resume") is False
+                                       and not cache.get("pages_from_cache") and not cache.get("reused_stages"),
         "model_hashes_recorded": bool(models) and all(value is not None for value in models.values()),
-        "startup_recorded_without_errors": bool(report.get("documents")) and all(
-            "startup_seconds" in doc.get("timing", {}) and
-            not any("error" in key for key in doc.get("timing", {}))
-            for doc in report.get("documents", [])),
+        "startup_recorded_without_errors": bool(documents) and all(
+            doc.get("status", "COMPLETED") == "COMPLETED" and "startup_seconds" in doc.get("timing", {})
+            for doc in documents),
         "no_page_errors": report.get("pages_with_errors", 0) == 0,
         "quality_on_same_outputs": bool(measured_quality) and all(
             quality is not None and quality.get("academic_metrics", {}).get("evaluated_pages", 0) > 0
@@ -359,7 +366,8 @@ def protocol_readiness(report: Dict[str, Any]) -> Dict[str, Any]:
         "pending_requirements": ["dev pilot and frozen test split (9.3)",
                                  "stakeholder-approved absolute thresholds (9.3)",
                                  "company-cluster non-inferiority comparison to B0 (PERF-07)",
-                                 "approved latency statistic (ADJ-05)"],
+                                 "approved latency statistic (ADJ-05)",
+                                 "GPU latency limits: REQ-01..03 are CPU limits and product OCR runs only on CUDA"],
         "comparison_scope": "latency regression diagnostic; not a PERF-07 quality acceptance test",
     }
 
@@ -371,54 +379,33 @@ def _evaluate(doc_dir: Path, ground_truth: Optional[str]) -> Optional[Dict[str, 
     return evaluate_document_scientific(doc_dir, Path(ground_truth))
 
 
-def _reset_peak_vram() -> None:
-    try:
-        import torch
-    except ImportError:
-        return
-    if torch.cuda.is_available():
-        torch.cuda.reset_peak_memory_stats()
-
-
-def _peak_vram_mb() -> Optional[float]:
-    try:
-        import torch
-    except ImportError:
-        return None
-    if not torch.cuda.is_available():
-        return None
-    return round(torch.cuda.max_memory_allocated() / 1024 ** 2, 1)
-
-
 def main() -> None:
-    try:
-        preparse_hardware()  # exports the profile's model/cache paths
-    except ConfigError as exc:
-        raise SystemExit(f"[ERROR] {exc}")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--hardware", default=None, help="Hardware profile name in config/hardware/ or YAML path")
     parser.add_argument("--pdf", nargs="+", required=True, help="PDF files of the (stratified) perf subset")
-    parser.add_argument("--pages", default=None, help="Pages applied to every PDF, e.g. '1-10' (default: all)")
-    parser.add_argument("--profile", default="balanced")
-    parser.add_argument("--config", default=None, help="Profile config path (default: config/profiles.yaml)")
-    parser.add_argument("--device", choices=VALID_DEVICES, default=None)
-    parser.add_argument("--assets", choices=ASSET_MODES, default="png")
-    parser.add_argument("--output-mode", choices=OUTPUT_MODES, default="legacy")
+    parser.add_argument("--config", default=None,
+                        help="Configuration file (default: OCR_CONFIG_PATH, then config/profiles.yaml)")
+    parser.add_argument("--assets", choices=product_run.ASSET_MODES, default="png")
+    parser.add_argument("--output-mode", choices=product_run.OUTPUT_MODES, default="compact")
     parser.add_argument("--repeat", type=int, default=3, help="Repeats for stable p50/p95 (6.5 uses 3)")
     parser.add_argument("--ground-truth", default=None, help="Measure quality on the same outputs")
     parser.add_argument("--compare", default=None, help="Earlier perf.json; flags >10%% p50 regressions")
-    parser.add_argument("--output", required=True, help="Directory for outputs and perf.json")
+    parser.add_argument("--output", required=True, help="Fresh directory for outputs and perf.json")
     parser.add_argument("--log-format", choices=LOG_FORMATS, default="text",
                         help="text keeps console progress; json writes JSON lines to stderr")
     args = parser.parse_args()
     configure_logging(args.log_format)
     if args.repeat < 1:
         parser.error("--repeat must be >= 1")
-    report = run(args)
+    try:
+        report = run(args)
+    except (ConfigError, ValueError) as error:
+        raise SystemExit(f"[ERROR] {error}")
     print(json.dumps({"page_latency": report["page_latency"]["categories"],
                       "startup_seconds": report["startup_seconds"],
                       "repeats": report["repeats"]}, indent=2, ensure_ascii=False))
     print(f"perf.json written to {Path(args.output) / 'perf.json'}")
+    if any(repeat["documents_failed"] for repeat in report["repeats"]):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

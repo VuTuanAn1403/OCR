@@ -150,11 +150,11 @@ def test_import_linter_rejects_forbidden_external_runtime(boundary_checkout, sou
 
 
 def test_challenger_contract_is_kept():
-    # V8-041: a separate configuration, because pyproject.toml cannot name benchmark.challengers.
+    # V8-041/V8-042: a separate configuration, because pyproject.toml cannot name benchmark modules.
     result = _lint(ROOT, config=CHALLENGER_CONFIG)
     output = _details(result)
     assert result.returncode == 0, output
-    assert "Contracts: 1 kept, 0 broken." in output
+    assert "Contracts: 2 kept, 0 broken." in output
 
 
 def _benchmark_module(checkout, name, source=""):
@@ -177,11 +177,36 @@ def test_challenger_contract_rejects_indirect_imports_through_benchmark(boundary
         _benchmark_module(boundary_checkout, f"{source}._boundary_violation", "import benchmark.qa._bridge\n")
     else:
         _module(boundary_checkout, f"{source}._boundary_violation", "import benchmark.qa._bridge\n")
-    result = _lint(boundary_checkout, config=CHALLENGER_CONFIG)
+    result = _lint(boundary_checkout, "challengers", config=CHALLENGER_CONFIG)
     output = _details(result)
     assert result.returncode == 1, output
     assert f"{source}._boundary_violation -> benchmark.qa._bridge" in output
     assert "benchmark.qa._bridge -> benchmark.challengers._target" in output
+
+
+V8_RUNNERS = ("benchmark.product_run", "benchmark.scientific_evaluation.matrix_runner", "benchmark.perf.run_perf",
+              "benchmark.evaluate")
+
+
+@pytest.mark.parametrize("bridge, target", [
+    ("benchmark.evaluate", "src.ocr.application.process_page"),
+    ("benchmark.scientific_evaluation.matrix_statistics", "src.ocr.application.export_document"),
+    ("benchmark.product_run", "ocr_pipeline._boundary_target"),
+])
+def test_v8_runner_contract_rejects_legacy_and_in_process_pipeline_imports(boundary_checkout, bridge, target):
+    # V8-042: runners reach the product only through ocr_pipeline.cli.main in a child process.
+    (boundary_checkout / CHALLENGER_CONFIG).parent.mkdir(parents=True)
+    shutil.copy2(ROOT / CHALLENGER_CONFIG, boundary_checkout / CHALLENGER_CONFIG)
+    for name in (*V8_RUNNERS, "benchmark.perf.__init__", "benchmark.scientific_evaluation.matrix_statistics"):
+        _benchmark_module(boundary_checkout, name)
+    perf_bridge = bridge == "benchmark.product_run"
+    runner = "benchmark.perf.run_perf" if perf_bridge else "benchmark.scientific_evaluation.matrix_runner"
+    _benchmark_module(boundary_checkout, runner, f"import {bridge}\n")
+    _benchmark_module(boundary_checkout, bridge, f"import {target}\n")
+    result = _lint(boundary_checkout, "v8-runners", config=CHALLENGER_CONFIG)
+    output = _details(result)
+    assert result.returncode == 1, output
+    assert f"{bridge} -> {target}" in output
 
 
 def test_legacy_exclusions_are_documented():

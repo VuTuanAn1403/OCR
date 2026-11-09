@@ -36,6 +36,8 @@ import unicodedata
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence
 
+from ocr_artifacts.hashing import sha256_file  # streamed; also the hash of fonts, PDFs and GT files here
+
 SCHEMA_VERSION = "synthetic-diacritic-gt-v1"
 VALIDITY = "STRESS_TEST_ONLY"
 LIMITATIONS = (
@@ -57,10 +59,6 @@ DEFAULT_FONTS = ("C:/Windows/Fonts/arial.ttf", "/usr/share/fonts/truetype/dejavu
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
-
-
-def sha256_file(path: Path) -> str:
-    return sha256_bytes(Path(path).read_bytes())
 
 
 def default_font() -> Optional[Path]:

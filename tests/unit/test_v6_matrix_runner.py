@@ -12,8 +12,9 @@ import pytest
 
 from benchmark import product_run
 from benchmark.scientific_evaluation.matrix_runner import (
-    MATRIX, RUN_RECORD_SCHEMA, assemble, b0_conditions, derive_profile, missing_output_records,
-    overrides_for, parse_score_pages, read_source_inventory, run_configuration,
+    MATRIX, RUN_RECORD_SCHEMA, _company_inventory, assemble, b0_conditions, derive_profile, document_ids,
+    missing_output_records, normalize_company_id, overrides_for, parse_score_pages, read_source_inventory,
+    run_configuration,
 )
 from benchmark.scientific_evaluation.matrix_statistics import CONFIGURATIONS
 from ocr_runtime.pipeline_policy import PROFILE, validate_profile
@@ -81,7 +82,7 @@ def test_b0_requires_clean_tree_cuda_and_the_unified_profile():
 def test_score_pages_parse_and_reject_malformed_selections():
     assert parse_score_pages(None) is None
     assert parse_score_pages("1,3-4") == [1, 3, 4]
-    for value in ("", "0", "3-1", "a", "1,"):
+    for value in ("", "0", "3-1", "a", "1,", "1-", "3-,5", "-3"):
         with pytest.raises(ValueError):
             parse_score_pages(value)
 
@@ -89,11 +90,52 @@ def test_score_pages_parse_and_reject_malformed_selections():
 def test_source_inventory_requires_the_matrix_columns(tmp_path):
     good = tmp_path / "sources.csv"
     good.write_text("document_id,company_id,sha256\nA,CO," + "a" * 64 + "\n", encoding="utf-8")
-    assert read_source_inventory(good)[0]["company_id"] == "CO"
+    assert read_source_inventory(good)[0]["company_id"] == "co"
     bad = tmp_path / "bad.csv"
     bad.write_text("document_id,sha256\nA," + "a" * 64 + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="company_id"):
         read_source_inventory(bad)
+
+
+def test_malformed_inventory_rows_are_value_errors_and_hex_case_is_accepted(tmp_path):
+    header = "document_id,company_id,sha256\n"
+    for name, body in (("short.csv", "A,CO\n"), ("long.csv", "A,CO," + "a" * 64 + ",extra\n"),
+                       ("blank_id.csv", "A,CO,\n")):
+        path = tmp_path / name
+        path.write_text(header + body, encoding="utf-8")
+        with pytest.raises(ValueError):  # never TypeError: main reports ValueError via parser.error
+            read_source_inventory(path)
+    upper = tmp_path / "upper.csv"
+    upper.write_text(header + "A,CO," + "AB" * 32 + "\n", encoding="utf-8")
+    assert read_source_inventory(upper)[0]["sha256"] == "ab" * 32
+
+
+def test_company_ids_are_normalized_so_one_company_is_one_cluster(tmp_path):
+    # As `collect sources` writes them: NFC, stripped, case-folded; any spelling of unknown is unknown.
+    sha = "a" * 64
+    sources = tmp_path / "sources.csv"
+    sources.write_text("document_id,company_id,sha256\n"
+                       f"ACB_2021,ACB,{sha}\nACB_2022, acb ,{sha}\nX_2022, Unknown,{sha}\nY_2022,,{sha}\n"
+                       f"Z_2022,CÔNG,{sha}\n", encoding="utf-8")
+    inventory = _company_inventory(str(sources))
+    assert {key: row["company_id"] for key, row in inventory.items()} == \
+        {"ACB_2021": "acb", "ACB_2022": "acb", "Z_2022": "công"}
+    assert normalize_company_id("Co\u0302ng") == "công"  # decomposed input composes to NFC
+    display = tmp_path / "display.csv"
+    display.write_text(f"document_id,company_id,sha256\nA,Ngan hang ACB,{sha}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="display name"):
+        read_source_inventory(display)
+
+
+def test_colliding_document_ids_are_refused_before_any_run(tmp_path):
+    pdfs = [tmp_path / "a" / "ACB_2022.pdf", tmp_path / "b" / "acb_2022.pdf"]
+    with pytest.raises(ValueError, match="distinct document IDs"):
+        document_ids([str(p) for p in pdfs])
+    product = FakeProduct()
+    with pytest.raises(ValueError, match="distinct document IDs"):
+        run_configuration("F", _args(tmp_path, pdfs), GIT, {}, product)
+    assert product.calls == [] and not (tmp_path / "matrix").exists()
+    assert document_ids([str(tmp_path / "A.pdf"), str(tmp_path / "B.pdf")]) == ["A", "B"]
 
 
 class FakeProduct:
@@ -201,6 +243,25 @@ def test_unverified_company_or_unprefixed_gt_records_no_counts(tmp_path, workspa
     (gt / "mat_page_0001.txt").rename(gt / "page_0001.txt")
     record = run_configuration("F", _args(tmp_path, [pdf], gt, sources, "m2"), GIT, inventory, FakeProduct())
     assert "document-prefixed" in record["quality_status_reason"] and "records_by_metric" not in record
+
+
+def test_company_check_uses_the_digest_product_run_already_took(tmp_path, workspace):
+    pdf, gt, sources, inventory = workspace
+
+    class HashedProduct(FakeProduct):
+        def __init__(self, digest):
+            super().__init__()
+            self.digest = digest
+
+        def __call__(self, pdf, output, **options):
+            return {**super().__call__(pdf, output, **options), "pdf_sha256": self.digest}
+
+    good = run_configuration("F", _args(tmp_path, [pdf], gt, sources, "h1"), GIT, inventory,
+                             HashedProduct(inventory["MAT_report"]["sha256"]))
+    assert good["quality_status"] == "COUNTS_RECORDED"
+    stale = run_configuration("F", _args(tmp_path, [pdf], gt, sources, "h2"), GIT, inventory,
+                              HashedProduct("0" * 64))
+    assert "PDF hash differs" in stale["quality_status_reason"]  # the recorded digest, not a rehash
 
 
 def test_b0_records_its_conditions_from_the_product_output(tmp_path, workspace):

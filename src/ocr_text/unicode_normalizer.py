@@ -2,6 +2,30 @@ import unicodedata
 import re
 from typing import Dict, List
 
+# Whitespace within one line: `\s` minus every character Python's str.splitlines() breaks on.
+_SAME_LINE_SPACE = r'[^\S\n\r\v\f\x1c-\x1e\x85\u2028\u2029]+'
+
+# V8-033 context: "c\u1ed5 \u00f4ng" stays when "c\u1ed5" is an antique ("\u0111\u1ed3 c\u1ed5 \u00f4ng n\u1ed9i") or "\u00f4ng" is a person
+# followed by a pronoun or age word ("c\u1ed5 \u00f4ng \u1ea5y", "c\u1ed5 \u00f4ng gi\u00e0"). Words that can also follow
+# "c\u1ed5 \u0111\u00f4ng" (n\u1ed9i b\u1ed9, b\u00e0 <t\u00ean>, c\u1ee5 th\u1ec3) are not listed, so those phrases are still restored.
+_CO_ONG_ANTIQUE_BEFORE = frozenset({"\u0111\u1ed3"})
+_CO_ONG_PERSON_AFTER = frozenset({"\u1ea5y", "ta", "gi\u00e0", "l\u00e3o", "n\u00f3"})
+_LAST_WORD = re.compile(rf'(\w+){_SAME_LINE_SPACE}$')
+_FIRST_WORD = re.compile(rf'{_SAME_LINE_SPACE}(\w+)')
+
+
+def _restore_co_dong(stroke: str):
+    """re.sub replacement for a lost-stroke "c\u1ed5 \u00f4ng" (groups: c\u1ed5, separator, \u00f4ng)."""
+    def replace(match: "re.Match[str]") -> str:
+        before = _LAST_WORD.search(match.string, max(0, match.start() - 32), match.start())
+        after = _FIRST_WORD.match(match.string, match.end())
+        if ((before and before.group(1).casefold() in _CO_ONG_ANTIQUE_BEFORE)
+                or (after and after.group(1).casefold() in _CO_ONG_PERSON_AFTER)):
+            return match.group(0)
+        return f"{match.group(1)}{match.group(2)}{stroke}"
+    return replace
+
+
 class UnicodeNormalizer:
     """
     Normalizes text to Unicode NFC and cleans abnormal unicode whitespace/control characters
@@ -119,9 +143,12 @@ class UnicodeNormalizer:
             (r'\b([hH]ội|[đĐ]ại\s+[hH]ội)\s+([ồỒ]ng)\b',
              lambda m: f"{m.group(1)} {'Đồng' if m.group(2)[0].isupper() else 'đồng'}"),
             # V8-033: "cổ đông" with a lost stroke. Title-case "Ông" stays: after a broken
-            # "Công ty Cổ" line it is the honorific (Mr.), not "đông".
-            (r'\b([cC]ổ)\s+(ông)\b', lambda m: f"{m.group(1)} đông"),
-            (r'\b(CỔ)\s+(ÔNG)\b', lambda m: f"{m.group(1)} ĐÔNG"),
+            # "Công ty Cổ" line it is the honorific (Mr.), not "đông". The rule never crosses a
+            # line break (an all-caps "CÔNG TY CỔ" heading line can precede "ÔNG <name>") and
+            # keeps the original separator, so line structure is unchanged. Antique and person
+            # contexts are left alone (_restore_co_dong).
+            (rf'\b([cC]ổ)({_SAME_LINE_SPACE})(ông)\b', _restore_co_dong("đông")),
+            (rf'\b(CỔ)({_SAME_LINE_SPACE})(ÔNG)\b', _restore_co_dong("ĐÔNG")),
             (r'\b([đĐ]ã)\s+([ưƯ]ợc)\b',
              lambda m: f"{m.group(1)} {'Được' if m.group(2)[0].isupper() else 'được'}"),
             (r'\b([ởỞ]|[tT]ại)\s+([đĐ]o)\b',

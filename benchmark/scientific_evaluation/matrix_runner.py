@@ -40,6 +40,7 @@ import csv
 import hashlib
 import json
 import time
+import unicodedata
 import uuid
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -158,6 +159,18 @@ def b0_conditions(git: Dict[str, Any], device: Optional[str], profile: Optional[
     return {"checks": checks, "met": all(checks.values()), "commit": git.get("commit")}
 
 
+def normalize_company_id(value: Any) -> str:
+    """The company identifier as `collect sources` writes it: NFC, stripped and case-folded,
+    so one company is one bootstrap cluster. Blank or any spelling of 'unknown' is 'unknown'.
+    Mirrors src/ocr/collect/catalog.py::company_id, which runners may not import (V8-042)."""
+    if not isinstance(value, str) or not value.strip() or value.strip().casefold() == "unknown":
+        return "unknown"
+    result = unicodedata.normalize("NFC", value).strip().casefold()
+    if any(char.isspace() for char in result):
+        raise ValueError(f"company_id must be a stable identifier, not a company display name: {value!r}")
+    return result
+
+
 def read_source_inventory(path: Path) -> List[Dict[str, str]]:
     """Rows of a sources.csv (collect sources); only the columns the matrix needs are required."""
     with Path(path).open(encoding="utf-8-sig", newline="") as stream:
@@ -166,9 +179,15 @@ def read_source_inventory(path: Path) -> List[Dict[str, str]]:
         if missing:
             raise ValueError(f"Source inventory is missing columns: {sorted(missing)}")
         rows = list(reader)
+    for number, row in enumerate(rows, start=1):
+        # csv fills a short row with None and puts the surplus of a long row under the key None.
+        if None in row or any(row[column] is None for column in SOURCE_COLUMNS):
+            raise ValueError(f"Source inventory data row {number} does not match the header columns")
     if not rows or len({row["document_id"].casefold() for row in rows}) != len(rows):
         raise ValueError("Source inventory is empty or contains duplicate document IDs")
     for row in rows:
+        row["company_id"] = normalize_company_id(row["company_id"])
+        row["sha256"] = row["sha256"].strip().lower()  # compared with hexdigest(), which is lower case
         if len(row["sha256"]) != 64 or any(c not in "0123456789abcdef" for c in row["sha256"]):
             raise ValueError("Source SHA-256 is invalid")
     return rows
@@ -178,15 +197,26 @@ def _company_inventory(sources: Optional[str]) -> Dict[str, Dict[str, str]]:
     if not sources:
         return {}
     return {row["document_id"]: {"company_id": row["company_id"], "sha256": row["sha256"]}
-            for row in read_source_inventory(Path(sources))
-            if row["company_id"] and row["company_id"] != "unknown"}
+            for row in read_source_inventory(Path(sources)) if row["company_id"] != "unknown"}
 
 
-def _verified_company(pdf: str, document_id: str, inventory: Dict[str, Dict[str, str]]) -> Tuple[Optional[str], str]:
+def document_ids(pdfs: List[str]) -> List[str]:
+    """Output directory name of each input PDF. Names that collide after NFC case folding
+    (as run_batch rejects them) would share one fresh output, so they are refused up front."""
+    ids = [Path(pdf).stem for pdf in pdfs]
+    keys = [unicodedata.normalize("NFC", document_id).casefold() for document_id in ids]
+    if len(set(keys)) != len(keys):
+        raise ValueError("Matrix inputs must have distinct document IDs (PDF filenames)")
+    return ids
+
+
+def _verified_company(pdf: str, document_id: str, inventory: Dict[str, Dict[str, str]],
+                      pdf_sha256: Optional[str] = None) -> Tuple[Optional[str], str]:
+    """`pdf_sha256` is the digest product_run already took of this PDF; it is hashed only without one."""
     row = inventory.get(document_id)
     if row is None:
         return None, "no verified company_id in the source inventory"
-    if hashlib.sha256(Path(pdf).read_bytes()).hexdigest() != row["sha256"]:
+    if (pdf_sha256 or product_run.file_sha256(Path(pdf))) != row["sha256"]:
         return None, "PDF hash differs from the source inventory"
     return row["company_id"], ""
 
@@ -200,8 +230,8 @@ def parse_score_pages(value: Optional[str]) -> Optional[List[int]]:
         part = part.strip()
         if not part:
             raise ValueError(f"Invalid page selection: {value!r}")
-        low, _, high = part.partition("-")
-        if not low.isdigit() or (high and not high.isdigit()):
+        low, dash, high = part.partition("-")
+        if not low.isdigit() or (dash and not high.isdigit()):  # '3-' is not 'page 3'
             raise ValueError(f"Invalid page selection: {value!r}")
         start, end = int(low), int(high or low)
         if start < 1 or end < start:
@@ -270,6 +300,7 @@ def run_configuration(name: str, args: argparse.Namespace, git: Dict[str, Any],
     out = Path(args.output) / name
     if (out / "run_record.json").exists():
         raise ValueError(f"Matrix output must be fresh: {out} already holds a run record")
+    document_ids(args.pdf)  # before any record is written or any document is run
     config_path, base = product_run.base_profile(args.config)
     record: Dict[str, Any] = {
         "schema": RUN_RECORD_SCHEMA, "configuration": name, "variable": spec["variable"],
@@ -355,7 +386,8 @@ def _run_documents(name: str, args: argparse.Namespace, record: Dict[str, Any], 
 def _collect_quality(entry: Dict[str, Any], pdf: str, gt_dir: Path, pages: Optional[List[int]],
                      inventory: Dict[str, Dict[str, str]], records: Dict[str, List[Dict[str, Any]]]) -> Optional[str]:
     """Add the document's paired records; return why it cannot be counted."""
-    company, why = _verified_company(pdf, entry["document_id"], inventory) if Path(pdf).is_file() else \
+    company, why = _verified_company(pdf, entry["document_id"], inventory, entry.get("pdf_sha256")) \
+        if Path(pdf).is_file() else \
         (inventory.get(entry["document_id"], {}).get("company_id"), "")
     if not company:
         return why or "no verified company_id in the source inventory"
@@ -471,6 +503,7 @@ def main() -> None:
         if not args.sources:
             parser.error("--ground-truth needs --sources with verified company IDs for paired counts")
     try:
+        document_ids(args.pdf)
         parse_score_pages(args.score_pages)
         product_run.base_profile(args.config)
         inventory = _company_inventory(args.sources)

@@ -247,7 +247,8 @@ def run(args: argparse.Namespace, run_document: Callable[..., Dict[str, Any]] = 
     repeats: List[Dict[str, Any]] = []
     all_pages: List[Dict[str, Any]] = []
     documents: List[Dict[str, Any]] = []
-    devices, models, pages_from_cache, reused_stages = set(), {}, [], []
+    # model_variants: distinct model_locks over every completed document, in first-seen order.
+    devices, model_variants, pages_from_cache, reused_stages = set(), [], [], []
     timeout = float(profile.get("page_timeout_seconds", 120))
     for repeat in range(1, args.repeat + 1):
         repeat_dir = output / f"repeat-{repeat}"
@@ -256,7 +257,7 @@ def run(args: argparse.Namespace, run_document: Callable[..., Dict[str, Any]] = 
                              output_mode=args.output_mode) for pdf in args.pdf]
         wall = time.perf_counter() - started
         # Reading artifacts, hashing and quality evaluation stay outside the wall-clock interval.
-        repeat_pages, vram = 0, []
+        repeat_pages, vram, repeat_entries = 0, [], []
         for run_record in runs:
             document_dir = Path(run_record["output"])
             entry: Dict[str, Any] = {
@@ -267,13 +268,23 @@ def run(args: argparse.Namespace, run_document: Callable[..., Dict[str, Any]] = 
                 "output_bytes": None, "output_kb_per_page": None, "quality": None,
             }
             documents.append(entry)
+            repeat_entries.append(entry)
             if run_record["status"] != "COMPLETED":
                 continue
-            records = page_records(document_dir)
-            details = document_timing(document_dir, run_record)
+            # A completed run whose artifacts cannot be read is a failed measurement of that
+            # document; it must not discard perf.json for every other document and repeat.
+            try:
+                records = page_records(document_dir)
+                details = document_timing(document_dir, run_record)
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                entry.update(status="FAILED", error=f"unreadable product artifacts: {type(error).__name__}: {error}")
+                print(f"[perf] repeat {repeat} {entry['document_id']} FAILED: {entry['error']}", flush=True)
+                continue
             manifest, scheduler = details["manifest"], details["scheduler"]
             devices.add(manifest.get("device"))
-            models = models or dict((manifest.get("gpu_runtime") or {}).get("model_locks") or {})
+            locks = dict((manifest.get("gpu_runtime") or {}).get("model_locks") or {})
+            if locks not in model_variants:
+                model_variants.append(locks)
             pages_from_cache += [[entry["document_id"], page] for page in
                                  (manifest.get("cache") or {}).get("pages_from_cache") or []]
             reused_stages += [[entry["document_id"], name] for name, stage in
@@ -282,19 +293,28 @@ def run(args: argparse.Namespace, run_document: Callable[..., Dict[str, Any]] = 
             output_bytes = _dir_bytes(document_dir)
             entry.update(pages=len(records), timing=details["timing"], output_bytes=output_bytes,
                          output_kb_per_page=round(output_bytes / 1024 / max(1, len(records)), 1),
-                         peak_device_vram_mib=vram[-1], quality=_evaluate(document_dir, args.ground_truth))
+                         peak_device_vram_mib=vram[-1])
             all_pages.extend({**record, "repeat": repeat} for record in records)
             repeat_pages += len(records)
+            try:  # quality stays None, so quality_on_same_outputs is not met
+                entry["quality"] = _evaluate(document_dir, args.ground_truth)
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                entry["quality_error"] = f"{type(error).__name__}: {error}"
         known_vram = [value for value in vram if value is not None]
+        failed = sum(entry["status"] != "COMPLETED" for entry in repeat_entries)
+        # PERF-04, one worker (W = 1, eta = 1). A failed document spends wall time but adds no
+        # pages, so a repeat with a failure has no throughput rather than a deflated one.
+        throughput = round(repeat_pages / wall * 3600, 1) if wall and not failed else None
         repeats.append({
             "repeat": repeat, "pages": repeat_pages, "wall_seconds": round(wall, 3),
-            # PERF-04, one worker (W = 1, eta = 1).
-            "throughput_pages_per_hour": round(repeat_pages / wall * 3600, 1) if wall else None,
+            "throughput_pages_per_hour": throughput,
+            "throughput_status": ("MEASURED" if throughput is not None
+                                  else "NOT_EVALUATED_DOCUMENT_FAILED" if failed else "NOT_EVALUATED"),
             "peak_rss_mb": max((r["peak_rss_mb"] for r in runs if r["peak_rss_mb"] is not None), default=None),
             "peak_rss_scope": "product process tree, including its GPU workers",
             "peak_device_vram_mib": max(known_vram) if known_vram else None,
             "peak_vram_scope": "device-wide used memory sampled by the product scheduler",
-            "documents_failed": sum(r["status"] != "COMPLETED" for r in runs),
+            "documents_failed": failed,
         })
 
     device = devices.pop() if len(devices) == 1 else (None if not devices else "MIXED")
@@ -322,7 +342,9 @@ def run(args: argparse.Namespace, run_document: Callable[..., Dict[str, Any]] = 
             "profile_config_sha256": config_hash(profile), "hardware": hardware_record(),
             "cache": {"resume": False, "empty_at_start": True, "pages_from_cache": pages_from_cache,
                       "reused_stages": reused_stages},
-            "models": models,
+            # One lock set for the whole run, or none: differing locks fail model_hashes_recorded.
+            "models": model_variants[0] if len(model_variants) == 1 else {},
+            "model_lock_variants": model_variants if len(model_variants) > 1 else [],
             "inputs": [{"pdf": str(pdf), "sha256": product_run.file_sha256(Path(pdf))} for pdf in args.pdf],
         },
     }

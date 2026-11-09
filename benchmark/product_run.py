@@ -25,6 +25,7 @@ from typing import Any, Callable, Dict, List, Optional
 import yaml
 
 from ocr_artifacts.atomic_io import atomic_write_text
+from ocr_artifacts.hashing import sha256_file
 from ocr_runtime.config import get_profile, load_profiles
 from ocr_runtime.pipeline_policy import PROFILE
 
@@ -39,14 +40,9 @@ PRODUCT_DEVICE = "cuda"
 
 
 def file_sha256(path: Path) -> Optional[str]:
+    """SHA-256 of a file, or None when it does not exist."""
     path = Path(path)
-    if not path.is_file():
-        return None
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1 << 20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_file(path) if path.is_file() else None
 
 
 def _git(*args: str) -> Optional[bytes]:

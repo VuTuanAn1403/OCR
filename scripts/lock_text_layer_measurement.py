@@ -47,6 +47,7 @@ TOOLS = (
     "scripts/screen_text_layer.py",
     "scripts/measure_text_layer_diacritics.py",
     "benchmark/scientific_evaluation/ocr_metric.py",
+    "benchmark/scientific_evaluation/diacritic_acceptance.py",  # uncomposed-mark eligibility of a unit
     "benchmark/scientific_evaluation/exact_bounds.py",
     "benchmark/scientific_evaluation/cluster_correlation.py",
     "scripts/adjudicate_text_layer_diacritics.py",

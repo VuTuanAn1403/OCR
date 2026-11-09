@@ -7,7 +7,7 @@ Cập nhật 10/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-chall
 Mục tiêu: đưa 38 mục backlog lên `DONE`. Mục nào cần GT do người tạo hoặc cần người dùng quyết thì giữ `IN_PROGRESS`/`TODO`; không có bằng chứng thì không đánh `DONE`.
 
 - **P1 (V8-011/012):** đã có công cụ sàng lọc, đo ghép bbox, phân xử mù A/B và ρ_U (protocol §7.5). 7 phiếu sàng lọc nằm ở `scratch/v8/screening/*_v1_20261109/`.
-- **Khóa v2 §7.6:** `lock_text_layer_measurement.py` ghim 9 công cụ đo; khâu đo và phân xử từ chối chạy khi chưa có khóa `LOCKED_PROCEDURE`. Bản nháp: `scratch/v8/v8_011_measurement_lock_v2_draft_20261110.json` (`ea51ae6e…`), còn mở luồng đo.
+- **Khóa v2 §7.6:** `lock_text_layer_measurement.py` ghim 10 công cụ đo; khâu đo và phân xử từ chối chạy khi chưa có khóa `LOCKED_PROCEDURE`. Bản nháp: `scratch/v8/v8_011_measurement_lock_v2_draft_r2_20261110.json` (`d1557cc0…`), còn mở luồng đo.
 - **V8-150, V8-120, V8-170 `DONE`:** công cụ gán nhãn trực quan; soak khóa 003 (p50 6,57 s/trang, VRAM đỉnh 2.673 MiB); bỏ 18 test harness.
 - **Quyết định của người dùng:** "B2B2C" tính như `literal_v1`; lỗi §4.1 ghi nhận, sửa sau.
 - **V8-080, audit v2:** bản r1 đối chiếu nhầm `evidence_blocks` nên báo 2.296 ô. Bản đúng là `scratch/v8/v8_080_runtime_invariants_003_r2_20261110.json`.

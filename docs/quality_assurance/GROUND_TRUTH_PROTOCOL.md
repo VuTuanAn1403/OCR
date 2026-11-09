@@ -191,9 +191,9 @@ Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong kh
 Khóa v2 do `scripts/lock_text_layer_measurement.py` tạo:
 
 - Khóa gắn với khóa v1 qua sha256 và ghi giá trị của 7 lựa chọn, đọc thẳng từ mã.
-- Khóa ghim byte của 9 file công cụ, đọc CRLF thành LF. Sửa bất kỳ file nào trong số đó là khóa mất hiệu lực.
+- Khóa ghim byte của 10 file công cụ (kể cả `diacritic_acceptance.py`, nơi quyết định đơn vị có dấu trơ), đọc CRLF thành LF. Sửa bất kỳ file nào trong số đó là khóa mất hiệu lực.
 - `measure_text_layer_diacritics.py` từ chối chạy khi thiếu khóa v2 ở trạng thái `LOCKED_PROCEDURE`, cùng khóa v1 và cùng luồng đo. `adjudicate_text_layer_diacritics.py` kiểm lại khóa này ở cả hai bước `build` và `seal`.
-- Bản nháp chờ duyệt ngày 10/11: `scratch/v8/v8_011_measurement_lock_v2_draft_20261110.json`, sha256 `ea51ae6e…`, trạng thái `DRAFT_NOT_LOCKED`, còn mở mục 4 (luồng đo).
+- Bản nháp chờ duyệt ngày 10/11: `scratch/v8/v8_011_measurement_lock_v2_draft_r2_20261110.json`, sha256 `d1557cc0…`, trạng thái `DRAFT_NOT_LOCKED`, còn mở mục 4 (luồng đo).
 
 Khi người dùng duyệt, người vận hành chạy lệnh có `--stream`, `--reviewer`, `--decided-on` và `--report docs/quality_assurance/locks/<mới>.json`.
 

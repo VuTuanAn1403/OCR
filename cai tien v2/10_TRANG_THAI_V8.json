@@ -669,7 +669,7 @@
     "required_slots_zero_errors_95": 29956,
     "available_slots_counted": {
       "value": 1788,
-      "scope": "benchmark/ground_truth/clw_page_{0001,0003,0005,0011}.txt, đếm theo slot DER_VN_v1 ngày 2026-11-08; CLW không thuộc 9 PDF đầu vào; custody GT chưa rõ"
+      "scope": "benchmark/ground_truth/clw_page_{0001,0003,0005,0011}.txt, đếm theo slot DER_VN_v1 ngày 2026-11-08 (ref_slots của DSER_strict cũng 1.788, đếm lại 10/11); CLW không thuộc 9 PDF đầu vào; custody GT chưa rõ"
     },
     "evidence": [
       {
@@ -882,7 +882,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "ea4d08c4e0e1372930c398498200baf24df114fb237eb61ff4e17c4612050ff2"
+          "sha256": "a3d62c6eb6d5ec746fc433b34913665b7fef042154b4fc69117ef11b85432874"
         }
       ]
     }

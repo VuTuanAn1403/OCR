@@ -15,7 +15,7 @@ Căn cứ: Kế hoạch Benchmark-first và So sánh công nghệ (hai DOCX lưu
 | P2 | Tiền xử lý ảnh IMG-01..06 | IN_PROGRESS | Paired fix/harm từng biến | V8-050 |
 | P3 | Phát hiện chữ DET-01..07 | IN_PROGRESS | TP/FP/FN cùng snapshot | V8-060 |
 | P4 | Nhận dạng chữ A/B/C/D | IN_PROGRESS | Tách hiệu ứng detector và recognizer | V8-065, V8-030 |
-| P5 | Layout và thứ tự đọc | TODO | Class/region/order scorecard trên GT | V8-070, V8-071 |
+| P5 | Layout và thứ tự đọc | IN_PROGRESS | Class/region/order scorecard trên GT | V8-070, V8-071 |
 | P6 | Bảng và công thức | TODO | TEDS, numeric cell, ownership | V8-080, V8-085 |
 | P7 | VLM fallback và parser đối chứng | TODO | Identity, tài nguyên, GT | V8-090, V8-095 |
 | P8 | Hậu xử lý, dấu, keyword | IN_PROGRESS | Cổng dấu 99,99% và 0 thiếu/thừa occurrence | V8-020, V8-021, V8-022, V8-031, V8-032, V8-100 |

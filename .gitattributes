@@ -16,3 +16,6 @@ benchmark/evidence/** -text -whitespace
 
 # Preserve the original CDM blob bytes for runtime verification on every OS.
 benchmark/scientific_evaluation/_vendor/unimernet_cdm/** -text -whitespace
+
+# Procedure locks publish the sha256 of their LF bytes (GROUND_TRUTH_PROTOCOL section 7).
+docs/quality_assurance/locks/*.json text eol=lf

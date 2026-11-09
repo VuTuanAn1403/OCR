@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
   "pipeline_version": "7.0.0",
-  "verified_head": "4ed62639157d58e638a901415fa4aecfc1133735",
+  "verified_head": "5b4c6c529f05dd55f8e71674f0b5e09cb7e43a62",
   "last_verified": "2026-11-09",
-  "verified_scope": "HEAD 4ed6263 (chỉ khác 2af5454 ở tài liệu và registry; V8-030/050/060/130 và rà soát chỉ tiêu 09/11; hồi quy CPU tại 2af5454: 2553 passed, 1 lỗi do chạy giữa lúc sửa registry, đã chạy lại đạt). Detector production PP-OCRv6 là ngoại lệ chưa qua GT. Khóa hiện hành BASELINE-V8-20261109-003 (fingerprint khớp HEAD); khóa 002 (PP-OCRv4) dùng cho V8-006. Quality = NOT_EVALUATED.",
+  "verified_scope": "HEAD 5b4c6c5 (chỉ khác 2af5454 ở tài liệu, registry, khóa quy trình GT và scripts/lock_text_layer_procedure.py kèm test; V8-013 DONE, quy trình text layer LOCKED v1 ngày 09/11; hồi quy CPU tại 2af5454: 2553 passed; tại 5b4c6c5 chỉ chạy 81 test sát thay đổi). Detector production PP-OCRv6 là ngoại lệ chưa qua GT. Khóa hiện hành BASELINE-V8-20261109-003 (fingerprint khớp HEAD); khóa 002 (PP-OCRv4) dùng cho V8-006. Quality = NOT_EVALUATED.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",

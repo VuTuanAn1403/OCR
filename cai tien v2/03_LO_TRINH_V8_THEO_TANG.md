@@ -9,12 +9,12 @@ Căn cứ: Kế hoạch Benchmark-first và So sánh công nghệ (hai DOCX lưu
 <!-- v8-status:phases:begin -->
 | Pha | Tên | Trạng thái | Cổng ra | Backlog |
 | --- | --- | --- | --- | --- |
-| R1 | Tài liệu nền, bản đồ kiến thức, skill | DONE | check_knowledge_map exit 0; hồi quy không có lỗi mới | V8-002, V8-003, V8-004, V8-005, V8-170 |
+| R1 | Tài liệu nền, bản đồ kiến thức, skill | IN_PROGRESS | check_knowledge_map exit 0; hồi quy không có lỗi mới | V8-002, V8-003, V8-004, V8-005, V8-170 |
 | P0 | Khóa baseline | DONE | BASELINE_LOCK_REPORT có đủ identity | V8-001, V8-006 |
-| P1 | Ground Truth và protocol | BLOCKED | Protocol LOCKED, GT độc lập đủ cỡ mẫu | V8-010, V8-011, V8-012, V8-013 |
-| P2 | Tiền xử lý ảnh IMG-01..06 | TODO | Paired fix/harm từng biến | V8-050 |
+| P1 | Ground Truth và protocol | IN_PROGRESS | Protocol LOCKED, GT độc lập đủ cỡ mẫu | V8-010, V8-011, V8-012, V8-013 |
+| P2 | Tiền xử lý ảnh IMG-01..06 | IN_PROGRESS | Paired fix/harm từng biến | V8-050 |
 | P3 | Phát hiện chữ DET-01..07 | TODO | TP/FP/FN cùng snapshot | V8-060 |
-| P4 | Nhận dạng chữ A/B/C/D | TODO | Tách hiệu ứng detector và recognizer | V8-065, V8-030 |
+| P4 | Nhận dạng chữ A/B/C/D | IN_PROGRESS | Tách hiệu ứng detector và recognizer | V8-065, V8-030 |
 | P5 | Layout và thứ tự đọc | TODO | Class/region/order scorecard trên GT | V8-070, V8-071 |
 | P6 | Bảng và công thức | TODO | TEDS, numeric cell, ownership | V8-080, V8-085 |
 | P7 | VLM fallback và parser đối chứng | TODO | Identity, tài nguyên, GT | V8-090, V8-095 |

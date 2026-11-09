@@ -80,3 +80,36 @@ Lệnh mẫu preflight đã thực chạy trong audit:
 ```
 
 Exit 1, `NOT_READY_FOR_ACCEPTANCE_MEASUREMENT`: protocol DRAFT chưa LOCKED. [Bằng chứng](../../scratch/dev_sessions/20261107-qa-repository-audit/draft-preflight-probe.json). Chưa tạo assignments, source metadata, nhãn người, khóa dataset hoặc ngưỡng mới. Điều kiện tiếp tục là dữ liệu và hồ sơ thật đáp ứng công cụ sẵn có; phần thiếu giữ `NOT_EVALUATED`.
+
+## 7. Nguồn GT cho cổng dấu v8 (V8-013, V8-011)
+
+**Quyết định ngày 09/11/2026 (người dùng, trong phiên chat):** cổng dấu 99,99% dùng nguồn **(b) text layer của PDF born-digital** theo [04 §5](../../cai%20tien%20v2/04_DAC_TA_DO_DAU_9999.md). Dữ liệu tổng hợp (a) chỉ dùng cho stress test. Nguồn (c) và (d) chưa chọn. Nguồn (e) vẫn bị cấm: output model, đồng thuận engine, output pipeline, nhãn AI.
+
+**Chưa có:** người duyệt, custodian holdout, split, α/k và kế hoạch design effect. Vì vậy V8-013 còn `IN_PROGRESS`, mục này còn **DRAFT**, và chất lượng giữ `NOT_EVALUATED`.
+
+### 7.1 Quy mô ứng viên (đã đo, chưa phải GT)
+
+Lệnh `scripts/inventory_text_layers.py inputs --report scratch/v8/v8_011_text_layer_inventory_2af5454_20261109.json`, chạy tại `2af5454`, cho 720/938 trang `CANDIDATE` với 345.687 slot dấu. Trang `CANDIDATE` là trang có chữ hiển thị (không phải lớp OCR ẩn), font tổ hợp có ToUnicode, và không có chẩn đoán hỏng.
+
+| PDF | Trang ứng viên | Slot | Producer |
+| --- | ---: | ---: | --- |
+| AAA 2020 | 157/232 | 67.787 | iLovePDF |
+| ABT 2020 | 2/43 | 40 | (trống) |
+| ACL 2022 | 0/24 | 0 | SECnvtToPDF V1.0 |
+| AGR 2020 | 83/84 | 32.150 | 3-Heights PDF Security Shell / pdcat |
+| AGR 2022 | 101/102 | 33.448 | (trống) |
+| ASM 2022 | 94/164 | 29.912 | GPL Ghostscript 9.53.3 |
+| BCE 2022 | 62/62 | 23.460 | pdf |
+| BHN 2022 | 72/75 | 28.497 | PDF24 |
+| VIC 2020 | 149/152 | 130.393 | iLovePDF |
+
+### 7.2 Quy trình xác minh đề xuất (DRAFT, cần khóa trước khi đo)
+
+1. **Khóa trước khi xem kết quả OCR:** danh sách trang, seed lấy mẫu, α = 0,05, k và mệnh đề công bố theo 04 §1.
+2. **Xác minh theo producer:** với mỗi producer, người duyệt so text layer với ảnh render trên mẫu trang ngẫu nhiên (seed đã khóa) và ghi sai lệch theo loại slot. Producer có sai lệch hệ thống thì loại cả nhóm. Re-encode của iLovePDF, Ghostscript và PDF24 có thể làm hỏng ToUnicode.
+3. **Kiểm ký tự:** `scripts/check_vietnamese_charset.py` loại trang có dấu chưa tổ hợp hoặc code point lạ sau NFC.
+4. **Phạm vi hiển thị:** chỉ tính span text layer có glyph thấy được trên ảnh render (loại chữ bị cắt, chữ trắng, lớp ẩn). Chữ trong ảnh không có text layer nằm ngoài mẫu số và báo riêng.
+5. **Ghép trước khi căn:** thứ tự text layer khác thứ tự đọc của OCR. Phải ghép dòng OCR với span text layer theo bbox trước khi căn ký tự cho `DSER_strict`, nếu không lỗi thứ tự sẽ bị đếm thành lỗi xóa slot.
+6. **Split theo §2:** AGR, ASM và VIC đã có exposure, nên chỉ dùng cho development. AAA, BCE và BHN là ứng viên holdout nếu audit exposure xác nhận. ACL không có text layer.
+7. **Design effect:** ước lượng ρ theo cụm trang trên development. Với khoảng 410–430 slot mỗi trang, holdout chỉ có AAA (67.787 slot) cần ρ ≤ 0,0029 để N_eff ≥ 29.956. Holdout gồm AAA, BCE và BHN (119.744 slot) cần ρ ≤ 0,0073. Không ước lượng được ρ thì chỉ công bố mệnh đề trong mẫu.
+8. **Identity:** đo trên output mới của identity production hiện tại, tức khóa `BASELINE-V8-20261109-003` (detector PP-OCRv6_medium_det, fingerprint extraction `ccdbe84a3691d645`). Không dùng output của khóa 002 (PP-OCRv4) để kết luận về production hiện tại.

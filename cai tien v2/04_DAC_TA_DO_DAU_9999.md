@@ -77,6 +77,8 @@ Người dùng đã xác nhận không có người gán nhãn A/B. Mỗi lựa 
 
 Chênh lệch giữa các engine chỉ được dùng để **chọn vùng cần soát**, và trọng số lấy mẫu phải công bố.
 
+**Quyết định ngày 09/11 (V8-013):** người dùng chọn (b). Kiểm kê có 720/938 trang ứng viên với 345.687 slot. Đây là ứng viên chưa xác minh, chưa phải GT. Quy trình xác minh DRAFT, người duyệt và split nằm ở [GROUND_TRUTH_PROTOCOL §7](../docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md#7-nguồn-gt-cho-cổng-dấu-v8-v8-013-v8-011).
+
 ## 6. Tác động lên đếm keyword
 
 Với tỷ lệ lỗi slot p và keyword có d slot, xác suất một occurrence đọc đúng xấp xỉ (1 − p)^d. Ví dụ p = 10⁻⁴, d = 10 cho khoảng 0,999. Nhưng lỗi dấu thường **có hệ thống**: một từ có thể luôn bị đọc sai. Vì vậy phải báo theo từng keyword, không chỉ báo tỷ lệ chung.

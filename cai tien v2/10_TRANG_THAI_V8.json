@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
   "pipeline_version": "7.0.0",
-  "verified_head": "67a4e12472e258a902915c18c40a5c869bfc43c5",
+  "verified_head": "2af545430074a7f8238352f18036e2b6bba3a6cf",
   "last_verified": "2026-11-09",
-  "verified_scope": "HEAD 67a4e12 (V8-010/033/042/120); working tree V8-130 chưa commit. Khóa BASELINE-V8-20261109-002 trước V8-033. Quality = NOT_EVALUATED.",
+  "verified_scope": "HEAD 2af5454 (V8-030/050/060/130 và rà soát chỉ tiêu 09/11; hồi quy CPU 2553 passed, 1 lỗi do chạy giữa lúc sửa registry, đã chạy lại đạt). Detector production PP-OCRv6 là ngoại lệ chưa qua GT. Khóa hiện hành BASELINE-V8-20261109-003 (fingerprint khớp HEAD); khóa 002 (PP-OCRv4) dùng cho V8-006. Quality = NOT_EVALUATED.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
@@ -76,7 +76,7 @@
     },
     {
       "id": "L2",
-      "name": "Phát hiện dòng chữ (PP-OCRv4 ONNX DB)",
+      "name": "Phát hiện dòng chữ (PP-OCRv6_medium_det ONNX DB từ 09/11)",
       "capability": "IMPLEMENTED",
       "quality": "NOT_EVALUATED",
       "phase": "P3",
@@ -93,8 +93,14 @@
           "path": "src/ocr_contracts/text_detection.py",
           "symbol": "validate_snapshot",
           "label": "VERIFIED"
+        },
+        {
+          "path": "models/v62/runtime-models.json",
+          "symbol": "PP-OCRv6_medium_det",
+          "label": "VERIFIED"
         }
-      ]
+      ],
+      "note": "Ngoại lệ do người dùng quyết ngày 09/11: production thay PP-OCRv4 bằng PP-OCRv6_medium_det (BGR, threshold 0.2/0.45) khi chưa so trên GT, trái nguyên tắc challenger của 00/03. Khóa 002 và V8-006 là PP-OCRv4; khóa 003 (LOCKED, fingerprint extraction ccdbe84a3691d645, khớp HEAD 2af5454) là v6. Với v6 mới có smoke ACL và dữ liệu tổng hợp; prediction 938 trang cho khóa 003 chạy ngày 09/11 ở output/v8_003_baseline_20261109."
     },
     {
       "id": "L3",
@@ -396,7 +402,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Có schema, CLI intake/seal và GT tổng hợp chỉ cho stress test (V8-010); chưa có GT độc lập cho 9 PDF; nhãn 0/38, keyword 0/12, L5 0/13, công thức 0/3; chưa có công cụ gán nhãn trực quan."
+      "note": "Có schema, CLI intake/seal và GT tổng hợp chỉ cho stress test (V8-010); chưa có GT độc lập cho 9 PDF; nhãn 0/38, keyword 0/12, L5 0/13, công thức 0/3; chưa có công cụ gán nhãn trực quan. 09/11: người dùng chọn nguồn (b) text layer born-digital (V8-013); kiểm kê có 720/938 trang ứng viên, 345.687 slot, chưa xác minh nên chưa là GT."
     },
     {
       "id": "G03",
@@ -562,8 +568,8 @@
           "label": "VERIFIED"
         }
       ],
-      "searched": "grep -c '\"license\"' models/v62/runtime-models.json => 0",
-      "note": "Baseline có sha256 và revision HF, chưa có licence/URL/VRAM. Challenger: model_catalog.json, cổng tải cần licence VERIFIED, revision và sha weights."
+      "searched": "grep -c '\"license\"' models/v62/runtime-models.json => 1 (chỉ text_detector, 09/11)",
+      "note": "Baseline có sha256 và revision HF; từ 09/11 riêng text_detector có source/revision/licence, các model khác chưa có licence/URL/VRAM. Challenger: model_catalog.json, cổng tải cần licence VERIFIED, revision và sha weights."
     },
     {
       "id": "G09",
@@ -620,7 +626,11 @@
   "diacritic_gate": {
     "target": "99,99%",
     "status": "NOT_EVALUATED",
-    "blocker": "Chưa có GT độc lập: cần >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788; design effect chưa khóa. Mã cổng đã dùng cận Clopper-Pearson và DSER_strict (V8-020..022).",
+    "blocker": "Chưa có GT độc lập: cần >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788; design effect chưa khóa. Nguồn (b) đã chọn: 345.687 slot ứng viên text layer, chờ khóa quy trình xác minh, người duyệt và split (V8-011/013). Mã cổng đã dùng cận Clopper-Pearson và DSER_strict (V8-020..022).",
+    "candidate_text_layer_slots": {
+      "value": 345687,
+      "scope": "scripts/inventory_text_layers.py trên 9 PDF inputs/ ngày 2026-11-09 tại 2af5454: 720/938 trang CANDIDATE; ứng viên chưa xác minh, không phải GT"
+    },
     "required_slots_zero_errors_95": 29956,
     "available_slots_counted": {
       "value": 1788,
@@ -657,7 +667,7 @@
     {
       "id": "R1",
       "title": "Tài liệu nền, bản đồ kiến thức, skill",
-      "status": "DONE",
+      "status": "IN_PROGRESS",
       "exit_gate": "check_knowledge_map exit 0; hồi quy không có lỗi mới",
       "backlog": [
         "V8-002",
@@ -680,7 +690,7 @@
     {
       "id": "P1",
       "title": "Ground Truth và protocol",
-      "status": "BLOCKED",
+      "status": "IN_PROGRESS",
       "exit_gate": "Protocol LOCKED, GT độc lập đủ cỡ mẫu",
       "backlog": [
         "V8-010",
@@ -692,7 +702,7 @@
     {
       "id": "P2",
       "title": "Tiền xử lý ảnh IMG-01..06",
-      "status": "TODO",
+      "status": "IN_PROGRESS",
       "exit_gate": "Paired fix/harm từng biến",
       "backlog": [
         "V8-050"
@@ -710,7 +720,7 @@
     {
       "id": "P4",
       "title": "Nhận dạng chữ A/B/C/D",
-      "status": "TODO",
+      "status": "IN_PROGRESS",
       "exit_gate": "Tách hiệu ứng detector và recognizer",
       "backlog": [
         "V8-065",
@@ -775,7 +785,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "b05294c51956c413ee2c4f906618bbcc17ee4ed0b1eaacc6efbe086533122d3c",
+      "sha256": "70a49441586ff0ddd8af749ba193e3ce9a9f57b1571ee57be2afc5beef1b2a24",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -787,15 +797,15 @@
         },
         {
           "path": "cai tien v2/02_KIEM_TOAN_KHOANG_TRONG.md",
-          "sha256": "e094b4281a03edd3d5d810630e086d585d82c738024d10e4c370841feae54aa4"
+          "sha256": "be6ad60096449370b6f880aca6c6454209154ae09d350dfdc5adb7c07a894485"
         },
         {
           "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
-          "sha256": "144704b89b7935e8d017a4831b02e95b572d69e0e2e3c5476f4f58f3b75a9a98"
+          "sha256": "78e2479d6168a09579ce7e3258d02a54a5a2f3d07b9a9235be5566b6aa1791ee"
         },
         {
           "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
-          "sha256": "d4f1ce8cbccb6e39d96f21e02b722b921cbc3a7de4112abcad0d9e25c53823fb"
+          "sha256": "56a0f338cf7fba327e6e5c357b69e6ed64b8d97ec123c9430e5e85dd36c221da"
         },
         {
           "path": "cai tien v2/05_HOP_DONG_BENCHMARK_ADAPTER.md",
@@ -827,7 +837,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "e7ef3aeae0cddc0c979518159e9f8d6030ad814842bab9b45a76918f0d84471b"
+          "sha256": "24e3bba7c455a2e657e04c7a82a8defae6446783487008e988588d75dbf0af9d"
         }
       ]
     }

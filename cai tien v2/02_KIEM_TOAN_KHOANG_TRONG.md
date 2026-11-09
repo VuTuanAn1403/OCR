@@ -60,6 +60,7 @@ Mốc kiểm toán: HEAD `08f7602`, ngày 08/11/2026. Nguồn trạng thái duy 
   - L5 0/13;
   - công thức 0/3.
 - Người dùng đã xác nhận không có người gán nhãn A/B, và AI không được làm GT. Các lựa chọn còn lại nằm ở [04](04_DAC_TA_DO_DAU_9999.md) §4.
+- Quyết định ngày 09/11 (V8-013): chọn nguồn (b), text layer born-digital. `scripts/inventory_text_layers.py` đếm được 720/938 trang ứng viên với 345.687 slot. Đây là ứng viên chưa xác minh. Người duyệt và split chưa có; quy trình DRAFT ở `docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md` §7.
 
 **G03 — Layout.**
 - Đã có heuristic gutter/cột (`region_tree`), nối cột (`column_continuity`), đồ thị thứ tự đọc (`reading_order_graph`), header/footer (`document_furniture`) và caption (`figures`).
@@ -82,6 +83,7 @@ Mốc kiểm toán: HEAD `08f7602`, ngày 08/11/2026. Nguồn trạng thái duy 
 - Thiếu design effect hoặc thiếu slot thì kết quả vẫn là `NOT_EVALUATED`, kèm số slot cần thêm.
 
 **G08 — Model registry.** Có sha256 từng file và revision HF. Không có licence, URL nguồn hay VRAM. Metadata challenger sẽ để riêng ở catalog (V8-043), không sửa registry production.
+- Ngoại lệ ngày 09/11 (người dùng quyết): `text_detector` production đổi từ PP-OCRv4 sang `PP-OCRv6_medium_det`, có source, revision và licence, nhưng chưa so trên GT (V8-060). Khóa 002 và V8-006 là PP-OCRv4; khóa 003 được chụp sau khi đổi detector.
 
 **G09 — Observability.** Có log JSON và đo RSS/VRAM đỉnh. Chưa chạy soak, chưa có dashboard thời gian thực.
 

@@ -1,46 +1,45 @@
 # Bàn giao
 
-Cập nhật 09/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger` (`24a5558`..`20207a2` trên `08f7602`; V8-120: `67a4e12`; 10 sửa review: `20207a2`, chưa push), PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1) có Auto-fix. Commit chốt phiên ngay sau `20207a2` (người dùng duyệt, chưa push): V8-130, V8-065, V8-030, V8-050, tài liệu 11–13, registry, HANDOFF này; file `.onnx` không vào Git (`.gitignore`). OCR identity khác khóa 002 từ V8-033. Trạng thái: skill `ocr-pdf-knowledge-map` hoặc `scripts/check_knowledge_map.py --summary`. [Phiên 09/11](../../scratch/dev_sessions/20261109-v8-metric-keyword-challenger/session.md); [HANDOFF trước phiên](../../scratch/dev_sessions/20261109-v8-metric-keyword-challenger/handoff-before.md).
+Cập nhật 09/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, HEAD `2af5454` đã push, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1) bật Auto-fix. Sửa registry, backlog và protocol của phiên rà soát nằm ở commit ngay sau `2af5454`, chưa push (chỉ tài liệu, không đổi OCR identity). Identity hiện tại khớp khóa `BASELINE-V8-20261109-003` (extraction `ccdbe84a3691d645`, detector v6). Trạng thái: skill `ocr-pdf-knowledge-map` hoặc `scripts/check_knowledge_map.py --summary`. Phiên: [rà soát chỉ tiêu](../../scratch/dev_sessions/20261109-v8-target-review/session.md), [metric/keyword](../../scratch/dev_sessions/20261109-v8-metric-keyword-challenger/session.md), [review](../../scratch/dev_sessions/20261109-review-fixes/session.md).
 
-## 09/11: metric dấu, keyword, challenger (theo `cai tien v2`)
+## 09/11 chiều: rà soát chỉ tiêu `cai tien v2`
 
-- **V8-020..022**: `DSER_strict` song song `DER_VN_v1`; cận Clopper-Pearson (`exact_bounds.py`); cổng OCR `release_gate.py::_ocr_diacritic_bound_gate` dùng cận trên, 0 lỗi cần `design_effect` đã khóa.
-- **V8-031/032**: `single_word_variants` (không cộng); challenger `literal_v2`, sản phẩm vẫn `literal_v1`. Trên V8-006: v1 164, v2 154 (`B2B`/`B2C` trong `B2B2C`, VIC); 0 biến thể một từ.
-- **V8-040/041/043, V8-110, V8-012, V8-170**: `benchmark/challengers/` (experiment_id, manifest, catalog 0/8 được tải, contract riêng); E01–E13; 1.788 slot CLW; harness thiếu thì skip.
-- **Khóa** `BASELINE-V8-20261109-002` tại `24a5558`. **V8-006 DONE**: `output/v8_baseline_20261109_r2` 9/9 PDF, 938 trang; audit exit 0; identity MATCH 9/9. Lần 1 hỏng vì sửa `src/` khi batch chạy.
-- **V8-042 DONE**: `matrix_runner`, `run_perf` chạy sản phẩm qua `ocr_pipeline.cli.main` ở tiến trình con (`benchmark/product_run.py`); ACL: F/V1/A6 COMPLETED, F (`png`) và perf khớp khóa 002.
-- **V8-033 DONE** (đổi `src/ocr_text`, identity mới): luật "cổ ông" chỉ viết lại `cổ ông`/`CỔ ÔNG`, giữ danh xưng `Cổ Ông`. Replay 53.291 dòng V8-006: 0 dòng đổi. Smoke ACL `output/v8_033_smoke_acl_20261109` exit 0.
-- **Review 09/11**: 10 sửa ([phiên](../../scratch/dev_sessions/20261109-review-fixes/session.md)): "cổ ông" không vượt dòng, company_id, chặn trùng tên, perf.json, throughput/lock.
-- **V8-010 DONE**: `synthetic_diacritics.py` (`STRESS_TEST_ONLY`). 150 DPI: keyword DSER 0/375 slot; lưới âm tiết 165/530 và 148/530.
-- **V8-130 DONE**: `structured_export.py`: DOCX/XLSX giữ ô gộp. 9 PDF: 815/815 bảng round-trip đạt, không mất chữ.
-- **Tài liệu 11–13 DONE**: `11` (8 quy tắc R-RO); `12` (quy trình 6 bước, 938 trang, tách 2-UP); `13` (toán D/I/S, DSER_strict). Xuất `OCR_PDF_V8_BO_TAI_LIEU.docx` (49.213 B).
-- **V8-065 PP-OCRv6 Det**: Tải `PP-OCRv6_medium_det` (62 MB), ghim BGR, threshold 0.2/0.45. Smoke ACL exit 0.
-- **V8-030 DONE**: `diacritic_retry` nhận `extra_phrases` từ keyword/config; 34 test pass (`test_diacritic_retry.py`).
-- **V8-050 IN_PROGRESS**: `page_spread.py` (1-UP/2-UP/UNCERTAIN, tách L/R, map bbox ngược) và `scripts/analyze_page_spreads.py`; 938 trang khớp đặc tả 12 (324 ngang: 252 2-UP, 39 1-UP, 33 UNCERTAIN); 6 test pass.
-- **Nguồn đã xóa**: 3 tài liệu; registry `git_preserved` = `08f7602` (clone nông: NOT_EVALUATED).
+- **Chưa đạt chỉ tiêu nào.** Cổng dấu 99,99% `NOT_EVALUATED`: GT độc lập 1.788/29.956 slot. Keyword, thứ tự đọc và bảng chưa có GT; P3–P9 chưa đo.
+- **Người dùng quyết:** V8-013 chọn nguồn (b) text layer born-digital. Giữ `PP-OCRv6_medium_det` trong production như ngoại lệ chưa qua GT (V8-060). Khóa 003 đã có từ trước và khớp fingerprint HEAD.
+- **V8-011:** kiểm kê có 720/938 trang ứng viên, 345.687 slot (`scratch/v8/v8_011_text_layer_inventory_2af5454_20261109.json`), chưa là GT. Quy trình xác minh DRAFT ở `docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md` §7.
+- **Registry:**
+  - L2 ghi PP-OCRv6; G02/G08 cập nhật.
+  - V8-030 chuyển `IN_PROGRESS` (fix/harm cần GT); V8-011/013 chuyển `IN_PROGRESS`.
+  - Pha R1/P1/P2/P4 chuyển `IN_PROGRESS`; xuất lại DOCX.
+
+## 09/11 sáng: metric, keyword, challenger
+
+- V8-020..022: `DSER_strict`, cận Clopper-Pearson, cổng OCR dùng cận trên. V8-031/032: `single_word_variants`, challenger `literal_v2` (v1 164, v2 154 trên V8-006).
+- V8-040/041/043/110: `benchmark/challengers/`, E01–E13. V8-042: runner chạy qua `ocr_pipeline.cli.main`.
+- Khóa `BASELINE-V8-20261109-002` tại `24a5558` (PP-OCRv4). V8-006: `output/v8_baseline_20261109_r2` 9/9 PDF, 938 trang, audit exit 0.
+- V8-033: luật "cổ ông"; replay 53.291 dòng, 0 dòng đổi. V8-010: GT tổng hợp chỉ cho stress test.
+- V8-130: DOCX/XLSX giữ ô gộp, 815/815 bảng round-trip. Tài liệu 11–13 xong.
+- V8-065 (thực chất là V8-060): detector `PP-OCRv6_medium_det`, BGR, threshold 0.2/0.45; smoke ACL exit 0.
+- V8-050 đang làm: `page_spread.py`, 324 trang ngang (252 2-UP, 39 1-UP, 33 UNCERTAIN).
 
 ## Kiểm tra đã chạy
 
-- Hồi quy CPU sau review: 2536 passed; sau V8-030/050: 181 passed (recognition, text, spread, dser_strict).
-- `lint-imports` (pyproject) và contract `challengers`, `v8-runners`: 21 passed. `check_knowledge_map.py --check`: 0 lỗi.
-- Quality vẫn NOT_EVALUATED; chưa có GT độc lập.
+- Hồi quy CPU tại `2af5454`: 2553 passed, 19 skipped, 1 failed (`scratch/runs/20261109-155207-40a5723e`). Lỗi là `test_real_checkout_map_has_no_errors`, do chạy đúng lúc sửa registry trước `--render`; chạy lại `test_check_knowledge_map.py` cho 36 passed (`scratch/runs/20261109-160031-20596da1`).
+- 77 test sát thay đổi (`scratch/runs/20261109-154346-d676bcfb`); `check_knowledge_map.py --check` 0 lỗi.
+- Quality vẫn `NOT_EVALUATED`.
 
-## Phát hiện mới
+## Phát hiện còn mở
 
-- `src/ocr_document/validation.py` import lười `benchmark.accuracy_first` (dòng 326). Contract chính không thấy (`benchmark` là gói external); sửa đổi closure extraction.
-- Docling `FAILED_FALLBACK` tạm thời: 3/938 trang ở V8-006, thêm ACL trang 23 ở smoke V8-033; worker chết không có traceback.
-- **V8-120 (đổi `src/`)**: lỗi trang Docling ghi mã thoát và `worker.log`; log pha theo lần chạy ở `<generation>/logs/<run>/`. Tiêm lỗi trên ACL (`scripts/inject_docling_fault.py`): trang 1 `exit code 15`, trang 2–24 phục hồi, audit đạt.
+- `src/ocr_document/validation.py` import lười `benchmark.accuracy_first`, contract chính không thấy.
+- Docling `FAILED_FALLBACK` tạm thời: 3/938 trang ở V8-006. V8-120 ghi mã thoát worker; còn soak dài.
+- `models/v62/runtime-models.json` ghi `V8-065` trong `decision`; không sửa vì thuộc identity model.
 
-## Bằng chứng trước phiên: giữ nguyên, chưa đo lại
+## Bước kế tiếp
 
-QA-02 registry offline, dọn dẹp 06/11, Global Alias v1 86/86, GAP-03/DC-01/DC-02/TAB_05: xem [HANDOFF trước phiên](../../scratch/dev_sessions/20261109-v8-metric-keyword-challenger/handoff-before.md).
+Không có người gán A/B; không dùng AI hay output pipeline làm GT.
 
-## Giới hạn và bước kế tiếp
-
-User xác nhận không có người A/B; không dùng AI hay protocol làm GT. GT, split, protocol và ngưỡng còn thiếu.
-
-1. Commit đã chốt; kế tiếp: khóa mới và chạy dự đoán 938 trang cho mã có V8-033.
-2. V8-120 còn soak dài. V8-030 cần GT để đo fix/harm. Mã hiện tại (sau review) chưa smoke OCR.
-3. Khi batch chạy, không sửa `src/`. V8-013, V8-170: người dùng chọn.
+1. Người dùng duyệt và khóa §7 (seed, mẫu theo producer, α/k, split), chỉ định người duyệt và custodian. AGR/ASM/VIC chỉ dùng cho development.
+2. Prediction 938 trang cho khóa 003: `output/v8_003_baseline_20261109` (log `scratch/v8/v8_003_baseline_batch_20261109.log`), rồi chạy audit `--validate` và `check_baseline_identity.py`. Khi batch chạy không sửa `src/`.
+3. Xác minh text layer theo §7, ước lượng ρ trên development, rồi đo theo 04 §7. V8-170: người dùng chọn.
 
 Đổi trạng thái thì sửa registry, chạy `--render` rồi `--check`. Commit khi người dùng duyệt.

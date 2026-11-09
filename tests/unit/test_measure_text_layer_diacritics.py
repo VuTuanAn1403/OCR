@@ -8,6 +8,7 @@ import pymupdf
 import pytest
 
 from benchmark.ground_truth_tools import text_layer_reference as tlr
+from scripts import lock_text_layer_measurement as lock_v2
 from scripts import measure_text_layer_diacritics as measure
 from scripts import screen_text_layer as screen
 
@@ -32,6 +33,7 @@ def _setup(tmp_path: Path, minimum: int = 1):
         {"page": 1, "status": "CANDIDATE", "diacritic_slots": 12}]}]}), encoding="utf-8")
     lock = tmp_path / "lock.json"
     lock.write_text(json.dumps({
+        "schema_version": "ocr-v8-text-layer-procedure-lock-v1", "procedure_version": 1, "status": "LOCKED_PROCEDURE",
         "inventory": {"path": str(inventory), "sha256": hashlib.sha256(inventory.read_bytes()).hexdigest()},
         "parameters": {"seed": "TEST", "confidence": 0.95, "maximum_error_rate": 1e-4, "metric": "DSER_strict"},
         "documents": [{"pdf": "DOC.pdf", "sha256": sha, "partition": "development", "eligibility": "SCREENING_REQUIRED",
@@ -73,8 +75,29 @@ def _output(tmp_path: Path, sha: str, items, identity_status="MATCH"):
     return output, identity
 
 
-def _build(tmp_path, lock, seal, identity, output):
-    return measure.build(lock, [seal], identity, output, tmp_path / "pdfs", "text_corrected")
+def measurement_lock(tmp_path: Path, lock: Path, *, draft: bool = False, stream: str = "text_corrected") -> Path:
+    decision = {} if draft else {"reviewer": "reviewer", "decided_on": "2026-11-10"}
+    built = lock_v2.build_lock(str(lock), draft=draft, stream=stream, **decision)
+    path = tmp_path / f"lock-v2-{'draft' if draft else stream}.json"
+    path.write_text(lock_v2.dump(built), encoding="utf-8")
+    return path
+
+
+def _build(tmp_path, lock, seal, identity, output, **options):
+    return measure.build(lock, [seal], identity, output, tmp_path / "pdfs", "text_corrected",
+                         measurement_lock=measurement_lock(tmp_path, lock, **options))
+
+
+def test_measurement_refuses_without_a_locked_v2_for_the_same_stream(tmp_path):
+    pdf, sha, lock, boxes = _setup(tmp_path)
+    seal = _seal(tmp_path, pdf, lock, "v2")
+    output, identity = _output(tmp_path, sha, [("Hội đồng quản trị", boxes["Hội đồng quản trị"])])
+    with pytest.raises(lock_v2.LockError, match="DRAFT_NOT_LOCKED"):
+        _build(tmp_path, lock, seal, identity, output, draft=True)
+    with pytest.raises(lock_v2.LockError, match="locked stream is text_raw"):
+        _build(tmp_path, lock, seal, identity, output, stream="text_raw")
+    report = _build(tmp_path, lock, seal, identity, output)
+    assert report["measurement_lock"]["status"] == "LOCKED_PROCEDURE"
 
 
 def test_measurement_refuses_a_text_layer_that_is_not_accepted(tmp_path):

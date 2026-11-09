@@ -6,11 +6,11 @@ Cập nhật 10/11/2026 rạng sáng, Asia/Bangkok. Nhánh `v8-diacritic-bounds-
 
 Mục tiêu người dùng giao là đưa đủ 38 mục backlog lên `DONE`. Mục nào cần GT do người tạo hay quyết định của người dùng thì giữ `IN_PROGRESS`/`TODO`; không mục nào được đánh `DONE` khi thiếu bằng chứng.
 
-- **P1 (V8-011/012):** `text_layer_reference.py` (lọc glyph hiển thị), `screen_text_layer.py` (phiếu sàng lọc, seal, kiểm lại mù), `measure_text_layer_diacritics.py` (ghép bbox, cổng `DSER_strict`), `adjudicate_text_layer_diacritics.py` (phân xử mù A/B), `cluster_correlation.py` (ρ_U beta-binomial; cận F của ANOVA chỉ phủ 58–89% trong mô phỏng). 7 phiếu sàng lọc đã dựng ở `scratch/v8/screening/*_v1_20261109/index.html`. Protocol §7.6 ghi các lựa chọn chờ khóa v2.
+- **P1 (V8-011/012):** `text_layer_reference.py` (lọc glyph hiển thị), `screen_text_layer.py` (phiếu sàng lọc, seal, kiểm lại mù), `measure_text_layer_diacritics.py` (ghép bbox, cổng `DSER_strict`), `adjudicate_text_layer_diacritics.py` (phân xử mù A/B), `cluster_correlation.py` (ρ_U beta-binomial; cận F của ANOVA chỉ phủ 58–89% trong mô phỏng). 7 phiếu sàng lọc đã dựng ở `scratch/v8/screening/*_v1_20261109/index.html`. Protocol §7.6 ghi các lựa chọn chờ khóa v2. Công cụ `lock_text_layer_measurement.py` (10/11) ghim 9 công cụ đo; đo và phân xử từ chối khi chưa có khóa v2 `LOCKED_PROCEDURE`. Nháp chờ duyệt: `scratch/v8/v8_011_measurement_lock_v2_draft_20261110.json` (`ea51ae6e…`, còn mở luồng đo).
 - **V8-150 `DONE`:** `label_structured_gt.py` cùng phiếu HTML gán nhãn detection, layout, thứ tự đọc, bảng; xuất `structured-page-gt-v1`, và scorer đọc được file xuất.
 - **V8-120 `DONE`:** `summarize_batch_operations.py` trên soak khóa 003: p50 6,57 s/trang, VRAM đỉnh 2.673/4.096 MiB, 2 lần chạy lại đều phục hồi.
 - **Quyết định 10/11 của người dùng:** bỏ 18 test harness `Test case/` (V8-170 `DONE`); "B2B2C" tính một lần B2B và một lần B2C như `literal_v1` (V8-100, sửa đặc tả 13); lỗi §4.1 ghi nhận, sửa sau.
-- **Hồi quy CPU tại `1ebba74`:** 2.610 passed, 19 skipped (`scratch/runs/20261110-010839-9d80fdb1`); sau khi bỏ test harness, `tests/scientific` 657 passed, 0 skipped.
+- **Hồi quy CPU tại `1ebba74`:** 2.610 passed, 19 skipped (`scratch/runs/20261110-010839-9d80fdb1`); sau khi bỏ test harness, `tests/scientific` 657 passed, 0 skipped. Tại `21f3cb3`: 2.612 passed, 1 skipped (`scratch/runs/20261110-013831-8339d788`).
 - **`IN_PROGRESS` có số liệu, chưa có GT:**
   - V8-071: thứ tự đọc R-RO-01..08, đồng thuận cặp 0,951.
   - V8-090: adapter VLM; 137/938 trang được chọn; Vintern-1B-v3.5 đã ghim, chưa chạy.
@@ -31,7 +31,7 @@ Mục tiêu người dùng giao là đưa đủ 38 mục backlog lên `DONE`. M�
 
 ## Bước kế tiếp (cần người dùng)
 
-1. Duyệt và khóa v2 các lựa chọn ở protocol §7.6, rồi sàng lọc 7 PDF bằng phiếu đã dựng → seal → đo → phân xử.
+1. Duyệt nháp khóa v2 (§7.6), chọn `text_corrected` hay `text_raw`, rồi khóa bằng `lock_text_layer_measurement.py --stream --reviewer --decided-on`; sau đó sàng lọc 7 PDF bằng phiếu đã dựng → seal → đo → phân xử.
 2. Gán nhãn GT bằng `label_structured_gt.py`: detection (V8-060), layout/thứ tự đọc (V8-070/071), bảng (V8-080); ưu tiên worklist trong các báo cáo V8-060/071.
 3. Khi muốn sửa lỗi §4.1: đổi `src/`, khóa baseline mới và chạy batch mới.
 4. VLM: Vintern-1B-v3.5 đã ghim (revision `b98f263e`, cần `trust_remote_code`); bạn tự tải, xem mã repo và chạy theo [`vlm/README.md`](../../benchmark/challengers/vlm/README.md). Recognizer, layout, parser (V8-065/070/095) chưa ghim.

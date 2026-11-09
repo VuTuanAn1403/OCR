@@ -5,7 +5,7 @@ import pytest
 
 from scripts import adjudicate_text_layer_diacritics as adjudicate
 from scripts import measure_text_layer_diacritics as measure
-from tests.unit.test_measure_text_layer_diacritics import FONT, _output, _seal, _setup
+from tests.unit.test_measure_text_layer_diacritics import FONT, _output, _seal, _setup, measurement_lock
 
 pytestmark = pytest.mark.skipif(FONT is None, reason="no TrueType font with Vietnamese glyphs")
 
@@ -14,10 +14,25 @@ def _measured(tmp_path):
     pdf, sha, lock, boxes = _setup(tmp_path)
     seal = _seal(tmp_path, pdf, lock, "m")
     output, identity = _output(tmp_path, sha, [("Hội đồng quản tri", boxes["Hội đồng quản trị"])])
-    report = measure.build(lock, [seal], identity, output, tmp_path / "pdfs", "text_corrected")
+    report = measure.build(lock, [seal], identity, output, tmp_path / "pdfs", "text_corrected",
+                           measurement_lock=measurement_lock(tmp_path, lock))
     path = tmp_path / "measurement.json"
     path.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
     return path
+
+
+def test_sheet_refuses_a_measurement_whose_v2_lock_changed(tmp_path):
+    path = _measured(tmp_path)
+    report = json.loads(path.read_text(encoding="utf-8"))
+    lock_path = tmp_path / "lock-v2-text_corrected.json"
+    lock_path.write_text(lock_path.read_text(encoding="utf-8").replace('"reviewer": "reviewer"', '"reviewer": "other"'),
+                         encoding="utf-8")
+    with pytest.raises(adjudicate.measurement_lock_v2.LockError, match="lock bytes changed"):
+        adjudicate.build_sheet(path, tmp_path / "pdfs", tmp_path / "adj-x", "reviewer")
+    del report["measurement_lock"]
+    path.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(adjudicate.measurement_lock_v2.LockError, match="no v2 measurement lock"):
+        adjudicate.build_sheet(path, tmp_path / "pdfs", tmp_path / "adj-y", "reviewer")
 
 
 def _answer(sheet, key, item, outcome, corrected=None):

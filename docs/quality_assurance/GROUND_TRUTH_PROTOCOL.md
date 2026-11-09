@@ -177,6 +177,7 @@ Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trư�
 | --- | --- |
 | Đơn vị text layer và lọc glyph hiển thị | `benchmark/ground_truth_tools/text_layer_reference.py` |
 | Phiếu sàng lọc (B), niêm phong (E), kiểm lại mù (D) | `scripts/screen_text_layer.py build`, `seal`, `recheck`, `agreement` |
+| Khóa v2 các lựa chọn §7.6 và ghim công cụ | `scripts/lock_text_layer_measurement.py` |
 | Đo OCR so với text layer đã chấp nhận, ghép theo bbox (§7.3 mục 7) | `scripts/measure_text_layer_diacritics.py` |
 | Phân xử mù A/B (C) | `scripts/adjudicate_text_layer_diacritics.py build`, `seal` |
 | ρ và cận trên, DEFF holdout | `benchmark/scientific_evaluation/cluster_correlation.py` |
@@ -186,6 +187,15 @@ Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trư�
 ### 7.6 Đề xuất cho khóa v2 (chưa khóa)
 
 Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong khóa v1. Người dùng duyệt rồi khóa chúng trong v2 trước khi xem bất kỳ kết quả đo nào.
+
+Khóa v2 do `scripts/lock_text_layer_measurement.py` tạo:
+
+- Khóa gắn với khóa v1 qua sha256 và ghi giá trị của 7 lựa chọn, đọc thẳng từ mã.
+- Khóa ghim byte của 9 file công cụ, đọc CRLF thành LF. Sửa bất kỳ file nào trong số đó là khóa mất hiệu lực.
+- `measure_text_layer_diacritics.py` từ chối chạy khi thiếu khóa v2 ở trạng thái `LOCKED_PROCEDURE`, cùng khóa v1 và cùng luồng đo. `adjudicate_text_layer_diacritics.py` kiểm lại khóa này ở cả hai bước `build` và `seal`.
+- Bản nháp chờ duyệt ngày 10/11: `scratch/v8/v8_011_measurement_lock_v2_draft_20261110.json`, sha256 `ea51ae6e…`, trạng thái `DRAFT_NOT_LOCKED`, còn mở mục 4 (luồng đo).
+
+Khi người dùng duyệt, người vận hành chạy lệnh có `--stream`, `--reviewer`, `--decided-on` và `--report docs/quality_assurance/locks/<mới>.json`.
 
 1. **Glyph hiển thị:** render trang hai lần ở 144 DPI, nguyên trạng và sau khi gỡ mọi glyph bằng redaction (giữ ảnh và nét vẽ). Ký tự gốc hiển thị khi có ít nhất 2 pixel đổi trong hộp của nó. Ký tự có hộp rộng 0 (thành phần ligature như `h` trong `Th`) lấy kết quả của ký tự gốc đứng trước. Một chữ vào mẫu khi mọi ký tự gốc hiển thị; chữ hiển thị một phần bị loại và báo riêng. Trên 58 trang worklist: BHN có 10 chữ nằm dưới ảnh trùng nội dung (14 slot), BCE có 4 chữ bị che một phần (8 slot); 5 PDF còn lại không có chữ nào bị loại.
 2. **Đơn vị sàng lọc:** từng chữ có slot dấu. Người duyệt có thể ghi MATCH cho các chữ chưa quyết của một dòng bằng một thao tác; bản ghi đánh dấu `bulk: "line"`. Slot MATCH chỉ được đếm trên trang đã quyết đủ, theo thứ tự trong khóa.

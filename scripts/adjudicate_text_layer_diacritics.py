@@ -39,6 +39,7 @@ from benchmark.scientific_evaluation.cluster_correlation import page_icc  # noqa
 from benchmark.scientific_evaluation.diacritic_acceptance import uncomposed_vietnamese_marks  # noqa: E402
 from benchmark.scientific_evaluation.exact_bounds import upper_bound_gate  # noqa: E402
 from benchmark.scientific_evaluation.ocr_metric import compute_dser_strict_detailed  # noqa: E402
+from scripts import lock_text_layer_measurement as measurement_lock_v2  # noqa: E402
 from scripts.measure_text_layer_diacritics import reading_sequence, reference_lines  # noqa: E402
 from scripts.screen_text_layer import CROP_PAD_POINTS, SHEET_ZOOM, dumps, read_jsonl, sha256_bytes, tool_commit, write_new  # noqa: E402
 
@@ -83,12 +84,26 @@ def unit_words(pdf_bytes: bytes, page: int, line_ids: Sequence[str]) -> List[Tup
     return boxes
 
 
+def check_measurement_lock(measurement: Dict) -> None:
+    """The section 7.6 lock the measurement ran under must still hold: same bytes, same tools."""
+    entry = measurement.get("measurement_lock")
+    if not entry:
+        raise measurement_lock_v2.LockError("the measurement has no v2 measurement lock")
+    path = measurement_lock_v2.resolve(entry["path"])
+    if sha256_bytes(path.read_bytes()) != entry["sha256"]:
+        raise measurement_lock_v2.LockError(f"{entry['path']}: lock bytes changed after the measurement")
+    problems = measurement_lock_v2.verify(path)
+    if problems:
+        raise measurement_lock_v2.LockError(f"{entry['path']}: " + "; ".join(problems))
+
+
 def build_sheet(measurement_path: Path, pdf_root: Path, out: Path, reviewer: str) -> Dict:
     import numpy
     import pymupdf
 
     measurement_bytes = measurement_path.read_bytes()
     measurement = json.loads(measurement_bytes)
+    check_measurement_lock(measurement)
     lock = json.loads((ROOT / measurement["lock"]["path"]).read_bytes() if not Path(measurement["lock"]["path"]).is_absolute()
                       else Path(measurement["lock"]["path"]).read_bytes())
     seed = lock["parameters"]["seed"]
@@ -197,6 +212,7 @@ def seal(sheet_dir: Path, decision_paths: List[Path], out: Path) -> Dict:
     if sha256_bytes(measurement_bytes) != manifest["measurement"]["sha256"]:
         raise ValueError("the measurement report changed after the sheet was built")
     measurement = json.loads(measurement_bytes)
+    check_measurement_lock(measurement)
     records = read_jsonl(decision_paths)
     problems = check_records(manifest, records)
     if problems:

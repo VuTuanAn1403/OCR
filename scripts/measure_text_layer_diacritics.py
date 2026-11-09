@@ -5,6 +5,9 @@ GROUND_TRUTH_PROTOCOL section 7.3 and 7.4 C. CPU only; it reads an existing batc
 output and never runs a model.
 
 Order of the protocol, enforced here:
+  * The measurement choices of section 7.6 must be locked first (``--measurement-lock``,
+    ``lock_text_layer_measurement.py``): status LOCKED_PROCEDURE, bound to ``--lock``,
+    the same stream, and every pinned tool unchanged. A draft is refused.
   * Only PDFs whose screening is sealed ACCEPTED are measured (``--screening-seal``);
     the sealed decisions file must still match its sha256. Without that the tool
     refuses: the reviewer screens the text layer before any OCR result is compared.
@@ -26,8 +29,8 @@ slots (lock parameter ``metric``); DER_VN_v1 is reported beside it. Units with a
 DSER error, base mismatch or spurious mark form the adjudication worklist (7.4 C).
 On development the page intra-cluster correlation is estimated for the holdout DEFF.
 
-  python scripts/measure_text_layer_diacritics.py --lock <lock.json> --screening-seal <seal.json>... \
-      --identity-report <identity.json> --output output/<run> --pdf-root inputs --stream text_corrected \
+  python scripts/measure_text_layer_diacritics.py --lock <lock.json> --measurement-lock <lock v2>.json \
+      --screening-seal <seal.json>... --identity-report <identity.json> --output output/<run> --pdf-root inputs --stream text_corrected \
       --report scratch/v8/<new>.json [--design-effect-from <development report>]
 """
 from __future__ import annotations
@@ -50,10 +53,12 @@ from benchmark.scientific_evaluation.cluster_correlation import holdout_design_e
 from benchmark.scientific_evaluation.diacritic_acceptance import uncomposed_vietnamese_marks  # noqa: E402
 from benchmark.scientific_evaluation.exact_bounds import upper_bound_gate  # noqa: E402
 from benchmark.scientific_evaluation.ocr_metric import compute_der_detailed, compute_dser_strict_detailed  # noqa: E402
+from scripts import lock_text_layer_measurement as measurement_lock_v2  # noqa: E402
 
 SCHEMA = "ocr-v8-text-layer-diacritic-measurement-v1"
 STREAMS = ("text_corrected", "text_raw")
 MIN_VERTICAL_OVERLAP = 0.5
+MATCHING_METHOD = "bbox-connected-groups-v1"
 STRICT_FIELDS = ("ref_slots", "dser_errors", "shape_errors", "tone_errors", "stroke_errors", "deleted_slots",
                  "spurious_marks", "uncomposed_prediction_marks", "base_mismatch_slots", "inserted_char_marks")
 DER_FIELDS = ("ref_diacritics", "diacritic_errors")
@@ -258,11 +263,12 @@ def measure_pdf(pdf_path: Path, inventory_document: Dict, extraction: Dict, stre
 
 
 def build(lock_path: Path, seal_paths: Sequence[Path], identity_report: Path, output: Path, pdf_root: Path,
-          stream: str, design_effect_from: Optional[Path] = None) -> Dict:
+          stream: str, design_effect_from: Optional[Path] = None, *, measurement_lock: Path) -> Dict:
     if stream not in STREAMS:
         raise ValueError(f"stream must be one of {STREAMS}")
     lock_bytes = lock_path.read_bytes()
     lock = json.loads(lock_bytes)
+    choices = measurement_lock_v2.require_locked(measurement_lock, hashlib.sha256(lock_bytes).hexdigest(), stream)
     accepted = accepted_screenings(lock, seal_paths)
     inventory_path = ROOT / lock["inventory"]["path"] if not Path(lock["inventory"]["path"]).is_absolute() else Path(lock["inventory"]["path"])
     if sha256_file(inventory_path) != lock["inventory"]["sha256"]:
@@ -315,8 +321,9 @@ def build(lock_path: Path, seal_paths: Sequence[Path], identity_report: Path, ou
     return {
         "schema_version": SCHEMA, "protocol": "docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md#7",
         "lock": {"path": lock_path.as_posix(), "sha256": hashlib.sha256(lock_bytes).hexdigest()},
+        "measurement_lock": choices,
         "partition": partition, "stream": stream, "output": output.as_posix(), "identity": identity,
-        "metric": lock["parameters"]["metric"], "matching": {"method": "bbox-connected-groups-v1",
+        "metric": lock["parameters"]["metric"], "matching": {"method": MATCHING_METHOD,
                                                              "min_vertical_overlap": MIN_VERTICAL_OVERLAP,
                                                              "visibility": tlr.VISIBILITY_METHOD},
         "dser_strict": {**strict_total, "rate": errors / slots if slots else None},
@@ -336,6 +343,7 @@ def build(lock_path: Path, seal_paths: Sequence[Path], identity_report: Path, ou
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--lock", type=Path, required=True)
+    parser.add_argument("--measurement-lock", type=Path, required=True, help="LOCKED v2 lock of the section 7.6 choices")
     parser.add_argument("--screening-seal", type=Path, nargs="+", required=True)
     parser.add_argument("--identity-report", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -346,8 +354,12 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     if args.report.exists():
         parser.error(f"{args.report} exists; write a new report")
-    report = build(args.lock, args.screening_seal, args.identity_report, args.output, args.pdf_root, args.stream,
-                   args.design_effect_from)
+    try:
+        report = build(args.lock, args.screening_seal, args.identity_report, args.output, args.pdf_root, args.stream,
+                       args.design_effect_from, measurement_lock=args.measurement_lock)
+    except measurement_lock_v2.LockError as error:
+        print(f"refused: {error}", file=sys.stderr)
+        return 3
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_bytes((json.dumps(report, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     strict = report["dser_strict"]

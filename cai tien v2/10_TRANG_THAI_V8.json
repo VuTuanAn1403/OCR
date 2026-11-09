@@ -493,7 +493,7 @@
     {
       "id": "G05",
       "title": "VLM và Hybrid Document AI",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "quality": "NOT_EVALUATED",
       "qa_ref": [
         "QA-G08"
@@ -502,9 +502,14 @@
         "V8-090",
         "V8-095"
       ],
-      "evidence": [],
-      "searched": "git grep -niE 'paddleocr|paddlex|pp-structure|ppstructure|paddleocr-vl|\\bvlm\\b' -- src config requirements benchmark scripts => 2 kết quả: docstring dla_engine và extra models-vlm-inline của docling-slim; không có đường gọi VLM",
-      "note": "So sánh PaddleOCR-VL-1.6 trước đây chỉ nằm ở Doi_Chieu/ (Git bỏ qua); Test case/ đã bị người dùng xóa ngày 08/11/2026."
+      "evidence": [
+        {
+          "path": "benchmark/challengers/vlm/adapter.py",
+          "symbol": "run",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "10/11: adapter VLM challenger, chọn trang theo chẩn đoán và cổng catalog (V8-090); chưa ghim model nào nên chưa chạy. Production không có đường gọi VLM; PaddleOCR-VL-1.6 trước đây chỉ ở Doi_Chieu/ (Git bỏ qua)."
     },
     {
       "id": "G06",
@@ -790,7 +795,7 @@
     {
       "id": "P7",
       "title": "VLM fallback và parser đối chứng",
-      "status": "TODO",
+      "status": "IN_PROGRESS",
       "exit_gate": "Identity, tài nguyên, GT",
       "backlog": [
         "V8-090",
@@ -825,7 +830,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "c56b96c47fbb9f52d911cc1a4537ec54c739560cd4566bbaca61edd81e1fe95f",
+      "sha256": "7c103f3cfb11957290554db15faf0b2b98b37c4c9a4db5e8e94c9a718dc5e9d6",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -837,11 +842,11 @@
         },
         {
           "path": "cai tien v2/02_KIEM_TOAN_KHOANG_TRONG.md",
-          "sha256": "b4903800dee2bb4cd0a2f3df1122fec5b0e41bb08ed3b257582edd9132c78614"
+          "sha256": "70f71da9d6d2632d82348d40d0bc36560ac24a28352a68601b150fe3dd92a85d"
         },
         {
           "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
-          "sha256": "1509ad046fbb0573933a6a0798a24ce84012a45a1f0bd348bb33a6a5c29ffa31"
+          "sha256": "c47f7d5a277f6be7a24e7bd55dbe2827978b2a96852958aba549b560c26e413c"
         },
         {
           "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
@@ -877,7 +882,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "b6a5d73ac4d3e68c766a794b808880c7ca452088693de08284ccc6718bf09602"
+          "sha256": "559059d995b0e5ca7818f12baaac0e3b9f4aa975574c052c2883bd975ee2b0df"
         }
       ]
     }

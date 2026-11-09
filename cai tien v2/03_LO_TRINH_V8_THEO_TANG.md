@@ -17,7 +17,7 @@ Căn cứ: Kế hoạch Benchmark-first và So sánh công nghệ (hai DOCX lưu
 | P4 | Nhận dạng chữ A/B/C/D | IN_PROGRESS | Tách hiệu ứng detector và recognizer | V8-065, V8-030 |
 | P5 | Layout và thứ tự đọc | IN_PROGRESS | Class/region/order scorecard trên GT | V8-070, V8-071 |
 | P6 | Bảng và công thức | TODO | TEDS, numeric cell, ownership | V8-080, V8-085 |
-| P7 | VLM fallback và parser đối chứng | TODO | Identity, tài nguyên, GT | V8-090, V8-095 |
+| P7 | VLM fallback và parser đối chứng | IN_PROGRESS | Identity, tài nguyên, GT | V8-090, V8-095 |
 | P8 | Hậu xử lý, dấu, keyword | IN_PROGRESS | Cổng dấu 99,99% và 0 thiếu/thừa occurrence | V8-020, V8-021, V8-022, V8-031, V8-032, V8-100 |
 | P9 | End-to-end và hồ sơ quyết định | TODO | Quyết định thủ công PROMOTE/KEEP/REJECT/INCONCLUSIVE | V8-140, V8-160 |
 <!-- v8-status:phases:end -->

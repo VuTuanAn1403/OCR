@@ -13,7 +13,7 @@ Căn cứ: Kế hoạch Benchmark-first và So sánh công nghệ (hai DOCX lưu
 | P0 | Khóa baseline | DONE | BASELINE_LOCK_REPORT có đủ identity | V8-001, V8-006 |
 | P1 | Ground Truth và protocol | IN_PROGRESS | Protocol LOCKED, GT độc lập đủ cỡ mẫu | V8-010, V8-011, V8-012, V8-013 |
 | P2 | Tiền xử lý ảnh IMG-01..06 | IN_PROGRESS | Paired fix/harm từng biến | V8-050 |
-| P3 | Phát hiện chữ DET-01..07 | TODO | TP/FP/FN cùng snapshot | V8-060 |
+| P3 | Phát hiện chữ DET-01..07 | IN_PROGRESS | TP/FP/FN cùng snapshot | V8-060 |
 | P4 | Nhận dạng chữ A/B/C/D | IN_PROGRESS | Tách hiệu ứng detector và recognizer | V8-065, V8-030 |
 | P5 | Layout và thứ tự đọc | TODO | Class/region/order scorecard trên GT | V8-070, V8-071 |
 | P6 | Bảng và công thức | TODO | TEDS, numeric cell, ownership | V8-080, V8-085 |

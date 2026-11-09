@@ -98,9 +98,14 @@
           "path": "models/v62/runtime-models.json",
           "symbol": "PP-OCRv6_medium_det",
           "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/compare_detector_snapshots.py",
+          "symbol": "compare_page",
+          "label": "VERIFIED"
         }
       ],
-      "note": "Ngoại lệ do người dùng quyết ngày 09/11: production thay PP-OCRv4 bằng PP-OCRv6_medium_det (BGR, threshold 0.2/0.45) khi chưa so trên GT, trái nguyên tắc challenger của 00/03. Khóa 002 và V8-006 là PP-OCRv4; khóa 003 (LOCKED, fingerprint extraction ccdbe84a3691d645, khớp HEAD 2af5454) là v6. Với v6 mới có smoke ACL và dữ liệu tổng hợp; prediction 938 trang cho khóa 003 chạy ngày 09/11 ở output/v8_003_baseline_20261109."
+      "note": "Ngoại lệ do người dùng quyết ngày 09/11: production thay PP-OCRv4 bằng PP-OCRv6_medium_det (BGR, threshold 0.2/0.45) khi chưa so trên GT, trái nguyên tắc challenger của 00/03. Khóa 002 và V8-006 là v4; khóa 003 (fingerprint extraction ccdbe84a3691d645) là v6. EXP-V8-DET-20261109-002: 9/9 PDF, 938 trang; đồng thuận IoU 0,811; so text layer chưa xác minh (653 trang) v6 Hmean 0,838, v4 0,825; AAA hết arena ONNX dưới v6 ở 1/2 lần chạy. INCONCLUSIVE vì chưa có GT detection."
     },
     {
       "id": "L3",
@@ -716,7 +721,7 @@
     {
       "id": "P3",
       "title": "Phát hiện chữ DET-01..07",
-      "status": "TODO",
+      "status": "IN_PROGRESS",
       "exit_gate": "TP/FP/FN cùng snapshot",
       "backlog": [
         "V8-060"
@@ -790,7 +795,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "4b94361a490b1bfc0683a81f06b95659d3d6332df3e3aa78d2993705211cc69c",
+      "sha256": "4e0af1448d8dcabfd13e00cbf4ea57bb56bf094d050a43ccdbd43cd08eb2ce4c",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -806,7 +811,7 @@
         },
         {
           "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
-          "sha256": "78e2479d6168a09579ce7e3258d02a54a5a2f3d07b9a9235be5566b6aa1791ee"
+          "sha256": "67760ccfb0ab170e01640370840bd8e15dfb27782b0bcfab4bdfc137ebdf9318"
         },
         {
           "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
@@ -842,7 +847,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "efe44dd915253e89ebf37670b643e5d77ce06baa897341f8827596c8c9ea8104"
+          "sha256": "5412be7748eb02bf4dc44b83591a26d43ce03fb9d92764b00421bcf9636a7625"
         }
       ]
     }

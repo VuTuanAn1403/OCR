@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phiếu sàng lọc text layer</title>
+<style>
+  :root { --bg:#f6f6f4; --panel:#ffffff; --ink:#1d1d1b; --muted:#6b6b66; --line:#d9d9d4; --accent:#2557a7;
+          --match:#1f7a3d; --mismatch:#b3261e; --unresolved:#8a6100; --focus:#ffcc00; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161615; --panel:#202020; --ink:#ececea; --muted:#a3a39e; --line:#3a3a37; --accent:#7aa7ff;
+            --match:#5cc27f; --mismatch:#ff7a70; --unresolved:#e0b44c; --focus:#ffd84d; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 "Segoe UI", "Noto Sans", Arial, sans-serif; }
+  header { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:12px; align-items:center;
+           padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0 8px 0 0; }
+  header .stat { color:var(--muted); }
+  header .stat b { color:var(--ink); }
+  button, select, input { font:inherit; color:inherit; }
+  button { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:6px 12px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.match { border-color:var(--match); color:var(--match); }
+  button.mismatch { border-color:var(--mismatch); color:var(--mismatch); }
+  button.unresolved { border-color:var(--unresolved); color:var(--unresolved); }
+  main { display:grid; grid-template-columns:minmax(0, 3fr) minmax(280px, 2fr); gap:16px; padding:16px; }
+  @media (max-width:900px) { main { grid-template-columns:1fr; } }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; min-width:0; }
+  #crop { width:100%; height:auto; background:#fff; border:1px solid var(--line); border-radius:4px; display:block; }
+  #word { font-size:44px; line-height:1.2; margin:12px 0 4px; word-break:break-word; }
+  #line { color:var(--muted); font-size:18px; word-break:break-word; }
+  #line mark { background:var(--focus); color:#000; padding:0 2px; }
+  #codes { font-family:Consolas, "Courier New", monospace; font-size:13px; color:var(--muted); margin-top:6px; display:none; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  #causes { display:none; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  #status { margin-top:10px; font-weight:600; }
+  #pagewrap { position:relative; width:100%; overflow:auto; max-height:78vh; border:1px solid var(--line); border-radius:4px; }
+  #pageimg { width:100%; display:block; }
+  .box { position:absolute; border:2px solid var(--accent); pointer-events:none; }
+  .box.cur { border-color:var(--focus); box-shadow:0 0 0 2000px rgba(0,0,0,.08); }
+  kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 5px; font-size:12px; }
+  .help { color:var(--muted); font-size:13px; margin-top:12px; }
+  .d-MATCH { color:var(--match); } .d-MISMATCH { color:var(--mismatch); } .d-UNRESOLVED { color:var(--unresolved); }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Phiếu sàng lọc</h1>
+  <span class="stat">Đơn vị <b id="pos">0</b>/<b id="total">0</b></span>
+  <span class="stat">Đã quyết <b id="done">0</b></span>
+  <span class="stat">Slot MATCH <b id="matched">0</b>/<b id="minimum">0</b></span>
+  <span class="stat">MISMATCH <b id="mism">0</b></span>
+  <label class="stat">Người duyệt <input id="reviewer" size="14"></label>
+  <button id="export">Xuất JSONL</button>
+  <label><button id="importbtn" type="button">Nạp JSONL</button><input id="import" type="file" accept=".jsonl" hidden></label>
+</header>
+<main>
+  <section>
+    <canvas id="crop" width="1200" height="240"></canvas>
+    <div id="word"></div>
+    <div id="line"></div>
+    <div id="codes"></div>
+    <div class="controls">
+      <button class="match" data-d="MATCH"><kbd>1</kbd> Khớp ảnh</button>
+      <button class="mismatch" data-d="MISMATCH"><kbd>2</kbd> Lệch ảnh</button>
+      <button class="unresolved" data-d="UNRESOLVED"><kbd>3</kbd> Không quyết được</button>
+      <button id="linematch"><kbd>L</kbd> Khớp cả dòng (chưa quyết)</button>
+      <button id="clear"><kbd>0</kbd> Xóa quyết định</button>
+      <button id="toggle-codes"><kbd>U</kbd> Mã Unicode</button>
+    </div>
+    <div id="causes"></div>
+    <div id="status"></div>
+    <p class="help">
+      <kbd>←</kbd>/<kbd>→</kbd> đơn vị trước/sau, <kbd>N</kbd> đơn vị chưa quyết kế tiếp.
+      So chữ của text layer (dòng lớn) với ảnh; phóng to ảnh tới khi đọc rõ dấu. Phiếu không chứa kết quả OCR,
+      confidence hay tên engine. Quyết định lưu tạm trong trình duyệt này; bấm "Xuất JSONL" để có file giao cho bước niêm phong.
+    </p>
+  </section>
+  <section>
+    <div class="stat" id="pageinfo"></div>
+    <div id="pagewrap"><img id="pageimg" alt="Trang PDF"><div id="boxes"></div></div>
+  </section>
+</main>
+<script>
+"use strict";
+const SHEET = /*__SHEET__*/null;
+const CAUSE_LABELS = {TO_UNICODE:"ToUnicode", EMBEDDED_FONT:"Font nhúng", SUBSTITUTED_CHAR:"Ký tự bị thay",
+                      MISSING_MARK:"Thiếu dấu", EXTRA_MARK:"Thừa dấu", HIDDEN_TEXT:"Chữ ẩn"};
+const STORE = "screening:" + SHEET.sheet_id;
+const units = SHEET.units;
+const pages = Object.fromEntries(SHEET.pages.map(p => [p.page, p]));
+const byId = Object.fromEntries(units.map((u, i) => [u.unit_id, i]));
+let decisions = {};   // unit_id -> record
+let revisions = {};   // unit_id -> number of changes, for a stable decision_id
+let cursor = 0;
+const $ = id => document.getElementById(id);
+
+function load() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE) || "{}");
+    decisions = saved.decisions || {}; revisions = saved.revisions || {}; cursor = saved.cursor || 0;
+    if (saved.reviewer) $("reviewer").value = saved.reviewer;
+  } catch (error) { decisions = {}; revisions = {}; }
+  if (!$("reviewer").value) $("reviewer").value = SHEET.reviewer || "";
+}
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify({decisions, revisions, cursor, reviewer:$("reviewer").value})); }
+  catch (error) { $("status").textContent = "Không lưu tạm được trong trình duyệt; hãy xuất JSONL thường xuyên."; }
+}
+function bangkokNow() {
+  return new Date(Date.now() + 7 * 3600e3).toISOString().replace(/\.\d+Z$/, "+07:00");
+}
+function decide(index, decision, cause, bulk) {
+  const unit = units[index];
+  const reviewer = $("reviewer").value.trim();
+  if (!reviewer) { $("status").textContent = "Nhập tên người duyệt trước."; return false; }
+  revisions[unit.unit_id] = (revisions[unit.unit_id] || 0) + 1;
+  decisions[unit.unit_id] = {
+    schema_version:"ocr-v8-text-layer-screening-decision-v1",
+    decision_id: unit.unit_id + "#r" + revisions[unit.unit_id], sheet_id: SHEET.sheet_id, unit_id: unit.unit_id,
+    pdf_sha256: SHEET.pdf_sha256, page: unit.page, bbox: unit.bbox, char_start: unit.char_start, char_end: unit.char_end,
+    text_layer: unit.text_layer, slots: unit.slots, crop_sha256: unit.crop_sha256, ab_order: null,
+    decision, cause: decision === "MISMATCH" ? cause : null, bulk: bulk || null, reviewer,
+    decided_at: bangkokNow(), tool_commit: SHEET.tool_commit
+  };
+  return true;
+}
+function toPixels(page, box) {
+  const [a, b, c, d, e, f] = page.rotation_matrix, z = page.zoom;
+  const pts = [[box[0], box[1]], [box[2], box[1]], [box[0], box[3]], [box[2], box[3]]]
+    .map(([x, y]) => [(a * x + c * y + e) * z, (b * x + d * y + f) * z]);
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
+const image = new Image();
+function drawCrop(unit, page) {
+  const canvas = $("crop"), ctx = canvas.getContext("2d");
+  const line = toPixels(page, unit.line_bbox), padX = 12 * page.zoom, padY = 4 * page.zoom;
+  const sx = Math.max(0, line[0] - padX), sy = Math.max(0, line[1] - padY);
+  const sw = Math.min(page.image_size[0], line[2] + padX) - sx, sh = Math.min(page.image_size[1], line[3] + padY) - sy;
+  const width = canvas.clientWidth || 1200, scale = Math.min(width / sw, 6);
+  canvas.width = Math.round(sw * scale); canvas.height = Math.round(sh * scale);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  const [x0, y0, x1, y1] = unit.crop_px;
+  ctx.strokeStyle = "#ffcc00"; ctx.lineWidth = 3;
+  ctx.strokeRect((x0 - sx) * scale, (y0 - sy) * scale, (x1 - x0) * scale, (y1 - y0) * scale);
+}
+function escapeHtml(text) { return text.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function render() {
+  const unit = units[cursor], page = pages[unit.page];
+  $("pos").textContent = cursor + 1;
+  $("word").textContent = unit.text_layer;
+  const at = unit.line_text.indexOf(unit.text_layer);
+  $("line").innerHTML = at < 0 ? escapeHtml(unit.line_text) : escapeHtml(unit.line_text.slice(0, at)) +
+    "<mark>" + escapeHtml(unit.text_layer) + "</mark>" + escapeHtml(unit.line_text.slice(at + unit.text_layer.length));
+  $("codes").textContent = Array.from(unit.text_layer).map(c => c + " U+" + c.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")).join("   ");
+  $("pageinfo").textContent = `Trang ${unit.page} (hạng ${page.order_rank} trong thứ tự khóa) · ${unit.slots} slot dấu ở chữ này`;
+  const record = decisions[unit.unit_id];
+  $("status").innerHTML = record ? `Đã quyết: <span class="d-${record.decision}">${record.decision}</span>` +
+    (record.cause ? " (" + CAUSE_LABELS[record.cause] + ")" : "") + (record.bulk ? " · theo dòng" : "") : "Chưa quyết";
+  const src = page.image;
+  const show = () => { drawCrop(unit, page); drawBoxes(unit, page); };
+  if (image.dataset.src !== src) { image.onload = show; image.dataset.src = src; image.src = src; $("pageimg").src = src; }
+  else show();
+  stats(); save();
+}
+function drawBoxes(unit, page) {
+  const img = $("pageimg"), ratio = img.clientWidth / page.image_size[0], boxes = $("boxes");
+  boxes.innerHTML = "";
+  for (const other of units) {
+    if (other.page !== unit.page || other.line_id !== unit.line_id) continue;
+    const [x0, y0, x1, y1] = other.crop_px, el = document.createElement("div");
+    el.className = "box" + (other.unit_id === unit.unit_id ? " cur" : "");
+    Object.assign(el.style, {left:x0 * ratio + "px", top:y0 * ratio + "px", width:(x1 - x0) * ratio + "px", height:(y1 - y0) * ratio + "px"});
+    boxes.appendChild(el);
+    if (other.unit_id === unit.unit_id) el.scrollIntoView({block:"center", inline:"nearest"});
+  }
+}
+function stats() {
+  const records = Object.values(decisions);
+  $("done").textContent = records.length;
+  $("mism").textContent = records.filter(r => r.decision === "MISMATCH").length;
+  // MATCH slots on pages decided in full, in the locked order (section 7.4 B)
+  let matched = 0;
+  for (const page of SHEET.pages) {
+    const own = units.filter(u => u.page === page.page);
+    if (!own.every(u => decisions[u.unit_id])) break;
+    matched += own.filter(u => decisions[u.unit_id].decision === "MATCH").reduce((s, u) => s + u.slots, 0);
+  }
+  $("matched").textContent = matched;
+}
+function move(step) { cursor = Math.min(units.length - 1, Math.max(0, cursor + step)); render(); }
+function nextUndecided() {
+  for (let k = 1; k <= units.length; k++) {
+    const i = (cursor + k) % units.length;
+    if (!decisions[units[i].unit_id]) { cursor = i; render(); return; }
+  }
+  $("status").textContent = "Mọi đơn vị đã có quyết định. Hãy xuất JSONL.";
+}
+function choose(decision) {
+  if (decision === "MISMATCH") { $("causes").style.display = "flex"; return; }
+  $("causes").style.display = "none";
+  if (decide(cursor, decision)) nextUndecided();
+}
+function matchLine() {
+  const unit = units[cursor];
+  let count = 0;
+  units.forEach((other, i) => {
+    if (other.page === unit.page && other.line_id === unit.line_id && !decisions[other.unit_id]) count += decide(i, "MATCH", null, "line");
+  });
+  $("status").textContent = `Đã ghi MATCH cho ${count} chữ chưa quyết trên dòng này.`;
+  nextUndecided();
+}
+function exportJsonl() {
+  const lines = units.filter(u => decisions[u.unit_id]).map(u => JSON.stringify(decisions[u.unit_id]));
+  const blob = new Blob([lines.join("\n") + "\n"], {type:"application/x-ndjson"});
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `screening-${SHEET.sheet_id}-${bangkokNow().replace(/[:+]/g, "")}.jsonl`;
+  link.click();
+}
+function importJsonl(file) {
+  file.text().then(text => {
+    let count = 0;
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.trim()) continue;
+      const record = JSON.parse(line);
+      // a blind re-check must not load the original decisions (section 7.4 D)
+      if (SHEET.mode === "recheck" && record.sheet_id !== SHEET.sheet_id) continue;
+      if (!(record.unit_id in byId) || record.crop_sha256 !== units[byId[record.unit_id]].crop_sha256) continue;
+      decisions[record.unit_id] = record;
+      revisions[record.unit_id] = Number((record.decision_id || "").split("#r")[1] || 1);
+      count++;
+    }
+    $("status").textContent = `Đã nạp ${count} quyết định.`;
+    render();
+  });
+}
+function setup() {
+  $("title").textContent = `${SHEET.mode === "recheck" ? "Kiểm lại mù" : "Sàng lọc"} · ${SHEET.pdf}`;
+  $("total").textContent = units.length;
+  $("minimum").textContent = SHEET.lock.minimum_slots;
+  for (const [key, label] of Object.entries(CAUSE_LABELS)) {
+    const index = SHEET.causes.indexOf(key), button = document.createElement("button");
+    button.className = "mismatch"; button.innerHTML = `<kbd>${"abcdef"[index]}</kbd> ${label}`;
+    button.onclick = () => { $("causes").style.display = "none"; if (decide(cursor, "MISMATCH", key)) nextUndecided(); };
+    $("causes").appendChild(button);
+  }
+  document.querySelectorAll("button[data-d]").forEach(b => b.onclick = () => choose(b.dataset.d));
+  $("linematch").onclick = matchLine;
+  $("clear").onclick = () => { delete decisions[units[cursor].unit_id]; render(); };
+  $("toggle-codes").onclick = () => { const c = $("codes"); c.style.display = c.style.display === "block" ? "none" : "block"; };
+  $("export").onclick = exportJsonl;
+  $("importbtn").onclick = () => $("import").click();
+  $("import").onchange = event => event.target.files[0] && importJsonl(event.target.files[0]);
+  $("reviewer").onchange = save;
+  window.addEventListener("resize", () => render());
+  document.addEventListener("keydown", event => {
+    if (event.target.tagName === "INPUT") return;
+    const key = event.key.toLowerCase();
+    if ($("causes").style.display === "flex" && "abcdef".includes(key) && key.length === 1) {
+      $("causes").style.display = "none";
+      if (decide(cursor, "MISMATCH", SHEET.causes["abcdef".indexOf(key)])) nextUndecided();
+      return;
+    }
+    if (key === "arrowright") move(1); else if (key === "arrowleft") move(-1);
+    else if (key === "1") choose("MATCH"); else if (key === "2") choose("MISMATCH"); else if (key === "3") choose("UNRESOLVED");
+    else if (key === "l") matchLine(); else if (key === "n") nextUndecided();
+    else if (key === "0") { delete decisions[units[cursor].unit_id]; render(); }
+    else if (key === "u") $("toggle-codes").click();
+    else if (key === "escape") $("causes").style.display = "none";
+    else return;
+    event.preventDefault();
+  });
+  load();
+  cursor = Math.min(cursor, units.length - 1);
+  render();
+}
+if (!units.length) document.body.textContent = "Phiếu không có đơn vị nào.";
+else setup();
+</script>
+</body>
+</html>

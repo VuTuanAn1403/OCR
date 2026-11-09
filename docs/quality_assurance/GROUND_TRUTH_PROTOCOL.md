@@ -168,5 +168,29 @@ Holdout nào đã bị xem hoặc dùng để chỉnh thì chuyển thành devel
 ### 7.5 Còn thiếu trước khi đo
 
 - Người duyệt sàng lọc 7 PDF development (58 trang, 24.194 slot). Đây là phần còn lại của V8-011.
-- Các công cụ chưa có: lọc span hiển thị, ghép dòng OCR với span theo bbox, phiếu sàng lọc và phiếu phân xử, ước lượng ρ kèm cận trên. `native_diacritic_replay.py` đo luồng native, không phải bộ ghép OCR với text layer. Bản DRAFT trước đã ghi nhầm vai trò của `check_vietnamese_charset.py`: script này kiểm từ điển ký tự của model, không kiểm trang.
+- Người dùng duyệt và khóa các lựa chọn ở §7.6 thành khóa v2 trước lần đo đầu tiên.
 - Holdout mới chưa được thu thập.
+
+Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trước khi sàng lọc xong):
+
+| Bước | Công cụ |
+| --- | --- |
+| Đơn vị text layer và lọc glyph hiển thị | `benchmark/ground_truth_tools/text_layer_reference.py` |
+| Phiếu sàng lọc (B), niêm phong (E), kiểm lại mù (D) | `scripts/screen_text_layer.py build`, `seal`, `recheck`, `agreement` |
+| Đo OCR so với text layer đã chấp nhận, ghép theo bbox (§7.3 mục 7) | `scripts/measure_text_layer_diacritics.py` |
+| Phân xử mù A/B (C) | `scripts/adjudicate_text_layer_diacritics.py build`, `seal` |
+| ρ và cận trên, DEFF holdout | `benchmark/scientific_evaluation/cluster_correlation.py` |
+
+`native_diacritic_replay.py` đo luồng native, không phải bộ ghép OCR với text layer. `check_vietnamese_charset.py` kiểm từ điển ký tự của model, không kiểm trang.
+
+### 7.6 Đề xuất cho khóa v2 (chưa khóa)
+
+Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong khóa v1. Người dùng duyệt rồi khóa chúng trong v2 trước khi xem bất kỳ kết quả đo nào.
+
+1. **Glyph hiển thị:** render trang hai lần ở 144 DPI, nguyên trạng và sau khi gỡ mọi glyph bằng redaction (giữ ảnh và nét vẽ). Ký tự gốc hiển thị khi có ít nhất 2 pixel đổi trong hộp của nó. Ký tự có hộp rộng 0 (thành phần ligature như `h` trong `Th`) lấy kết quả của ký tự gốc đứng trước. Một chữ vào mẫu khi mọi ký tự gốc hiển thị; chữ hiển thị một phần bị loại và báo riêng. Trên 58 trang worklist: BHN có 10 chữ nằm dưới ảnh trùng nội dung (14 slot), BCE có 4 chữ bị che một phần (8 slot); 5 PDF còn lại không có chữ nào bị loại.
+2. **Đơn vị sàng lọc:** từng chữ có slot dấu. Người duyệt có thể ghi MATCH cho các chữ chưa quyết của một dòng bằng một thao tác; bản ghi đánh dấu `bulk: "line"`. Slot MATCH chỉ được đếm trên trang đã quyết đủ, theo thứ tự trong khóa.
+3. **Ghép OCR với text layer:** mục `b` của `extraction.json` và dòng text layer hiển thị được nối khi giao nhau theo chiều ngang và chồng nhau ít nhất một nửa chiều cao nhỏ hơn. Mỗi nhóm liên thông là một đơn vị, xếp theo hàng rồi từ trái sang phải. Dòng text layer không có OCR thì tính toàn bộ slot là lỗi xóa. Dòng OCR không có text layer được báo riêng.
+4. **Luồng đo:** `text_corrected` hay `text_raw` phải khóa trước khi đo; công cụ bắt chọn rõ ràng.
+5. **Cổng:** số lỗi là `dser_errors` của `DSER_strict` trên `ref_slots`, đúng tham số `metric` của khóa v1. Cổng cũ trong `diacritic_acceptance.py` và `release_gate.py` tính số lỗi theo DER_VN_v1 và chỉ báo DSER bên cạnh; hai nơi này cần thống nhất trước khi công bố.
+6. **ρ_U:** cận trên của profile likelihood beta-binomial (một phía 95%). Một mô phỏng với tỷ lệ lỗi 0,001–0,01 cho thấy cận F của ANOVA chỉ phủ ρ thật ở 58–89% số lần, còn bootstrap theo trang ở 58–85%; cả hai sẽ làm DEFF nhỏ hơn thực tế. Profile likelihood phủ ở 92–96%.
+7. **Phân xử:** mỗi đoạn token khác nhau có slot hoặc dấu là một mục. `Cả hai sai` bắt buộc người duyệt gõ chữ đúng. `Không quyết được` tính cả slot lệch chữ gốc của đoạn đó là lỗi.

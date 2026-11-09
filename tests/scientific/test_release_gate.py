@@ -104,7 +104,8 @@ def test_formula_quality_recomputes_sources_before_the_shared_family(monkeypatch
     source_evidence = {"status": "SOURCE_COUNTS_RECOMPUTED", "unsupported_references": []}
     # 29,956 slots is the smallest N whose exact bound passes with zero errors (spec 04).
     der_count = {"unit_id": "diacritics", "status": "MEASURED", "numerator": 0, "denominator": 29956,
-                 "evidence": {"diacritic_gate": {"uncomposed_reference_marks": 0, "uncomposed_prediction_marks": 0}}}
+                 "evidence": {"diacritic_gate": {"uncomposed_reference_marks": 0, "uncomposed_prediction_marks": 0},
+                              "dser_strict": {"dser_errors": 0, "ref_slots": 29956}}}
 
     def replay(inputs, args):
         events.append("source-replay")
@@ -139,11 +140,11 @@ def test_formula_quality_recomputes_sources_before_the_shared_family(monkeypatch
     source_evidence["unsupported_references"].append({"reference_id": "fixture", "format": "MATHML"})
     assert release_gate._quality(inputs, args)["status"] == "NOT_EVALUATED"
     source_evidence["unsupported_references"].clear()
-    der_count["numerator"] = 4
+    der_count["evidence"]["dser_strict"]["dser_errors"] = 4
     failed = release_gate._quality(inputs, args)
     assert failed["status"] == "FAIL"
     assert failed["diacritic_preservation_gate"]["status"] == "FAIL"
-    der_count["numerator"] = 0
+    der_count["evidence"]["dser_strict"]["dser_errors"] = 0
     monkeypatch.setattr(release_gate, "recompute_native_diacritics", lambda *_: {"status": "FAIL"})
     assert release_gate._quality(inputs, args)["status"] == "FAIL"
     monkeypatch.setattr(release_gate, "recompute_native_diacritics", lambda *_: {"status": "NOT_EVALUATED"})
@@ -220,10 +221,11 @@ def _bound_inputs(design_effect=1.0):
     return inputs
 
 
-def _bound_counts(numerator, denominator):
-    return {"records_by_metric": {"der": [{"unit_id": "u", "status": "MEASURED", "numerator": numerator,
-        "denominator": denominator, "evidence": {"diacritic_gate": {
-            "uncomposed_reference_marks": 0, "uncomposed_prediction_marks": 0}}}]}}
+def _bound_counts(numerator, denominator, der_numerator=None):
+    return {"records_by_metric": {"der": [{"unit_id": "u", "status": "MEASURED",
+        "numerator": numerator if der_numerator is None else der_numerator, "denominator": denominator,
+        "evidence": {"diacritic_gate": {"uncomposed_reference_marks": 0, "uncomposed_prediction_marks": 0},
+                     "dser_strict": {"dser_errors": numerator, "ref_slots": denominator}}}]}}
 
 
 @pytest.mark.parametrize("numerator,denominator,expected,reason", [
@@ -239,12 +241,22 @@ def _bound_counts(numerator, denominator):
 def test_ocr_preservation_release_gate_uses_the_exact_upper_bound(numerator, denominator, expected, reason):
     result = release_gate._ocr_diacritic_bound_gate(_bound_inputs(), _bound_counts(numerator, denominator))
     assert result["status"] == expected and result["reason"] == reason
-    assert result["method"] == "der-vn-preservation-upper-bound-v2"
+    assert result["method"] == "dser-strict-preservation-upper-bound-v3" and result["gate_metric"] == "DSER_strict"
+
+
+def test_ocr_preservation_gate_counts_dser_strict_not_der_v1():
+    # Base-letter errors raise DER_VN_v1 but are CER, not mark errors: the gate still passes.
+    passed = release_gate._ocr_diacritic_bound_gate(_bound_inputs(), _bound_counts(0, 29956, der_numerator=5))
+    assert passed["status"] == "PASS" and passed["der_vn_v1"] == {"errors": 5, "reference_diacritics": 29956}
+    counts = _bound_counts(0, 29956)
+    del counts["records_by_metric"]["der"][0]["evidence"]["dser_strict"]
+    missing = release_gate._ocr_diacritic_bound_gate(_bound_inputs(), counts)
+    assert missing["status"] == "NOT_EVALUATED" and missing["unscored_unit_ids"] == ["u"]
 
 
 def test_ocr_preservation_bound_counts_uncomposed_marks_and_deflates_clusters():
     counts = _bound_counts(0, 29956)
-    counts["records_by_metric"]["der"][0]["evidence"]["diacritic_gate"]["uncomposed_prediction_marks"] = 1
+    counts["records_by_metric"]["der"][0]["evidence"]["dser_strict"]["dser_errors"] = 1  # an uncomposed mark
     assert release_gate._ocr_diacritic_bound_gate(_bound_inputs(), counts)["status"] == "NOT_EVALUATED"
     clustered = release_gate._ocr_diacritic_bound_gate(_bound_inputs(2.0), _bound_counts(0, 29956))
     assert clustered["status"] == "NOT_EVALUATED" and clustered["bound"]["effective_trials"] == 14978

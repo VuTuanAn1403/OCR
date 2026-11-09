@@ -569,7 +569,7 @@
           "symbol": "upper_bound_gate"
         }
       ],
-      "note": "Bootstrap cụm công ty, Holm, noninferiority đã có. Từ 09/11 (V8-021/022): 0 lỗi dùng cận Clopper-Pearson trên N_eff khi design effect đã khóa; cổng dấu OCR dùng cận trên. Chưa có rho."
+      "note": "Bootstrap cụm công ty, Holm, noninferiority đã có. Từ 09/11 (V8-021/022): 0 lỗi dùng cận Clopper-Pearson trên N_eff khi design effect đã khóa; cổng dấu OCR dùng cận trên, đếm DSER_strict từ 10/11. Chưa có rho."
     },
     {
       "id": "G08",
@@ -661,7 +661,7 @@
   "diacritic_gate": {
     "target": "99,99%",
     "status": "NOT_EVALUATED",
-    "blocker": "Chưa có GT độc lập: cần N_eff >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788. Nguồn (b): quy trình LOCKED v1 (GROUND_TRUTH_PROTOCOL §7); 9 PDF inputs là development, 345.647 slot chưa xác minh. Công cụ sàng lọc, đo ghép bbox, phân xử và rho_U đã có (protocol §7.5). Chờ người duyệt sàng lọc 7 PDF, duyệt nháp khóa v2 §7.6 (đo bị chặn tới khi khóa), holdout PDF mới. Cổng cũ đếm lỗi theo DER_VN_v1, khóa ghi DSER_strict (§7.6 mục 5).",
+    "blocker": "Chưa có GT độc lập: cần N_eff >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788. Nguồn (b): quy trình LOCKED v1 (GROUND_TRUTH_PROTOCOL §7); 9 PDF inputs là development, 345.647 slot chưa xác minh. Công cụ sàng lọc, đo ghép bbox, phân xử và rho_U đã có (protocol §7.5). Chờ người duyệt sàng lọc 7 PDF, duyệt nháp khóa v2 §7.6 (đo bị chặn tới khi khóa), holdout PDF mới.",
     "candidate_text_layer_slots": {
       "value": 345687,
       "scope": "scripts/inventory_text_layers.py trên 9 PDF inputs/ ngày 2026-11-09 tại 2af5454: 720/938 trang CANDIDATE; ứng viên chưa xác minh, không phải GT"
@@ -830,7 +830,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "a9c0bc6e4dfce2d9a1b06e76d38e046628e09f396cab3a9ff85116174d903460",
+      "sha256": "57f90b71ad8ff5ccb1ba2e53348182424bcf26b5f4a5576bc3ef599e9812b4f8",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -850,7 +850,7 @@
         },
         {
           "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
-          "sha256": "40958a650fedf427f67200b4a9a3a0fe5ebba9b4afb5084fb852ada919c5ca35"
+          "sha256": "8b76e8057833c80debb2f0a16b21a6c0bb23187a34fc671d582a50704496b3f1"
         },
         {
           "path": "cai tien v2/05_HOP_DONG_BENCHMARK_ADAPTER.md",

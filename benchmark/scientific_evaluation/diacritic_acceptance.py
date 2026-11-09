@@ -2,7 +2,10 @@
 
 The status follows spec 04 (V8-022): PASS needs the one-sided Clopper-Pearson upper bound
 of the gate error rate to be <= 1e-4. ``point_status`` keeps the former point comparison.
-DSER_strict counts are reported beside DER_VN_v1 on the same alignment (V8-020).
+The gate counts DSER_strict, the main metric of the 99.99% claim (spec 04 section 3, lock
+v1 parameter ``metric``): ``dser_errors`` over ``ref_slots``, uncomposed prediction marks
+included. DER_VN_v1 is reported beside it on the same alignment and never gates (until
+10/11/2026 the gate counted DER_VN_v1, which charges base-letter errors as mark errors).
 """
 import argparse
 from collections.abc import Mapping
@@ -55,8 +58,9 @@ def evaluate_diacritic_acceptance(
         for field in strict:
             strict[field] += strict_details[field]
 
-    denominator = totals["ref_diacritics"]
-    errors = totals["diacritic_errors"] + totals["uncomposed_prediction_marks"]
+    denominator = strict["ref_slots"]
+    errors = strict["dser_errors"]
+    der_errors = totals["diacritic_errors"] + totals["uncomposed_prediction_marks"]
     complete = bool(expected_ids) and not (missing_reference or missing_prediction or unexpected or invalid_reference)
     point_status, bound = "NOT_EVALUATED", None
     if complete and denominator:
@@ -64,7 +68,8 @@ def evaluate_diacritic_acceptance(
         if errors <= denominator:
             bound = upper_bound_gate(errors, denominator, confidence=confidence, deff=design_effect)
     return {
-        "method": "der-vn-preservation-upper-bound-v2",
+        "method": "dser-strict-preservation-upper-bound-v3",
+        "gate_metric": "DSER_strict",
         # More gate errors than slots is already a failed rate, not a binomial count.
         "status": bound["status"] if bound else point_status if point_status == "FAIL" else "NOT_EVALUATED",
         "point_status": point_status,
@@ -77,7 +82,10 @@ def evaluate_diacritic_acceptance(
         "unexpected_ids": unexpected,
         "invalid_reference_ids": invalid_reference,
         "counts": totals,
+        "der_vn_v1": {"errors": der_errors, "reference_diacritics": totals["ref_diacritics"],
+                      "rate": der_errors / totals["ref_diacritics"] if totals["ref_diacritics"] else None},
         "gate_errors": errors,
+        "reference_slots": denominator,
         "preservation": 1 - errors / denominator if denominator else None,
     }
 

@@ -11,8 +11,9 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Mục nào cần GT do người
 - **V8-150, V8-120, V8-170 `DONE`:** công cụ gán nhãn trực quan; soak khóa 003 (p50 6,57 s/trang, VRAM đỉnh 2.673 MiB); bỏ 18 test harness.
 - **Quyết định của người dùng:** "B2B2C" tính như `literal_v1`; lỗi §4.1 ghi nhận, sửa sau.
 - **V8-080, audit v2:** bản r1 đối chiếu nhầm `evidence_blocks` nên báo 2.296 ô. Bản đúng là `scratch/v8/v8_080_runtime_invariants_003_r2_20261110.json`.
+- **Cổng dấu:** `diacritic_acceptance.py` và `release_gate.py` nay đếm lỗi theo `DSER_strict` (đặc tả 04 §3). Trước đây chúng đếm theo DER_VN_v1.
 - **Phiếu xem số trong bảng:** `build_table_number_review.py` dựng `scratch/v8/table_review/v8_080_table_numbers_003_v1_20261110/index.html`, gồm 72 mục (67 số mất khỏi bảng, 5 số không truy được) trên 16 trang.
-- **Hồi quy CPU trên cây của commit phiếu bảng:** 2.624 passed, 1 skipped (`scratch/runs/20261110-021529-a8a27419`).
+- **Hồi quy CPU sau khi đổi cổng dấu:** 2.625 passed, 1 skipped (`scratch/runs/20261110-055532-c9926228`).
 - **`IN_PROGRESS` có số liệu, chưa có GT:**
   - V8-071: đồng thuận cặp 0,951.
   - V8-090: 137/938 trang được chọn; Vintern-1B-v3.5 đã ghim, chưa chạy.
@@ -26,7 +27,6 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Mục nào cần GT do người
   - `src/ocr_structure/document_layout_engine.py:661` gán `bbox=r[0].bbox` cho mọi ô của hàng: 315/513 ô có số mang bbox lặp, 453 ô thiếu ánh xạ nguồn.
   - Cùng hàm sửa "12…HDPE" thành "D…" (dòng 646–647) và bỏ ô đầu "0"/"-" (dòng 651–652).
   - Trên toàn bộ bảng có 292/17.259 ô mang số không truy được; 287 ô trong đó do bbox lặp.
-- **Cổng cũ:** `diacritic_acceptance.py` và `release_gate.py` đếm lỗi theo DER_VN_v1, trong khi khóa ghi `DSER_strict`.
 - **Lỗi nhỏ:** `src/ocr_document/validation.py` import lười `benchmark.accuracy_first`; `runtime-models.json` ghi nhầm `V8-065`.
 - Sửa các lỗi `src/` ở trên là đổi identity: cần khóa baseline mới và chạy batch mới.
 

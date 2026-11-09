@@ -24,19 +24,22 @@ def test_missing_coverage_or_denominator_cannot_pass(reference, prediction):
 @pytest.mark.parametrize("slots,point,expected", [(9_999, "FAIL", "FAIL"), (10_000, "PASS", "NOT_EVALUATED"),
                                                    (47_437, "PASS", "PASS")])
 def test_threshold_uses_integer_counts_and_the_exact_bound(monkeypatch, slots, point, expected):
-    detail = gate.compute_der_detailed("đ", "d")
-    monkeypatch.setattr(gate, "compute_der_detailed", lambda *_: {**detail, "ref_diacritics": slots})
+    detail = gate.compute_dser_strict_detailed("đ", "d")
+    monkeypatch.setattr(gate, "compute_dser_strict_detailed", lambda *_: {**detail, "ref_slots": slots})
     result = gate.evaluate_diacritic_acceptance({"a"}, {"a": "đ"}, {"a": "d"})
     assert (result["point_status"], result["status"]) == (point, expected)
     assert result["bound"]["errors"] == 1 and result["bound"]["trials"] == slots
 
 
-def test_acceptance_reports_dser_strict_beside_der_v1():
-    # "o" -> "e" is a base-letter error: DER_VN_v1 charges both slots of "ộ", DSER does not.
+def test_gate_counts_dser_strict_and_reports_der_v1_beside():
+    # "o" -> "e" is a base-letter error: DER_VN_v1 charges both slots of "ộ", DSER_strict does not.
     result = gate.evaluate_diacritic_acceptance({"a"}, {"a": "độ"}, {"a": "đẹ"})
-    assert result["counts"]["diacritic_errors"] == 2
+    assert result["gate_metric"] == "DSER_strict" and result["method"] == "dser-strict-preservation-upper-bound-v3"
+    assert result["counts"]["diacritic_errors"] == 2 and result["der_vn_v1"]["errors"] == 2
     strict = result["dser_strict"]
     assert strict["dser_errors"] == 0 and strict["base_mismatch_slots"] == 2 and strict["ref_slots"] == 3
+    assert result["gate_errors"] == 0 and result["reference_slots"] == 3
+    assert result["point_status"] == "PASS" and result["status"] == "NOT_EVALUATED"  # 3 slots cannot bound 1e-4
 
 
 def test_empty_transcription_is_counted_as_a_deletion():

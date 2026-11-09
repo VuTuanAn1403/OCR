@@ -104,9 +104,13 @@ def _keyword_occurrence_gate(inputs, candidate):
 def _ocr_diacritic_bound_gate(inputs, candidate):
     """Apply spec 04 (V8-022) to unrounded, source-recomputed OCR counts.
 
-    PASS needs the one-sided Clopper-Pearson upper bound of (slot errors + uncomposed
-    marks) / slots, on counts deflated by the locked design effect, to be <= 1e-4.
-    A point estimate at or under 1e-4 with too few slots stays NOT_EVALUATED.
+    The gate counts DSER_strict, the main metric of the 99.99% claim (spec 04 section 3):
+    ``dser_errors`` over ``ref_slots`` from each der record's ``evidence.dser_strict``;
+    ``dser_errors`` already holds uncomposed prediction marks. PASS needs the one-sided
+    Clopper-Pearson upper bound, on counts deflated by the locked design effect, to be
+    <= 1e-4. A point estimate at or under 1e-4 with too few slots stays NOT_EVALUATED.
+    A unit without DSER_strict counts, or whose reference keeps uncomposed marks, is
+    unscored. DER_VN_v1 (the der record's numerator and denominator) is reported beside.
     """
     planned = {row["unit_id"] for row in inputs.get("sample", {}).get("units", []) if "der" in row["metrics"]}
     provided = {}
@@ -114,18 +118,23 @@ def _ocr_diacritic_bound_gate(inputs, candidate):
         key = row["unit_id"]
         _require(key in planned and key not in provided, "Diacritic counts require unique frozen sample units")
         provided[key] = row
-    errors = denominator = 0
+    errors = denominator = der_errors = der_slots = 0
     unscored = []
     for key in sorted(planned):
         row = provided.get(key, {})
-        marks = (row.get("evidence") or {}).get("diacritic_gate") or {}
-        values = [row.get("numerator"), row.get("denominator"), marks.get("uncomposed_prediction_marks"),
-                  marks.get("uncomposed_reference_marks")]
-        if row.get("status") != "MEASURED" or not all(type(value) is int and value >= 0 for value in values) or values[3]:
+        evidence = row.get("evidence") or {}
+        marks = evidence.get("diacritic_gate") or {}
+        strict = evidence.get("dser_strict") or {}
+        values = [strict.get("dser_errors"), strict.get("ref_slots"), marks.get("uncomposed_reference_marks")]
+        if row.get("status") != "MEASURED" or not all(type(value) is int and value >= 0 for value in values) or values[2]:
             unscored.append(key)
             continue
-        errors += values[0] + values[2]
+        errors += values[0]
         denominator += values[1]
+        der = [row.get("numerator"), row.get("denominator"), marks.get("uncomposed_prediction_marks")]
+        if all(type(value) is int and value >= 0 for value in der):
+            der_errors += der[0] + der[2]
+            der_slots += der[1]
     complete = bool(planned) and not unscored
     confidence = ((inputs.get("protocol") or {}).get("statistics") or {}).get("confidence_level")
     deff = ((inputs.get("plan") or {}).get("ocr_diacritics") or {}).get("design_effect")
@@ -139,11 +148,12 @@ def _ocr_diacritic_bound_gate(inputs, candidate):
                                  confidence=confidence, deff=deff, require_design_effect=True)
         reason = bound["reason"]
     status = bound["status"] if bound else "FAIL" if reason == "POINT_ESTIMATE_ABOVE_MAXIMUM" else "NOT_EVALUATED"
-    return {"method": "der-vn-preservation-upper-bound-v2", "stream": "ocr_markdown", "status": status,
-            "reason": reason, "bound": bound,
+    return {"method": "dser-strict-preservation-upper-bound-v3", "gate_metric": "DSER_strict", "stream": "ocr_markdown",
+            "status": status, "reason": reason, "bound": bound,
             "expected_units": len(planned), "evaluated_units": len(planned) - len(unscored), "unscored_unit_ids": unscored,
-            "gate_errors": errors if complete else None, "reference_diacritics": denominator if complete else None,
-            "observed_gate_errors": errors, "observed_reference_diacritics": denominator,
+            "gate_errors": errors if complete else None, "reference_slots": denominator if complete else None,
+            "observed_gate_errors": errors, "observed_reference_slots": denominator,
+            "der_vn_v1": {"errors": der_errors, "reference_diacritics": der_slots} if complete else None,
             "preservation": 1 - errors / denominator if complete and denominator else None}
 
 

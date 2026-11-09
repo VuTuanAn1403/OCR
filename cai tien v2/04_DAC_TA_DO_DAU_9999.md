@@ -60,6 +60,7 @@ Cận trên một phía dùng Clopper-Pearson chính xác. Với 0 lỗi, công 
 **Điểm chặn trong mã: đã sửa ngày 09/11** (V8-021, V8-022):
 - Trước đây `stratified_scorecard.py::_adequate_interval` đòi `0 < upper − lower`, nên kết quả hoàn hảo ra `NOT_EVALUATED`. Nay, khi 0 lỗi, `_error_rate_interval` thay khoảng bootstrap suy biến bằng cận Clopper-Pearson trên N_eff. Điều kiện là `design_effect` đã khóa trong plan.
 - Trước đây luồng OCR của cổng chỉ so ước lượng điểm `(lỗi + dấu trơ) × 10000 ≤ slot`. Nay `release_gate.py::_ocr_diacritic_bound_gate` gọi `exact_bounds.py::upper_bound_gate`. Kết quả FAIL khi ước lượng điểm đã vượt 10⁻⁴, PASS chỉ khi p_U ≤ 10⁻⁴. Mọi trường hợp khác là `NOT_EVALUATED`, kèm số slot cần có.
+- Từ 10/11, `diacritic_acceptance.py` và `release_gate.py::_ocr_diacritic_bound_gate` đếm lỗi của cổng theo `DSER_strict` (`dser_errors` trên `ref_slots`, đã gồm dấu trơ). DER_VN_v1 chỉ còn được báo bên cạnh. Bản ghi thiếu số đếm DSER thì cổng giữ `NOT_EVALUATED`.
 - `exact_bounds.py::minimum_trials` tái tạo đúng bảng cỡ mẫu ở trên (test `tests/scientific/test_exact_bounds.py`).
 - Chưa làm: ước lượng ρ trên development. Thiếu ρ thì chỉ có mệnh đề trong mẫu.
 

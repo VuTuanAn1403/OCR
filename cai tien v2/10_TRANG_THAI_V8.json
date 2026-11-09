@@ -617,9 +617,14 @@
           "path": "benchmark/scientific_evaluation/measure_operations.py",
           "symbol": "measure",
           "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/summarize_batch_operations.py",
+          "symbol": "build",
+          "label": "VERIFIED"
         }
       ],
-      "note": "Log JSON theo run/doc/page/stage và đo RSS/VRAM đỉnh; chưa có dashboard, chưa chạy soak."
+      "note": "Log JSON theo run/doc/page/stage và đo RSS/VRAM đỉnh; chưa có dashboard. Soak 938 trang khóa 003 ngày 10/11 có latency, VRAM, 2 lần chạy lại đã phục hồi (V8-120)."
     },
     {
       "id": "G10",
@@ -820,7 +825,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "8026948ac9f3e681d62522c3148603250f4193686036e44960e976af8eb27176",
+      "sha256": "a2708bdfc46c9ca6b2d3502666ef0ab8ccbb17b98819d7305925430a5abde9be",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -872,7 +877,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "5413c316008d1819059eab0e945d4e15bd309426163a191282f9a836aa9294b6"
+          "sha256": "b5a501b794fb3cb1859f333c56cd8be33a6174e71b8435cd0385db42bbba2bda"
         }
       ]
     }

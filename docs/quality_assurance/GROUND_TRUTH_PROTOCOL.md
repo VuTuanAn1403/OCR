@@ -185,11 +185,12 @@ Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trư�
 
 `native_diacritic_replay.py` đo luồng native, không phải bộ ghép OCR với text layer. `check_vietnamese_charset.py` kiểm từ điển ký tự của model, không kiểm trang.
 
-### 7.6 Khóa đo v2 và v3 (LOCKED 10/11/2026; v3 thay v2)
+### 7.6 Khóa đo v2, v3, v4 (LOCKED 10/11/2026; v4 hiện hành)
 
 Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong khóa v1. Người dùng (VuTuanAn1403) duyệt nguyên bản nháp r2 và khóa chúng trong v2 ngày 10/11/2026, trước mọi kết quả đo. Luồng đo là `text_corrected`.
 
-- **Khóa hiện hành v3:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v3.json`, sha256 `396b1fd346098e1139dc8e68ea4cab5aeb7d403b9bcf04d73ee79be461639494`. Người dùng chọn quy tắc ghép `bbox-connected-groups-phase-a-v1`; khóa ghi 7 bản niêm phong sàng lọc.
+- **Khóa hiện hành v4:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v4.json`, sha256 `c328379577624bbc0a8f1f66a31ce8b9cf233c884a393b5ed0449b59868b5ae2`. Khóa giữ nguyên v3 và thêm cỡ mẫu phân xử. Ngày 10/11 người dùng chọn chỉ phân xử một mẫu 3.000/9.733 mục trên development. Mẫu chọn theo sha256 tăng dần của `seed:adjudication-sample:<item_id>`; mọi mục ngoài mẫu tính là `UNRESOLVED`, tức là lỗi (đếm bảo thủ). Seal báo thêm tỷ lệ kết quả của mẫu với khoảng Clopper-Pearson, và một ước lượng có nhãn `ESTIMATE_NOT_A_GATE`. Holdout vẫn phải phân xử đủ.
+- **Khóa v3 (đã bị thay):** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v3.json`, sha256 `396b1fd346098e1139dc8e68ea4cab5aeb7d403b9bcf04d73ee79be461639494`. Người dùng chọn quy tắc ghép `bbox-connected-groups-phase-a-v1`; khóa ghi 7 bản niêm phong sàng lọc.
 - **Khóa v2 (đã bị thay):** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v2.json`, sha256 `a0dc5712dd767120aff2fe3031829d7195db2e101658429e5d61ed6ead0dc616` (byte LF, ghim qua `.gitattributes`).
 - **Kiểm lại:** `scripts/lock_text_layer_measurement.py --verify <khóa>`.
 

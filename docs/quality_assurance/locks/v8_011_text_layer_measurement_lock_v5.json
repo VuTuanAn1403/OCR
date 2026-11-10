@@ -1,0 +1,173 @@
+{
+  "schema_version": "ocr-v8-text-layer-measurement-lock-v5",
+  "procedure_version": 5,
+  "status": "LOCKED_PROCEDURE",
+  "gt_status": "NOT_VERIFIED",
+  "quality_acceptance": "NOT_EVALUATED",
+  "protocol": "docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md#7.6",
+  "base_lock": {
+    "path": "docs/quality_assurance/locks/v8_011_text_layer_procedure_lock_v1.json",
+    "sha256": "b0c20a846bf53fcac47cce73148f83fd523b7ed37adb5bfe8bf4b484a2bb2e0a",
+    "schema_version": "ocr-v8-text-layer-procedure-lock-v1",
+    "procedure_version": 1
+  },
+  "supersedes": {
+    "path": "docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v4.json",
+    "sha256": "c328379577624bbc0a8f1f66a31ce8b9cf233c884a393b5ed0449b59868b5ae2",
+    "reason": "The reviewer graded 3,006 items in sheet order on the full sheet (AAA and AGR 2020 complete, AGR 2022 489/734) instead of the seeded sample of lock v4, and chose on 11/11/2026 to seal them: undecided items count as UNRESOLVED and no population estimate is given. Matching, stream and seals are unchanged."
+  },
+  "decision": {
+    "decided_on": "2026-11-11",
+    "timezone": "Asia/Bangkok",
+    "reviewer": "VuTuanAn1403 (người dùng)"
+  },
+  "open_choices": [],
+  "choices": {
+    "visible_glyphs": {
+      "method": "render-diff-redact-text-v1",
+      "render_dpi": 144,
+      "min_changed_pixels": 2,
+      "zero_width_part": "takes the verdict of the preceding base character",
+      "partially_visible_word": "left out of the sample and reported apart",
+      "implemented_by": "benchmark/ground_truth_tools/text_layer_reference.py::mark_visibility"
+    },
+    "screening_unit": {
+      "unit": "one text-layer word with at least one diacritic slot",
+      "bulk_match": "the undecided words of one line in one action, recorded as bulk: line",
+      "counted_match_slots": "only on pages decided in full, in the lock order",
+      "recheck_share": 0.1,
+      "recheck_minimum": 50,
+      "implemented_by": "scripts/screen_text_layer.py::verdict"
+    },
+    "matching": {
+      "method": "bbox-connected-groups-phase-a-v1",
+      "ocr_side": "phase-A OCR lines of the extraction page (text_evidence.items), tables included",
+      "min_vertical_overlap": 0.5,
+      "table_share": null,
+      "join": "an OCR line and a visible text-layer line join when they intersect horizontally and overlap vertically by at least min_vertical_overlap of the smaller height",
+      "unit": "one connected group, ordered by rows then left to right",
+      "text_layer_line_without_ocr": "every slot counts as deleted_slots",
+      "ocr_line_without_text_layer": "reported apart as unmatched_ocr_lines",
+      "allowed": [
+        "bbox-connected-groups-no-tables-v1",
+        "bbox-connected-groups-phase-a-v1",
+        "bbox-connected-groups-v1"
+      ],
+      "implemented_by": "scripts/measure_text_layer_diacritics.py::ocr_lines, match_units"
+    },
+    "stream": {
+      "value": "text_corrected",
+      "allowed": [
+        "text_corrected",
+        "text_raw"
+      ]
+    },
+    "gate": {
+      "metric": "DSER_strict",
+      "errors": "dser_errors",
+      "denominator": "ref_slots",
+      "reported_beside": "DER_VN_v1 (never the gate count)",
+      "implemented_by": "scripts/measure_text_layer_diacritics.py::build"
+    },
+    "rho_upper": {
+      "method": "beta-binomial-profile-likelihood-v1",
+      "confidence": 0.95,
+      "sides": "one",
+      "implemented_by": "benchmark/scientific_evaluation/cluster_correlation.py::page_icc"
+    },
+    "adjudication": {
+      "choices": [
+        "A_CORRECT",
+        "B_CORRECT",
+        "BOTH_WRONG",
+        "UNRESOLVED"
+      ],
+      "item": "one differing token segment that holds a diacritic slot or mark",
+      "BOTH_WRONG": "the reviewer must type the correct text read from the image",
+      "UNRESOLVED": "every slot of the segment that differs from the text layer counts as an error",
+      "sample_size": null,
+      "sample_rank": null,
+      "unsampled_items": null,
+      "partial": true,
+      "undecided_items": "count as UNRESOLVED; no population estimate (not a random subset)",
+      "implemented_by": "scripts/adjudicate_text_layer_diacritics.py::build_sheet, seal"
+    }
+  },
+  "screening_seals": [
+    {
+      "pdf": "AAA_Baocaothuongnien_2020.pdf",
+      "pdf_sha256": "5d9a9d62e2c2ba84788a135d7c0e8d58360b6df5d6e6e838769d7a63b51d1a6f",
+      "producer": "iLovePDF",
+      "path": "scratch/v8/screening/sealed/AAA_Baocaothuongnien_2020_v1_20261110/seal.json",
+      "sha256": "09fd2eb9b9c4760a8535438b47b208fa23bdd38e75073e37bd2810ca0b46b70d",
+      "sealed_sha256": "f08220b40ba426ba2fad2be296674c77b7e34be8ea5d0377f39fa11d2b1b3b85",
+      "verdict": "ACCEPTED"
+    },
+    {
+      "pdf": "AGR_Baocaothuongnien_2020.pdf",
+      "pdf_sha256": "4d9fa11c39bfbdbdaf754b8b5328f84ddbd3307c4cefd12d6381304f4eadd4f2",
+      "producer": "3-Heights(TM) PDF Security Shell 4.8.25.2 (http://www.pdf-tools.com) / pdcat (www.pdf-tools.com)",
+      "path": "scratch/v8/screening/sealed/AGR_Baocaothuongnien_2020_v1_20261110/seal.json",
+      "sha256": "b014531112a19dd64cddc8c467abcf658a08291cc9e61dea38b138db4368325b",
+      "sealed_sha256": "9b2869b1e92cf0a3b64a2e7e525032b4a7ce6648d0aead004a2372a349b53d1e",
+      "verdict": "ACCEPTED"
+    },
+    {
+      "pdf": "AGR_Baocaothuongnien_2022.pdf",
+      "pdf_sha256": "237b6caa085be21a853ac0621ec2c138943a5078744f6e98c311c68bf2d48a80",
+      "producer": "",
+      "path": "scratch/v8/screening/sealed/AGR_Baocaothuongnien_2022_v1_20261110/seal.json",
+      "sha256": "e3446ae82878f9d063d3022bb4859bde9e8fe5953c8d3a7b70a992ff4cbdf1d0",
+      "sealed_sha256": "6a0de599e259f7e4f2563f4f30280352a49c7960b8c39f6574d7469e9dbf40a7",
+      "verdict": "ACCEPTED"
+    },
+    {
+      "pdf": "ASM_Baocaothuongnien_2022.pdf",
+      "pdf_sha256": "a81fed2d23d95b2c324328d9a6892522afddf95bb2364c3bb02ba0139bed8b75",
+      "producer": "GPL Ghostscript 9.53.3",
+      "path": "scratch/v8/screening/sealed/ASM_Baocaothuongnien_2022_v1_20261110/seal.json",
+      "sha256": "658ba03716d3cedb27f82cd29b7ef2f486f6febd6653529425285fb3e4e843bc",
+      "sealed_sha256": "91526c419c5f66b83debbaa9a997bb8418c18493c923e91bc8c38dba86e5259a",
+      "verdict": "ACCEPTED"
+    },
+    {
+      "pdf": "BCE_Baocaothuongnien_2022.pdf",
+      "pdf_sha256": "92897158288062a4aa7c1a93c52bfbacd7e77f0927b42d9adc7914fb5ed91c99",
+      "producer": "pdf",
+      "path": "scratch/v8/screening/sealed/BCE_Baocaothuongnien_2022_v1_20261110/seal.json",
+      "sha256": "0ef8d6cb5be2fc579a08b8e9c13c7430ad0eb747a193389ead884e6653337e96",
+      "sealed_sha256": "6a2a5f5cd17c06d59f2326caff45d7d59b0dfd193216a56fce7674c042adb541",
+      "verdict": "ACCEPTED"
+    },
+    {
+      "pdf": "BHN_Baocaothuongnien_2022.pdf",
+      "pdf_sha256": "65ff3db7fc1bdb60d3fb30a02f7d8aa0662aa2e0157b3e55869761ba30edea30",
+      "producer": "PDF24",
+      "path": "scratch/v8/screening/sealed/BHN_Baocaothuongnien_2022_v1_20261110/seal.json",
+      "sha256": "298207764848094465938ce97484f3415ee266e3623a108ed50a8d66a5c377a2",
+      "sealed_sha256": "9d31827aa0c23c3aca79f2ce8ea19849d3c243464c17834ffce81d5e53d489c0",
+      "verdict": "ACCEPTED"
+    },
+    {
+      "pdf": "VIC_Baocaothuongnien_2020.pdf",
+      "pdf_sha256": "094a6e4774e410da67810efecd43aa1ef50eff2d117bfc837f737430afd80e77",
+      "producer": "iLovePDF",
+      "path": "scratch/v8/screening/sealed/VIC_Baocaothuongnien_2020_v1_20261110/seal.json",
+      "sha256": "d1080d3d55fc90e87e06add373e98a06336e3abf496bcae907e987aae2010312",
+      "sealed_sha256": "ed672cd1a3b76a20c3857e918188282879ddd1c89e82bdc097a6c6ad5f00a321",
+      "verdict": "ACCEPTED"
+    }
+  ],
+  "tools": {
+    "benchmark/ground_truth_tools/text_layer_reference.py": "4fb181dcd36eb212b25a92a73212db46c02bc84fd3b9e7406e07926e2363b5ca",
+    "benchmark/ground_truth_tools/screening_sheet.html": "de2baa9c55992d55255a665bc839c6eb6331c7064819f8627821d25dd82dbd93",
+    "scripts/screen_text_layer.py": "bd428ba77b4dcccb8dea78acee477f152954ac9b43fa2cea8138c7a5e4e7a211",
+    "scripts/measure_text_layer_diacritics.py": "6fe40af09e06bade796bb24547a21a8211c111cc809b6603a09f6df2da05a7da",
+    "benchmark/scientific_evaluation/ocr_metric.py": "eb1e0b39d0a801d563ddd6f5c991e4caacbdff0320d945dcd0cc577dbabe451e",
+    "benchmark/scientific_evaluation/diacritic_acceptance.py": "ef4b2ce004a31637cb04f3726ca01130adc6cc090733385961243ad49054c5f3",
+    "benchmark/scientific_evaluation/exact_bounds.py": "323419e5fd14a4ff12affc2f3ed88b4d08dbf0d2c3e67557157c68ef068a4f52",
+    "benchmark/scientific_evaluation/cluster_correlation.py": "6323dffc2c8e91d9075e285e7e240f3f8bc890f52f99a93bdc809a3a9c49ab74",
+    "scripts/adjudicate_text_layer_diacritics.py": "159f16222d0fbe3d8364443428a4b6f790386b9e5e329dd5d9dcce8a46fea737",
+    "benchmark/ground_truth_tools/adjudication_sheet.html": "d76510eaed0f719f21d2d0d961ff119d3782507ee245d7f45abed8e63ac91e47"
+  }
+}

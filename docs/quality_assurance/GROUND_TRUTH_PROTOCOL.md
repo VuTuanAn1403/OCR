@@ -185,11 +185,17 @@ Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trư�
 
 `native_diacritic_replay.py` đo luồng native, không phải bộ ghép OCR với text layer. `check_vietnamese_charset.py` kiểm từ điển ký tự của model, không kiểm trang.
 
-### 7.6 Khóa đo v2, v3, v4 (LOCKED 10/11/2026; v4 hiện hành)
+### 7.6 Khóa đo v2 đến v5 (LOCKED 10–11/11/2026; v5 hiện hành)
 
 Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong khóa v1. Người dùng (VuTuanAn1403) duyệt nguyên bản nháp r2 và khóa chúng trong v2 ngày 10/11/2026, trước mọi kết quả đo. Luồng đo là `text_corrected`.
 
-- **Khóa hiện hành v4:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v4.json`, sha256 `c328379577624bbc0a8f1f66a31ce8b9cf233c884a393b5ed0449b59868b5ae2`. Khóa giữ nguyên v3 và thêm cỡ mẫu phân xử. Ngày 10/11 người dùng chọn chỉ phân xử một mẫu 3.000/9.733 mục trên development. Mẫu chọn theo sha256 tăng dần của `seed:adjudication-sample:<item_id>`; mọi mục ngoài mẫu tính là `UNRESOLVED`, tức là lỗi (đếm bảo thủ). Seal báo thêm tỷ lệ kết quả của mẫu với khoảng Clopper-Pearson, và một ước lượng có nhãn `ESTIMATE_NOT_A_GATE`. Holdout vẫn phải phân xử đủ.
+- **Khóa hiện hành v5:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v5.json`, sha256 `f495a7d24fefc1cad48d988e0899e8e5b20d80d4c73ee347fd7e62fbebe2f37e`. Người duyệt đã chấm 3.006 mục theo thứ tự phiếu, không theo mẫu của v4, và ngày 11/11 chọn seal số này. Khóa v5 cho phép phân xử một phần: mục chưa chấm tính là `UNRESOLVED`, và không có ước lượng cho toàn bộ. Quyết định được chuyển sang phiếu dựng lại bằng `scripts/migrate_adjudication_decisions.py`; công cụ chỉ chuyển khi ảnh cắt, chuỗi A/B và bên A trùng hệt.
+- **Kết quả phân xử dev (11/11).** Seal: `scratch/v8/adjudication/sealed/v8_011_dev_003_v5_partial_20261111/seal.json`.
+  - Mục đã chấm: AAA 1.734/1.734, AGR 2020 783/783, AGR 2022 489/734. Bốn PDF còn lại chưa chấm.
+  - Khi OCR khác text layer: text layer đúng 88,3% [87,1; 89,4], OCR đúng 0,9% [0,6; 1,3], cả hai sai 10,8%.
+  - `DSER_strict` đếm bảo thủ: 14.301/345.754. AAA (đủ) 2.509/67.997 = 3,7%; AGR 2020 (đủ) 990/32.304 = 3,1%. ρ = 0,023 (cận trên 0,026).
+  - **Lỗi phiếu:** 321/324 mục "cả hai sai" là chữ OCR chèn vào chỗ text layer không có chữ. Phiếu cho xem chữ đứng cạnh, và người duyệt gõ lại chữ đó. Nếu đọc các mục này là "text layer đúng", tổng thành 14.228/345.301; kết luận không đổi. Cần sửa phiếu trước khi phân xử holdout.
+- **Khóa v4 (đã bị thay):** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v4.json`, sha256 `c328379577624bbc0a8f1f66a31ce8b9cf233c884a393b5ed0449b59868b5ae2`. Khóa giữ nguyên v3 và thêm cỡ mẫu phân xử. Ngày 10/11 người dùng chọn chỉ phân xử một mẫu 3.000/9.733 mục trên development. Mẫu chọn theo sha256 tăng dần của `seed:adjudication-sample:<item_id>`; mọi mục ngoài mẫu tính là `UNRESOLVED`, tức là lỗi (đếm bảo thủ). Seal báo thêm tỷ lệ kết quả của mẫu với khoảng Clopper-Pearson, và một ước lượng có nhãn `ESTIMATE_NOT_A_GATE`. Holdout vẫn phải phân xử đủ.
 - **Khóa v3 (đã bị thay):** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v3.json`, sha256 `396b1fd346098e1139dc8e68ea4cab5aeb7d403b9bcf04d73ee79be461639494`. Người dùng chọn quy tắc ghép `bbox-connected-groups-phase-a-v1`; khóa ghi 7 bản niêm phong sàng lọc.
 - **Khóa v2 (đã bị thay):** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v2.json`, sha256 `a0dc5712dd767120aff2fe3031829d7195db2e101658429e5d61ed6ead0dc616` (byte LF, ghim qua `.gitattributes`).
 - **Kiểm lại:** `scripts/lock_text_layer_measurement.py --verify <khóa>`.

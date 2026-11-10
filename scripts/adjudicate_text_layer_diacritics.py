@@ -21,6 +21,12 @@ so nobody picks them. Every item left out counts as UNRESOLVED (an OCR error, th
 count). The seal also reports the outcome shares of the sample with Clopper-Pearson intervals
 and a scaled estimate of the fully adjudicated count; the estimate is never a gate.
 
+When the lock sets ``choices.adjudication.partial`` (lock v5), the seal accepts a sheet that is
+only partly decided: every item without a decision counts as UNRESOLVED, the outcome shares
+are descriptive only and no population estimate is given (the decided items follow the sheet
+order, not a random draw). The seal reports, per PDF, how many items were decided and the
+counts, so fully adjudicated PDFs get exact figures.
+
   python scripts/adjudicate_text_layer_diacritics.py build --measurement <report.json> --pdf-root inputs --out scratch/v8/adjudication/<new>
   python scripts/adjudicate_text_layer_diacritics.py seal --sheet <sheet dir> --decisions <export.jsonl> --out scratch/v8/adjudication/<sealed>
 """
@@ -61,11 +67,16 @@ def sample_rank(seed: str, item_id: str) -> str:
     return hashlib.sha256(f"{seed}:adjudication-sample:{item_id}".encode("utf-8")).hexdigest()
 
 
-def sample_size_of(measurement: Dict):
-    """The sample size the measurement lock fixed, or None for every item."""
+def adjudication_rule(measurement: Dict) -> Dict:
+    """The adjudication choice of the measurement lock (sample size, partial)."""
     entry = measurement["measurement_lock"]
     lock = json.loads(measurement_lock_v2.resolve(entry["path"]).read_bytes())
-    return (lock.get("choices", {}).get("adjudication") or {}).get("sample_size")
+    return lock.get("choices", {}).get("adjudication") or {}
+
+
+def sample_size_of(measurement: Dict):
+    """The sample size the measurement lock fixed, or None for every item."""
+    return adjudication_rule(measurement).get("sample_size")
 
 
 def interval(count: int, total: int, confidence: float = .95) -> Dict:
@@ -207,7 +218,7 @@ def build_sheet(measurement_path: Path, pdf_root: Path, out: Path, reviewer: str
     return manifest
 
 
-def check_records(manifest: Dict, records: List[Dict]) -> List[str]:
+def check_records(manifest: Dict, records: List[Dict], allow_missing: bool = False) -> List[str]:
     items = {item["item_id"]: item for item in manifest["items"]}
     problems, seen = [], set()
     for index, record in enumerate(records, start=1):
@@ -230,7 +241,7 @@ def check_records(manifest: Dict, records: List[Dict]) -> List[str]:
             problems.append(f"{where}: item decided twice")
         seen.add(record.get("item_id"))
     missing = sorted(set(items) - seen)
-    if missing:
+    if missing and not allow_missing:
         problems.append(f"{len(missing)} items have no decision, e.g. {missing[:3]}")
     return problems
 
@@ -272,6 +283,21 @@ def recount(measurement: Dict, by_unit: Dict[str, List[Tuple[Dict, str, str]]]):
     return errors, slots, clusters, gt_error_items
 
 
+def per_document(measurement: Dict, key: Dict, unsampled: Dict, decided: set, clusters: Dict) -> List[Dict]:
+    """Per PDF: items, decided items and the DSER_strict count after the decisions applied."""
+    out = []
+    for document in measurement["documents"]:
+        sha = document["pdf_sha256"]
+        items = [item_id for item_id, segment in {**key, **unsampled}.items() if segment["pdf_sha256"] == sha]
+        done = sum(item_id in decided for item_id in items)
+        errors = sum(value[0] for (pdf, _), value in clusters.items() if pdf == sha)
+        slots = sum(value[1] for (pdf, _), value in clusters.items() if pdf == sha)
+        out.append({"pdf": document["pdf"], "pdf_sha256": sha, "items": len(items), "decided": done,
+                    "fully_adjudicated": done == len(items), "errors": errors, "slots": slots,
+                    "rate": errors / slots if slots else None})
+    return out
+
+
 def seal(sheet_dir: Path, decision_paths: List[Path], out: Path) -> Dict:
     manifest_bytes = (sheet_dir / "sheet.json").read_bytes()
     manifest = json.loads(manifest_bytes)
@@ -283,8 +309,9 @@ def seal(sheet_dir: Path, decision_paths: List[Path], out: Path) -> Dict:
         raise ValueError("the measurement report changed after the sheet was built")
     measurement = json.loads(measurement_bytes)
     check_measurement_lock(measurement)
+    partial = bool(adjudication_rule(measurement).get("partial"))
     records = read_jsonl(decision_paths)
-    problems = check_records(manifest, records)
+    problems = check_records(manifest, records, allow_missing=partial)
     if problems:
         raise ValueError("adjudication decisions do not match the sheet:\n  " + "\n  ".join(problems[:40]))
     outcome_of = {"A_CORRECT": lambda side: "TEXT_LAYER_CORRECT" if side == "TEXT_LAYER" else "OCR_CORRECT",
@@ -304,10 +331,21 @@ def seal(sheet_dir: Path, decision_paths: List[Path], out: Path) -> Dict:
         unresolved_all.setdefault(segment["unit_id"], []).append((segment, "UNRESOLVED", ""))
     if unsampled:
         outcomes["UNRESOLVED_NOT_SAMPLED"] = len(unsampled)
+    decided = {record["item_id"] for record in records}
+    undecided = [item_id for item_id in key if item_id not in decided]
+    for item_id in undecided:  # partial adjudication: not decided, counted as UNRESOLVED
+        segment = key[item_id]
+        by_unit.setdefault(segment["unit_id"], []).append((segment, "UNRESOLVED", ""))
+        unresolved_all.setdefault(segment["unit_id"], []).append((segment, "UNRESOLVED", ""))
+    if undecided:
+        outcomes["UNRESOLVED_NOT_DECIDED"] = len(undecided)
     errors, slots, clusters, gt_error_items = recount(measurement, by_unit)
     sample = manifest.get("sample") or {"size": len(records), "population": len(records)}
     estimate = None
-    if unsampled:
+    if undecided:
+        estimate = {"status": "NOT_ESTIMATED",
+                    "reason": "partial adjudication follows the sheet order, not a random draw"}
+    elif unsampled:
         all_unresolved = recount(measurement, unresolved_all)[0]
         scale = sample["population"] / sample["size"] if sample["size"] else None
         estimate = {"status": "ESTIMATE_NOT_A_GATE",
@@ -328,9 +366,12 @@ def seal(sheet_dir: Path, decision_paths: List[Path], out: Path) -> Dict:
               "measurement": manifest["measurement"], "partition": measurement["partition"], "stream": measurement["stream"],
               "sealed_file": f"adjudication-{sealed_sha[:16]}.jsonl", "sealed_sha256": sealed_sha, "items": len(records),
               "outcomes": outcomes, "gt_error_items": gt_error_items, "sample": sample, "sample_shares": shares,
+              "sample_shares_scope": "descriptive for the decided items only" if undecided else "the sheet's items",
+              "documents": per_document(measurement, key, unsampled, decided, clusters),
               "dser_strict_after_adjudication": {"errors": errors, "slots": slots, "rate": errors / slots if slots else None,
                                                  "count": "conservative: items left out of the sample count as UNRESOLVED"
-                                                 if unsampled else "every item adjudicated"},
+                                                 if unsampled else "conservative: undecided items count as UNRESOLVED"
+                                                 if undecided else "every item adjudicated"},
               "estimate": estimate,
               "gate_in_sample": upper_bound_gate(errors, slots, confidence=parameters["confidence"],
                                                  maximum_rate=parameters["maximum_error_rate"]) if slots else None,

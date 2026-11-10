@@ -19,6 +19,11 @@ Version 4 (10/11/2026) adds the adjudication sample (`--adjudication-sample N`):
 items, ranked by sha256 of `seed:adjudication-sample:<item_id>`, go on the sheet, and every
 item left out counts as UNRESOLVED. Without the option every item is adjudicated.
 
+Version 5 (11/11/2026) adds partial adjudication (`--adjudication-partial`): the reviewer works
+through the full sheet in its order and stops when they choose; every item without a decision
+counts as UNRESOLVED and the seal gives no population estimate, because the decided items are
+not a random subset. It cannot be combined with a sample.
+
   --draft   Write the proposal for the reviewer: status DRAFT_NOT_LOCKED, no decision; the
             stream and the matching rule may stay open. A draft never unlocks a measurement.
   default   Write the lock once the reviewer has approved it; --reviewer, --decided-on,
@@ -48,8 +53,8 @@ for entry in (ROOT / "src", ROOT):
     if str(entry) not in sys.path:
         sys.path.insert(0, str(entry))
 
-SCHEMA = "ocr-v8-text-layer-measurement-lock-v4"
-PROCEDURE_VERSION = 4
+SCHEMA = "ocr-v8-text-layer-measurement-lock-v5"
+PROCEDURE_VERSION = 5
 BASE_SCHEMA = "ocr-v8-text-layer-procedure-lock-v1"
 PROTOCOL = "docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md#7.6"
 LOCKED, DRAFT = "LOCKED_PROCEDURE", "DRAFT_NOT_LOCKED"
@@ -96,7 +101,7 @@ def relative(path: Path) -> str:
 
 
 def current_choices(base_parameters: Dict, stream: Optional[str], matching: Optional[str],
-                    adjudication_sample: Optional[int] = None) -> Dict:
+                    adjudication_sample: Optional[int] = None, adjudication_partial: bool = False) -> Dict:
     """The seven choices as the tools implement them now (values are read from the code)."""
     from benchmark.ground_truth_tools import text_layer_reference as tlr
     from benchmark.scientific_evaluation import cluster_correlation
@@ -108,6 +113,8 @@ def current_choices(base_parameters: Dict, stream: Optional[str], matching: Opti
         raise LockError(f"matching must be one of {sorted(measure.MATCHING_METHODS)}")
     if adjudication_sample is not None and (type(adjudication_sample) is not int or adjudication_sample < 1):
         raise LockError("the adjudication sample must be a positive whole number of items")
+    if adjudication_partial and adjudication_sample is not None:
+        raise LockError("partial adjudication and an adjudication sample exclude each other")
     return {
         "visible_glyphs": {
             "method": tlr.VISIBILITY_METHOD, "render_dpi": round(72 * tlr.VISIBILITY_ZOOM),
@@ -148,6 +155,9 @@ def current_choices(base_parameters: Dict, stream: Optional[str], matching: Opti
             "sample_size": adjudication_sample,
             "sample_rank": adjudicate.SAMPLE_RANK if adjudication_sample else None,
             "unsampled_items": "count as UNRESOLVED" if adjudication_sample else None,
+            "partial": bool(adjudication_partial),
+            "undecided_items": "count as UNRESOLVED; no population estimate (not a random subset)"
+            if adjudication_partial else None,
             "implemented_by": "scripts/adjudicate_text_layer_diacritics.py::build_sheet, seal"},
     }
 
@@ -187,7 +197,7 @@ def superseded(path: Optional[str], reason: Optional[str]) -> Optional[Dict]:
 def build_lock(base_path: str, *, draft: bool, stream: Optional[str] = None, matching: Optional[str] = None,
                reviewer: Optional[str] = None, decided_on: Optional[str] = None, seals: Sequence[str] = (),
                supersedes: Optional[str] = None, supersede_reason: Optional[str] = None,
-               adjudication_sample: Optional[int] = None) -> Dict:
+               adjudication_sample: Optional[int] = None, adjudication_partial: bool = False) -> Dict:
     base, base_sha = read_base(base_path)
     if stream is not None and stream not in STREAMS:
         raise LockError(f"stream must be one of {STREAMS}")
@@ -199,7 +209,7 @@ def build_lock(base_path: str, *, draft: bool, stream: Optional[str] = None, mat
         if not (reviewer or "").strip() or not decided_on or stream is None or matching is None:
             raise LockError("a lock needs the reviewer's decision: --reviewer, --decided-on, --stream and --matching")
         decision = {"decided_on": decided_on, "timezone": "Asia/Bangkok", "reviewer": reviewer}
-    choices = current_choices(base["parameters"], stream, matching, adjudication_sample)
+    choices = current_choices(base["parameters"], stream, matching, adjudication_sample, adjudication_partial)
     return {
         "schema_version": SCHEMA, "procedure_version": PROCEDURE_VERSION, "status": DRAFT if draft else LOCKED,
         "gt_status": "NOT_VERIFIED", "quality_acceptance": "NOT_EVALUATED", "protocol": PROTOCOL,
@@ -244,7 +254,8 @@ def verify(lock_path: Path) -> List[str]:
                              reviewer=decision.get("reviewer"), decided_on=decision.get("decided_on"),
                              seals=[seal["path"] for seal in lock.get("screening_seals", [])],
                              supersedes=old.get("path"), supersede_reason=old.get("reason"),
-                             adjudication_sample=lock["choices"]["adjudication"].get("sample_size"))
+                             adjudication_sample=lock["choices"]["adjudication"].get("sample_size"),
+                             adjudication_partial=bool(lock["choices"]["adjudication"].get("partial")))
     except (LockError, OSError, KeyError) as error:
         return [f"cannot rebuild: {error}"]
     if rebuilt["base_lock"]["sha256"] != lock["base_lock"]["sha256"]:
@@ -288,6 +299,8 @@ def main(argv=None) -> int:
     parser.add_argument("--supersedes", type=Path, help="The lock this one replaces")
     parser.add_argument("--supersede-reason")
     parser.add_argument("--adjudication-sample", type=int, help="Adjudicate only this many seeded-ranked items")
+    parser.add_argument("--adjudication-partial", action="store_true",
+                        help="Allow stopping part way; undecided items count as UNRESOLVED")
     parser.add_argument("--reviewer")
     parser.add_argument("--decided-on", help="Decision date, YYYY-MM-DD (Asia/Bangkok)")
     parser.add_argument("--verify", type=Path, help="Rebuild this lock and compare")
@@ -307,7 +320,8 @@ def main(argv=None) -> int:
                           reviewer=args.reviewer, decided_on=args.decided_on,
                           seals=[relative(path) for path in args.screening_seal],
                           supersedes=relative(args.supersedes) if args.supersedes else None,
-                          supersede_reason=args.supersede_reason, adjudication_sample=args.adjudication_sample)
+                          supersede_reason=args.supersede_reason, adjudication_sample=args.adjudication_sample,
+                          adjudication_partial=args.adjudication_partial)
     except LockError as error:
         parser.error(str(error))
     text = dump(lock).encode("utf-8")

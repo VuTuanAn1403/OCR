@@ -10,12 +10,12 @@ from tests.unit.test_measure_text_layer_diacritics import FONT, _output, _seal, 
 pytestmark = pytest.mark.skipif(FONT is None, reason="no TrueType font with Vietnamese glyphs")
 
 
-def _measured(tmp_path, sample=None):
+def _measured(tmp_path, sample=None, partial=False):
     pdf, sha, lock, boxes = _setup(tmp_path)
     seal = _seal(tmp_path, pdf, lock, "m")
     output, identity = _output(tmp_path, sha, [("Hội đồng quản tri", boxes["Hội đồng quản trị"])])
     report = measure.build(lock, [seal], identity, output, tmp_path / "pdfs", "text_corrected",
-                           measurement_lock=measurement_lock(tmp_path, lock, sample=sample))
+                           measurement_lock=measurement_lock(tmp_path, lock, sample=sample, partial=partial))
     path = tmp_path / "measurement.json"
     path.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
     return path
@@ -106,3 +106,46 @@ def test_a_locked_sample_puts_seeded_items_on_the_sheet_and_counts_the_rest_as_e
     assert report["estimate"]["estimated_errors_after_full_adjudication"] == 4
     share = report["sample_shares"]["TEXT_LAYER_CORRECT"]
     assert (share["count"], share["of"], share["upper"]) == (1, 1, 1.0) and 0 < share["lower"] < 1
+
+
+def _decide_first(tmp_path, sheet_dir, outcome):
+    sheet = json.loads((sheet_dir / "sheet.json").read_text(encoding="utf-8"))
+    key = json.loads((sheet_dir / "ab_key.json").read_text(encoding="utf-8"))["items"]
+    path = sheet_dir.parent / f"{sheet_dir.name}-first.jsonl"
+    record = _answer(sheet, key, sheet["items"][0], outcome)
+    path.write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
+    return path
+
+
+def test_a_partial_lock_seals_a_part_decided_sheet_and_counts_the_rest_as_errors(tmp_path):
+    adjudicate.build_sheet(_measured(tmp_path, partial=True), tmp_path / "pdfs", tmp_path / "sheet", "reviewer")
+    report = adjudicate.seal(tmp_path / "sheet", [_decide_first(tmp_path, tmp_path / "sheet", "OCR_CORRECT")],
+                             tmp_path / "sealed-partial")
+    assert report["outcomes"]["UNRESOLVED_NOT_DECIDED"] == 1 and report["estimate"]["status"] == "NOT_ESTIMATED"
+    assert report["sample_shares_scope"] == "descriptive for the decided items only"
+    document = report["documents"][0]
+    assert (document["items"], document["decided"], document["fully_adjudicated"]) == (2, 1, False)
+    assert document["errors"] == report["dser_strict_after_adjudication"]["errors"]
+
+
+def test_without_a_partial_lock_every_item_needs_a_decision(tmp_path):
+    adjudicate.build_sheet(_measured(tmp_path), tmp_path / "pdfs", tmp_path / "sheet", "reviewer")
+    with pytest.raises(ValueError, match="1 items have no decision"):
+        adjudicate.seal(tmp_path / "sheet", [_decide_first(tmp_path, tmp_path / "sheet", "OCR_CORRECT")], tmp_path / "sealed")
+
+
+def test_decisions_move_to_a_rebuilt_sheet_only_when_the_items_are_identical(tmp_path):
+    from scripts import migrate_adjudication_decisions as migrate
+    measured = _measured(tmp_path, partial=True)
+    adjudicate.build_sheet(measured, tmp_path / "pdfs", tmp_path / "old", "reviewer")
+    adjudicate.build_sheet(measured, tmp_path / "pdfs", tmp_path / "new", "reviewer")  # same units, same seed
+    decisions = _decide_first(tmp_path, tmp_path / "old", "OCR_CORRECT")
+    result = migrate.migrate(tmp_path / "old", tmp_path / "new", [decisions])
+    moved = result["records"][0]
+    assert moved["migrated_from_sheet"] == result["from_sheet"] and moved["sheet_id"] == result["to_sheet"]
+    new_sheet = json.loads((tmp_path / "new" / "sheet.json").read_text(encoding="utf-8"))
+    assert adjudicate.check_records(new_sheet, [moved], allow_missing=True) == []
+    record = json.loads(decisions.read_text(encoding="utf-8"))
+    decisions.write_text(json.dumps({**record, "a": "other"}, ensure_ascii=False) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="other strings or another crop"):
+        migrate.migrate(tmp_path / "old", tmp_path / "new", [decisions])

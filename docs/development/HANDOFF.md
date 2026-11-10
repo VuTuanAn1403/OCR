@@ -10,16 +10,20 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì 
 - **Khóa đo (§7.6):**
   - v2: lần đo đầu tính chữ trong bảng là bị xóa (71.884/78.192 slot), nên bị thay.
   - v3: ghép với dòng pha A (`text_evidence`) và ghi 7 seal.
-  - v4 (hiện hành, `c3283795…`): giữ nguyên v3, thêm mẫu phân xử 3.000/9.733 mục chọn theo seed; mục ngoài mẫu tính là lỗi.
+  - v4: mẫu 3.000 mục theo seed (không dùng, vì người duyệt chấm theo thứ tự phiếu).
+  - v5 (hiện hành, `f495a7d2…`): phân xử một phần, mục chưa chấm tính là lỗi.
 - **Đo dev theo v4** (`scratch/v8/v8_011_measurement_dev_003_v4_20261110.json`), trước phân xử:
   - `DSER_strict` 13.751/345.300: dấu thanh 4.421, đ 601, xóa 7.933;
   - 3.195 slot xóa do lỗi §4.1;
   - ρ_U 0,025.
-- **Phiếu phân xử mẫu:** `scratch/v8/adjudication/v8_011_dev_003_v4_sample3000_20261110/`. 122 quyết định trên phiếu đầy đủ cũ thuộc mẫu, chờ chuyển sang.
+- **Phân xử (seal `scratch/v8/adjudication/sealed/v8_011_dev_003_v5_partial_20261111/`):** 3.006/9.733 mục (AAA, AGR 2020 đủ).
+  - Khi khác OCR, text layer đúng 88,3%, OCR đúng 0,9%.
+  - Đếm bảo thủ 14.301/345.754; AAA 3,7%, AGR 2020 3,1%; ρ_U 0,026. OCR còn rất xa 99,99%.
+  - 321 mục "cả hai sai" là chữ OCR chèn thêm mà phiếu hiển thị sai. Độ nhạy: 14.228/345.301. Phải sửa phiếu trước holdout.
 - **Cổng dấu:** `diacritic_acceptance.py` và `release_gate.py` đếm theo `DSER_strict`.
 - **V8-080:** audit v2 (`..._003_r2_20261110.json`) và phiếu 72 số trong bảng.
 - **`DONE` mới:** V8-150, V8-120, V8-170.
-- **Hồi quy CPU sau khóa v4:** passed (`scratch/runs/20261110-211007-829a62be`).
+- **Hồi quy CPU sau khóa v5:** passed (`scratch/runs/20261111-000819-6cbdcf05`); test phân xử, khóa và chuyển quyết định: 24 + 1 passed.
 
 ## Phát hiện còn mở
 
@@ -31,7 +35,7 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì 
 
 ## Bước kế tiếp (cần người dùng)
 
-1. Chấm phiếu mẫu 3.000 mục (không mở `ab_key.json`), rồi `adjudicate_text_layer_diacritics.py seal --decisions <phiếu>/autosave/*.decisions.jsonl`. Kiểm lại mù sàng lọc từ 17/11.
+1. Kiểm lại mù sàng lọc từ 17/11. Muốn phân xử thêm thì chấm tiếp phiếu v5 (`..._v5_partial_20261111`, qua server tự lưu) rồi seal lại.
 2. Chấm 72 mục phiếu số trong bảng, rồi `build_table_number_review.py seal`.
 3. Gán nhãn GT bằng `label_structured_gt.py` (V8-060/070/071/080); chạy Vintern theo [`vlm/README.md`](../../benchmark/challengers/vlm/README.md).
 4. Quyết định thời điểm sửa lỗi `src/`, và push.

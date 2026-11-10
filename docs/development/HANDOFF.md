@@ -6,7 +6,8 @@ Cập nhật 10/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-chall
 
 Mục tiêu: đưa 38 mục backlog lên `DONE`. Mục nào cần GT do người tạo hoặc cần người dùng quyết thì giữ `IN_PROGRESS`/`TODO`; không có bằng chứng thì không đánh `DONE`.
 
-- **P1 (V8-011/012):** đã có công cụ sàng lọc, đo ghép bbox, phân xử mù A/B và ρ_U (protocol §7.5). 7 phiếu sàng lọc nằm ở `scratch/v8/screening/*_v1_20261109/`.
+- **P1 sàng lọc (V8-011):** ngày 10/11 người dùng sàng lọc 7 PDF; cả 7 `ACCEPTED` (24.172 slot `MATCH`, 0 `MISMATCH`), seal ở `scratch/v8/screening/sealed/`. 6 PDF được chấm trong 3–6 phút mỗi PDF, chủ yếu bằng MATCH cả dòng. Kiểm lại mù 1.552 chữ làm từ 17/11 (`scratch/v8/screening/recheck/`).
+- **P1 đo dev (V8-012):** `scratch/v8/v8_011_measurement_dev_003_20261110.json` (identity MATCH, khóa v1+v2) cho 83.127/345.300 lỗi. 71.884/78.192 slot bị xóa là chữ trong bảng, do quy tắc ghép §7.6 mục 3 chỉ dùng item `b`, nên số này không phải độ chính xác. Chờ khóa v3: ghép với `text_evidence` và ghi sha256 seal.
 - **Khóa v2 §7.6 `LOCKED` 10/11, người dùng duyệt:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v2.json` (`a0dc5712…`), luồng đo `text_corrected`. Khóa ghim 10 công cụ đo; khâu đo và phân xử từ chối chạy nếu khóa không còn khớp.
 - **V8-150, V8-120, V8-170 `DONE`:** công cụ gán nhãn trực quan; soak khóa 003 (p50 6,57 s/trang, VRAM đỉnh 2.673 MiB); bỏ 18 test harness.
 - **Quyết định của người dùng:** "B2B2C" tính như `literal_v1`; lỗi §4.1 ghi nhận, sửa sau.
@@ -32,7 +33,7 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Mục nào cần GT do người
 
 ## Bước kế tiếp (cần người dùng)
 
-1. Sàng lọc 7 PDF bằng phiếu đã dựng → seal → đo (`--measurement-lock` trỏ khóa v2, `--stream text_corrected`) → phân xử.
+1. Duyệt khóa v3 (quy tắc ghép mới, §7.6), rồi đo lại và phân xử. Kiểm lại mù từ 17/11.
 2. Xem 72 mục của phiếu số trong bảng, xuất JSONL, rồi `build_table_number_review.py seal`.
 3. Gán nhãn GT bằng `label_structured_gt.py` cho V8-060/070/071/080.
 4. Chạy Vintern theo [`vlm/README.md`](../../benchmark/challengers/vlm/README.md); V8-065/070/095 chưa ghim ứng viên.

@@ -167,7 +167,8 @@ Holdout nào đã bị xem hoặc dùng để chỉnh thì chuyển thành devel
 
 ### 7.5 Còn thiếu trước khi đo
 
-- Người duyệt sàng lọc 7 PDF development (58 trang, 24.194 slot). Đây là phần còn lại của V8-011.
+- Ngày 10/11 người duyệt đã sàng lọc 7 PDF development: cả 7 `ACCEPTED` (24.172 slot `MATCH`, 0 `MISMATCH`). Bản niêm phong nằm ở `scratch/v8/screening/sealed/`.
+- Kiểm lại mù 10% (1.552 chữ, §7.4 D) làm từ 17/11, bằng phiếu ở `scratch/v8/screening/recheck/`.
 - Holdout mới chưa được thu thập.
 
 Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trước khi sàng lọc xong):
@@ -197,6 +198,16 @@ Khóa v2 do `scripts/lock_text_layer_measurement.py` tạo:
 - `measure_text_layer_diacritics.py` từ chối chạy khi thiếu khóa v2 ở trạng thái `LOCKED_PROCEDURE`, cùng khóa v1 và cùng luồng đo. `adjudicate_text_layer_diacritics.py` kiểm lại khóa này ở cả hai bước `build` và `seal`.
 - Bản nháp đã duyệt: `scratch/v8/v8_011_measurement_lock_v2_draft_r2_20261110.json` (sha256 `d1557cc0…`). Khóa v2 khác bản nháp ở ba chỗ: trạng thái, quyết định và luồng đo.
 - Muốn đổi bất kỳ lựa chọn nào thì phải lập khóa mới. Phép đo đã chạy theo khóa cũ vẫn ghi sha256 của khóa đó.
+
+**Phát hiện ở lần đo development đầu tiên (10/11).** Báo cáo: `scratch/v8/v8_011_measurement_dev_003_20261110.json`.
+
+- Đo theo khóa v2 cho `DSER_strict` 83.127/345.300 slot, trong đó 78.192 là slot bị xóa.
+- 71.884 slot bị xóa nằm trong item bảng (`t`). Lý do: mục 3 chỉ ghép text layer với item `b`, nên chữ trong bảng bị tính là OCR bỏ sót.
+- Vì vậy kết quả này không phải độ chính xác dấu, và chưa dựng phiếu phân xử.
+- Đề xuất khóa v3, chờ người dùng duyệt:
+  - ghép với dòng OCR pha A (`text_evidence.items` của extraction, luồng `text_corrected`);
+  - ghi sha256 của 7 bản niêm phong sàng lọc (§7.4 E).
+- Dữ liệu dùng ở đây là development nên được phép chỉnh; holdout vẫn chỉ đo một lần, theo khóa đã cố định trước khi xem.
 
 1. **Glyph hiển thị:** render trang hai lần ở 144 DPI, nguyên trạng và sau khi gỡ mọi glyph bằng redaction (giữ ảnh và nét vẽ). Ký tự gốc hiển thị khi có ít nhất 2 pixel đổi trong hộp của nó. Ký tự có hộp rộng 0 (thành phần ligature như `h` trong `Th`) lấy kết quả của ký tự gốc đứng trước. Một chữ vào mẫu khi mọi ký tự gốc hiển thị; chữ hiển thị một phần bị loại và báo riêng. Trên 58 trang worklist: BHN có 10 chữ nằm dưới ảnh trùng nội dung (14 slot), BCE có 4 chữ bị che một phần (8 slot); 5 PDF còn lại không có chữ nào bị loại.
 2. **Đơn vị sàng lọc:** từng chữ có slot dấu. Người duyệt có thể ghi MATCH cho các chữ chưa quyết của một dòng bằng một thao tác; bản ghi đánh dấu `bulk: "line"`. Slot MATCH chỉ được đếm trên trang đã quyết đủ, theo thứ tự trong khóa.

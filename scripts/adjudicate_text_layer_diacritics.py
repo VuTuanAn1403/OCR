@@ -15,6 +15,12 @@
            unresolved         -> OCR error; base-letter mismatches of the segment count too.
          The sealed decisions are written once, named by their sha256.
 
+When the measurement lock sets ``choices.adjudication.sample_size`` (lock v4), only that many
+items are put on the sheet, chosen by ascending sha256 of ``seed:adjudication-sample:<item_id>``
+so nobody picks them. Every item left out counts as UNRESOLVED (an OCR error, the conservative
+count). The seal also reports the outcome shares of the sample with Clopper-Pearson intervals
+and a scaled estimate of the fully adjudicated count; the estimate is never a gate.
+
   python scripts/adjudicate_text_layer_diacritics.py build --measurement <report.json> --pdf-root inputs --out scratch/v8/adjudication/<new>
   python scripts/adjudicate_text_layer_diacritics.py seal --sheet <sheet dir> --decisions <export.jsonl> --out scratch/v8/adjudication/<sealed>
 """
@@ -37,7 +43,7 @@ for entry in (ROOT / "src", ROOT):
 from benchmark.ground_truth_tools import text_layer_reference as tlr  # noqa: E402
 from benchmark.scientific_evaluation.cluster_correlation import page_icc  # noqa: E402
 from benchmark.scientific_evaluation.diacritic_acceptance import uncomposed_vietnamese_marks  # noqa: E402
-from benchmark.scientific_evaluation.exact_bounds import upper_bound_gate  # noqa: E402
+from benchmark.scientific_evaluation.exact_bounds import clopper_pearson_upper, upper_bound_gate  # noqa: E402
 from benchmark.scientific_evaluation.ocr_metric import compute_dser_strict_detailed  # noqa: E402
 from scripts import lock_text_layer_measurement as measurement_lock_v2  # noqa: E402
 from scripts.measure_text_layer_diacritics import reading_sequence, reference_lines  # noqa: E402
@@ -48,6 +54,28 @@ RECORD_SCHEMA = "ocr-v8-diacritic-adjudication-decision-v1"
 SEAL_SCHEMA = "ocr-v8-diacritic-adjudication-seal-v1"
 CHOICES = ("A_CORRECT", "B_CORRECT", "BOTH_WRONG", "UNRESOLVED")
 TIMEZONE = "+07:00"
+SAMPLE_RANK = "sha256(seed:adjudication-sample:item_id), ascending"
+
+
+def sample_rank(seed: str, item_id: str) -> str:
+    return hashlib.sha256(f"{seed}:adjudication-sample:{item_id}".encode("utf-8")).hexdigest()
+
+
+def sample_size_of(measurement: Dict):
+    """The sample size the measurement lock fixed, or None for every item."""
+    entry = measurement["measurement_lock"]
+    lock = json.loads(measurement_lock_v2.resolve(entry["path"]).read_bytes())
+    return (lock.get("choices", {}).get("adjudication") or {}).get("sample_size")
+
+
+def interval(count: int, total: int, confidence: float = .95) -> Dict:
+    """Two-sided Clopper-Pearson interval of a share."""
+    if not total:
+        return {"count": count, "of": total, "share": None, "lower": None, "upper": None}
+    side = 1 - (1 - confidence) / 2
+    upper = clopper_pearson_upper(count, total, side) if count < total else 1.0
+    lower = 1 - clopper_pearson_upper(total - count, total, side) if count > 0 else 0.0
+    return {"count": count, "of": total, "share": count / total, "lower": lower, "upper": upper, "confidence": confidence}
 
 
 def marked(text: str) -> bool:
@@ -109,8 +137,14 @@ def build_sheet(measurement_path: Path, pdf_root: Path, out: Path, reviewer: str
     seed = lock["parameters"]["seed"]
     if out.exists():
         raise FileExistsError(f"{out} exists; build a new adjudication directory")
+    candidates = [f"{unit['unit_id']}:s{index:02d}" for document in measurement["documents"]
+                  for unit in document["units"] if unit["needs_adjudication"]
+                  for index, _ in enumerate(segments(unit["reference"], unit["prediction"]))]
+    size = sample_size_of(measurement)
+    chosen_ids = set(candidates if size is None or size >= len(candidates)
+                     else sorted(candidates, key=lambda item_id: sample_rank(seed, item_id))[:size])
     (out / "pages").mkdir(parents=True)
-    items, key, pages_out = [], {}, {}
+    items, key, unsampled, pages_out = [], {}, {}, {}
     for document in measurement["documents"]:
         pdf_bytes = (pdf_root / document["pdf"]).read_bytes()
         if sha256_bytes(pdf_bytes) != document["pdf_sha256"]:
@@ -120,7 +154,12 @@ def build_sheet(measurement_path: Path, pdf_root: Path, out: Path, reviewer: str
                 if not unit["needs_adjudication"]:
                     continue
                 found = segments(unit["reference"], unit["prediction"])
-                if not found:
+                for index, segment in enumerate(found):
+                    item_id = f"{unit['unit_id']}:s{index:02d}"
+                    if item_id not in chosen_ids:
+                        unsampled[item_id] = {"unit_id": unit["unit_id"], "pdf_sha256": document["pdf_sha256"],
+                                              "page": unit["page"], **segment}
+                if not any(f"{unit['unit_id']}:s{index:02d}" in chosen_ids for index in range(len(found))):
                     continue
                 page = pdf[unit["page"] - 1]
                 image_key = f"{document['pdf_sha256'][:16]}-p{unit['page']:04d}"
@@ -135,6 +174,8 @@ def build_sheet(measurement_path: Path, pdf_root: Path, out: Path, reviewer: str
                 image = pages_out[image_key]
                 boxes = unit_words(pdf_bytes, unit["page"], unit["reference_line_ids"])
                 for index, segment in enumerate(found):
+                    if f"{unit['unit_id']}:s{index:02d}" not in chosen_ids:
+                        continue
                     i0, i1 = segment["ref_tokens"]
                     chosen = boxes[i0:i1] or boxes[max(0, i0 - 1):i0 + 1] or [tuple(unit["bbox"])]
                     word_box = tlr._union(chosen)
@@ -155,9 +196,11 @@ def build_sheet(measurement_path: Path, pdf_root: Path, out: Path, reviewer: str
     manifest = {"schema_version": SHEET_SCHEMA, "mode": "adjudication", "sheet_id": sheet_id,
                 "measurement": {"path": measurement_path.as_posix(), "sha256": sha256_bytes(measurement_bytes)},
                 "reviewer": reviewer, "tool_commit": tool_commit(), "choices": list(CHOICES), "pages": pages_public,
+                "sample": {"size": len(items), "population": len(candidates), "requested": size, "rank": SAMPLE_RANK,
+                           "unsampled_rule": "every item left out counts as UNRESOLVED"},
                 "items": items, "created_at": dt.datetime.now(dt.timezone(dt.timedelta(hours=7))).isoformat(timespec="seconds")}
     write_new(out / "sheet.json", dumps(manifest))
-    write_new(out / "ab_key.json", dumps({"sheet_id": sheet_id, "seed": seed, "items": key}))
+    write_new(out / "ab_key.json", dumps({"sheet_id": sheet_id, "seed": seed, "items": key, "unsampled": unsampled}))
     template = (ROOT / "benchmark" / "ground_truth_tools" / "adjudication_sheet.html").read_text(encoding="utf-8")
     public = {k: manifest[k] for k in ("sheet_id", "reviewer", "choices", "pages", "items", "tool_commit")}
     write_new(out / "index.html", template.replace("/*__SHEET__*/null", json.dumps(public, ensure_ascii=False).replace("</", "<\\/")).encode("utf-8"))
@@ -203,30 +246,8 @@ def corrected_reference(reference: str, decisions: List[Tuple[Dict, str, str]]) 
     return " ".join(tokens)
 
 
-def seal(sheet_dir: Path, decision_paths: List[Path], out: Path) -> Dict:
-    manifest_bytes = (sheet_dir / "sheet.json").read_bytes()
-    manifest = json.loads(manifest_bytes)
-    key = json.loads((sheet_dir / "ab_key.json").read_bytes())["items"]
-    measurement_path = Path(manifest["measurement"]["path"])
-    measurement_bytes = measurement_path.read_bytes()
-    if sha256_bytes(measurement_bytes) != manifest["measurement"]["sha256"]:
-        raise ValueError("the measurement report changed after the sheet was built")
-    measurement = json.loads(measurement_bytes)
-    check_measurement_lock(measurement)
-    records = read_jsonl(decision_paths)
-    problems = check_records(manifest, records)
-    if problems:
-        raise ValueError("adjudication decisions do not match the sheet:\n  " + "\n  ".join(problems[:40]))
-    outcome_of = {"A_CORRECT": lambda side: "TEXT_LAYER_CORRECT" if side == "TEXT_LAYER" else "OCR_CORRECT",
-                  "B_CORRECT": lambda side: "OCR_CORRECT" if side == "TEXT_LAYER" else "TEXT_LAYER_CORRECT",
-                  "BOTH_WRONG": lambda side: "BOTH_WRONG", "UNRESOLVED": lambda side: "UNRESOLVED"}
-    by_unit: Dict[str, List[Tuple[Dict, str, str]]] = {}
-    outcomes: Dict[str, int] = {}
-    for record in records:
-        segment = key[record["item_id"]]
-        outcome = outcome_of[record["choice"]](segment["A"])
-        outcomes[outcome] = outcomes.get(outcome, 0) + 1
-        by_unit.setdefault(segment["unit_id"], []).append((segment, outcome, record.get("corrected_text") or ""))
+def recount(measurement: Dict, by_unit: Dict[str, List[Tuple[Dict, str, str]]]):
+    """DSER_strict errors and slots after applying the per-unit decisions; page clusters for rho."""
     errors = slots = gt_error_items = 0
     clusters: Dict[Tuple[str, int], List[int]] = {}
     for document in measurement["documents"]:
@@ -248,6 +269,53 @@ def seal(sheet_dir: Path, decision_paths: List[Path], out: Path) -> Dict:
     for value in clusters.values():
         errors += value[0]
         slots += value[1]
+    return errors, slots, clusters, gt_error_items
+
+
+def seal(sheet_dir: Path, decision_paths: List[Path], out: Path) -> Dict:
+    manifest_bytes = (sheet_dir / "sheet.json").read_bytes()
+    manifest = json.loads(manifest_bytes)
+    key_file = json.loads((sheet_dir / "ab_key.json").read_bytes())
+    key, unsampled = key_file["items"], key_file.get("unsampled", {})
+    measurement_path = Path(manifest["measurement"]["path"])
+    measurement_bytes = measurement_path.read_bytes()
+    if sha256_bytes(measurement_bytes) != manifest["measurement"]["sha256"]:
+        raise ValueError("the measurement report changed after the sheet was built")
+    measurement = json.loads(measurement_bytes)
+    check_measurement_lock(measurement)
+    records = read_jsonl(decision_paths)
+    problems = check_records(manifest, records)
+    if problems:
+        raise ValueError("adjudication decisions do not match the sheet:\n  " + "\n  ".join(problems[:40]))
+    outcome_of = {"A_CORRECT": lambda side: "TEXT_LAYER_CORRECT" if side == "TEXT_LAYER" else "OCR_CORRECT",
+                  "B_CORRECT": lambda side: "OCR_CORRECT" if side == "TEXT_LAYER" else "TEXT_LAYER_CORRECT",
+                  "BOTH_WRONG": lambda side: "BOTH_WRONG", "UNRESOLVED": lambda side: "UNRESOLVED"}
+    by_unit: Dict[str, List[Tuple[Dict, str, str]]] = {}
+    unresolved_all: Dict[str, List[Tuple[Dict, str, str]]] = {}
+    outcomes: Dict[str, int] = {}
+    for record in records:
+        segment = key[record["item_id"]]
+        outcome = outcome_of[record["choice"]](segment["A"])
+        outcomes[outcome] = outcomes.get(outcome, 0) + 1
+        by_unit.setdefault(segment["unit_id"], []).append((segment, outcome, record.get("corrected_text") or ""))
+        unresolved_all.setdefault(segment["unit_id"], []).append((segment, "UNRESOLVED", ""))
+    for segment in unsampled.values():  # left out of the sample: counted as UNRESOLVED
+        by_unit.setdefault(segment["unit_id"], []).append((segment, "UNRESOLVED", ""))
+        unresolved_all.setdefault(segment["unit_id"], []).append((segment, "UNRESOLVED", ""))
+    if unsampled:
+        outcomes["UNRESOLVED_NOT_SAMPLED"] = len(unsampled)
+    errors, slots, clusters, gt_error_items = recount(measurement, by_unit)
+    sample = manifest.get("sample") or {"size": len(records), "population": len(records)}
+    estimate = None
+    if unsampled:
+        all_unresolved = recount(measurement, unresolved_all)[0]
+        scale = sample["population"] / sample["size"] if sample["size"] else None
+        estimate = {"status": "ESTIMATE_NOT_A_GATE",
+                    "method": "error reduction seen on the sampled items, scaled by population/sample (Horvitz-Thompson)",
+                    "errors_if_every_item_unresolved": all_unresolved,
+                    "estimated_errors_after_full_adjudication": round(all_unresolved - (all_unresolved - errors) * scale) if scale else None}
+    shares = {name: interval(sum(1 for r in records if outcome_of[r["choice"]](key[r["item_id"]]["A"]) == name), len(records))
+              for name in ("TEXT_LAYER_CORRECT", "OCR_CORRECT", "BOTH_WRONG", "UNRESOLVED")}
     sealed_bytes = b"".join(json.dumps(record, ensure_ascii=False, sort_keys=True).encode("utf-8") + b"\n"
                             for record in sorted(records, key=lambda r: r["item_id"]))
     sealed_sha = sha256_bytes(sealed_bytes)
@@ -259,8 +327,11 @@ def seal(sheet_dir: Path, decision_paths: List[Path], out: Path) -> Dict:
     report = {"schema_version": SEAL_SCHEMA, "sheet_id": manifest["sheet_id"], "sheet_sha256": sha256_bytes(manifest_bytes),
               "measurement": manifest["measurement"], "partition": measurement["partition"], "stream": measurement["stream"],
               "sealed_file": f"adjudication-{sealed_sha[:16]}.jsonl", "sealed_sha256": sealed_sha, "items": len(records),
-              "outcomes": outcomes, "gt_error_items": gt_error_items,
-              "dser_strict_after_adjudication": {"errors": errors, "slots": slots, "rate": errors / slots if slots else None},
+              "outcomes": outcomes, "gt_error_items": gt_error_items, "sample": sample, "sample_shares": shares,
+              "dser_strict_after_adjudication": {"errors": errors, "slots": slots, "rate": errors / slots if slots else None,
+                                                 "count": "conservative: items left out of the sample count as UNRESOLVED"
+                                                 if unsampled else "every item adjudicated"},
+              "estimate": estimate,
               "gate_in_sample": upper_bound_gate(errors, slots, confidence=parameters["confidence"],
                                                  maximum_rate=parameters["maximum_error_rate"]) if slots else None,
               "page_icc": page_icc([tuple(v) for v in clusters.values()]),
@@ -285,7 +356,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     if args.command == "build":
         manifest = build_sheet(args.measurement, args.pdf_root, args.out, args.reviewer)
-        print(f"{len(manifest['items'])} adjudication items -> {args.out / 'index.html'}")
+        print(f"{len(manifest['items'])}/{manifest['sample']['population']} adjudication items -> {args.out / 'index.html'}")
     else:
         report = seal(args.sheet, args.decisions, args.out)
         result = report["dser_strict_after_adjudication"]

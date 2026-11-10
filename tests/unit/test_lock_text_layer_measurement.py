@@ -35,7 +35,7 @@ def test_a_draft_has_no_decision_and_a_lock_needs_reviewer_date_stream_and_match
     base = _base(tmp_path)
     draft = lock_v3.build_lock(str(base), draft=True)
     assert draft["status"] == "DRAFT_NOT_LOCKED" and draft["decision"] is None
-    assert draft["open_choices"] == ["matching", "stream"] and draft["procedure_version"] == 3
+    assert draft["open_choices"] == ["matching", "stream"] and draft["procedure_version"] == lock_v3.PROCEDURE_VERSION == 4
     assert draft["gt_status"] == "NOT_VERIFIED" and draft["quality_acceptance"] == "NOT_EVALUATED"
     with pytest.raises(lock_v3.LockError, match="carries no decision"):
         lock_v3.build_lock(str(base), draft=True, reviewer="me")
@@ -118,8 +118,23 @@ def test_a_measurement_needs_a_verified_lock_on_its_base_stream_and_seals(tmp_pa
     with pytest.raises(lock_v3.LockError, match="differ from the 2 seals"):
         lock_v3.require_locked(locked, base_sha, "text_corrected", seals[:1])
     entry = lock_v3.require_locked(locked, base_sha, "text_corrected", seals)
-    assert entry["status"] == "LOCKED_PROCEDURE" and entry["matching"] == PHASE_A and entry["procedure_version"] == 3
+    assert entry["status"] == "LOCKED_PROCEDURE" and entry["matching"] == PHASE_A and entry["procedure_version"] == 4
     assert entry["sha256"] == hashlib.sha256(locked.read_bytes()).hexdigest()
+
+
+def test_the_adjudication_sample_is_a_locked_positive_size(tmp_path):
+    base = _base(tmp_path)
+    for bad in (0, -5, 2.5):
+        with pytest.raises(lock_v3.LockError, match="positive whole number"):
+            lock_v3.build_lock(str(base), draft=True, adjudication_sample=bad)
+    full = lock_v3.build_lock(str(base), draft=True)["choices"]["adjudication"]
+    assert full["sample_size"] is None and full["unsampled_items"] is None
+    lock = lock_v3.build_lock(str(base), draft=False, stream="text_corrected", matching=PHASE_A,
+                              adjudication_sample=3000, **DECISION)
+    sample = lock["choices"]["adjudication"]
+    assert sample["sample_size"] == 3000 and sample["unsampled_items"] == "count as UNRESOLVED"
+    assert sample["sample_rank"].startswith("sha256(seed:adjudication-sample:")
+    assert lock_v3.verify(_write(tmp_path, "sample.json", lock)) == []
 
 
 def test_cli_never_overwrites_and_verify_exits_nonzero_on_a_problem(tmp_path, capsys):

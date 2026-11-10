@@ -80,10 +80,10 @@ def _output(tmp_path: Path, sha: str, items, identity_status="MATCH", tables=(),
 
 
 def measurement_lock(tmp_path: Path, lock: Path, *, draft: bool = False, stream: str = "text_corrected",
-                     matching: str = measure.MATCHING_METHOD) -> Path:
+                     matching: str = measure.MATCHING_METHOD, sample=None) -> Path:
     decision = {} if draft else {"reviewer": "reviewer", "decided_on": "2026-11-10"}
-    built = lock_v3.build_lock(str(lock), draft=draft, stream=stream, matching=matching, **decision)
-    suffix = "" if matching == measure.MATCHING_METHOD else f"-{matching}"
+    built = lock_v3.build_lock(str(lock), draft=draft, stream=stream, matching=matching, adjudication_sample=sample, **decision)
+    suffix = ("" if matching == measure.MATCHING_METHOD else f"-{matching}") + (f"-sample{sample}" if sample else "")
     path = tmp_path / f"lock-v2-{'draft' if draft else stream}{suffix}.json"
     path.write_text(lock_v3.dump(built), encoding="utf-8")
     return path

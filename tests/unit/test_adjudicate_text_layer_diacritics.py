@@ -10,12 +10,12 @@ from tests.unit.test_measure_text_layer_diacritics import FONT, _output, _seal, 
 pytestmark = pytest.mark.skipif(FONT is None, reason="no TrueType font with Vietnamese glyphs")
 
 
-def _measured(tmp_path):
+def _measured(tmp_path, sample=None):
     pdf, sha, lock, boxes = _setup(tmp_path)
     seal = _seal(tmp_path, pdf, lock, "m")
     output, identity = _output(tmp_path, sha, [("Hội đồng quản tri", boxes["Hội đồng quản trị"])])
     report = measure.build(lock, [seal], identity, output, tmp_path / "pdfs", "text_corrected",
-                           measurement_lock=measurement_lock(tmp_path, lock))
+                           measurement_lock=measurement_lock(tmp_path, lock, sample=sample))
     path = tmp_path / "measurement.json"
     path.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
     return path
@@ -70,7 +70,8 @@ def test_seal_recounts_after_corrected_references(tmp_path):
     adjudicate.build_sheet(_measured(tmp_path), tmp_path / "pdfs", tmp_path / "sheet", "reviewer")
     report = _seal_answers(tmp_path, "one", {"trị": ("TEXT_LAYER_CORRECT",), "Báo cáo năm": ("OCR_CORRECT",)})
     # trị stays an OCR error; the reviewer says the second line is not on the image, so its slots leave the reference
-    assert report["dser_strict_after_adjudication"] == {"errors": 1, "slots": 7, "rate": 1 / 7}
+    assert report["dser_strict_after_adjudication"] == {"errors": 1, "slots": 7, "rate": 1 / 7, "count": "every item adjudicated"}
+    assert report["estimate"] is None and report["sample"]["size"] == report["sample"]["population"] == 2
     assert report["gt_error_items"] == 1 and report["outcomes"] == {"TEXT_LAYER_CORRECT": 1, "OCR_CORRECT": 1}
     report = _seal_answers(tmp_path, "two", {"trị": ("BOTH_WRONG", "trí"), "Báo cáo năm": ("UNRESOLVED",)})
     # both wrong: reference fixed to trí, OCR "tri" still misses the tone; unresolved keeps the 3 deleted slots
@@ -84,3 +85,24 @@ def test_seal_requires_every_item_and_a_text_for_both_wrong(tmp_path):
         _seal_answers(tmp_path, "partial", {"trị": ("TEXT_LAYER_CORRECT",)})
     with pytest.raises(ValueError, match="BOTH_WRONG needs"):
         _seal_answers(tmp_path, "empty", {"trị": ("BOTH_WRONG", ""), "Báo cáo năm": ("UNRESOLVED",)})
+
+
+def test_a_locked_sample_puts_seeded_items_on_the_sheet_and_counts_the_rest_as_errors(tmp_path):
+    sheet = adjudicate.build_sheet(_measured(tmp_path, sample=1), tmp_path / "pdfs", tmp_path / "sheet", "reviewer")
+    assert sheet["sample"] == {**sheet["sample"], "size": 1, "population": 2, "requested": 1}
+    key_file = json.loads((tmp_path / "sheet" / "ab_key.json").read_text(encoding="utf-8"))
+    assert len(key_file["items"]) == 1 and len(key_file["unsampled"]) == 1
+    ranks = sorted(list(key_file["items"]) + list(key_file["unsampled"]),
+                   key=lambda item_id: adjudicate.sample_rank(key_file["seed"], item_id))
+    assert [item["item_id"] for item in sheet["items"]] == ranks[:1]  # the lowest seeded rank, not a choice
+    item = sheet["items"][0]
+    path = tmp_path / "sample.jsonl"
+    record = _answer(sheet, key_file["items"], item, "TEXT_LAYER_CORRECT")
+    path.write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
+    report = adjudicate.seal(tmp_path / "sheet", [path], tmp_path / "sealed-sample")
+    assert report["outcomes"] == {"TEXT_LAYER_CORRECT": 1, "UNRESOLVED_NOT_SAMPLED": 1}
+    assert report["dser_strict_after_adjudication"]["errors"] == 4  # nothing left out is forgiven
+    assert report["estimate"]["status"] == "ESTIMATE_NOT_A_GATE"
+    assert report["estimate"]["estimated_errors_after_full_adjudication"] == 4
+    share = report["sample_shares"]["TEXT_LAYER_CORRECT"]
+    assert (share["count"], share["of"], share["upper"]) == (1, 1, 1.0) and 0 < share["lower"] < 1

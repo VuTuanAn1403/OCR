@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
   "pipeline_version": "7.0.0",
-  "verified_head": "64a15778049aaba22f65e44d44f09388fc964c7b",
+  "verified_head": "d7231a52a498fa12fd0a76aa1553b79073e56617",
   "last_verified": "2026-11-10",
-  "verified_scope": "HEAD 64a1577 (chỉ khác 2af5454 ở tài liệu, registry, khóa GT, scripts/, benchmark/ và test; không đổi src/, config, model). Hồi quy CPU tại 64a1577: 2629 passed, 1 skipped; cổng dấu đếm DSER_strict; khóa đo v3 LOCKED. Detector production PP-OCRv6 là ngoại lệ chưa qua GT. Khóa hiện hành BASELINE-V8-20261109-003 (fingerprint khớp HEAD); khóa 002 (PP-OCRv4) dùng cho V8-006. Quality = NOT_EVALUATED.",
+  "verified_scope": "HEAD d7231a5 (chỉ khác 2af5454 ở tài liệu, registry, khóa GT, scripts/, benchmark/ và test; không đổi src/, config, model). Hồi quy CPU tại 64a1577: 2629 passed, 1 skipped; cổng dấu đếm DSER_strict; khóa đo v3 LOCKED. Detector production PP-OCRv6 là ngoại lệ chưa qua GT. Khóa hiện hành BASELINE-V8-20261109-003 (fingerprint khớp HEAD); khóa 002 (PP-OCRv4) dùng cho V8-006. Quality = NOT_EVALUATED.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
@@ -830,7 +830,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "87d73077cb48c260180a305a482f70f31027146469d3c456d7a9be91bbfc7a3b",
+      "sha256": "71a022ae9ba1b2e9df02b7a45c739c47862a8132a2851e1786e26b55a0f56caf",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",

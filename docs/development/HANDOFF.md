@@ -33,7 +33,7 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Mục nào cần GT do người
 
 ## Bước kế tiếp (cần người dùng)
 
-1. Phân xử mù 6.307 đơn vị bằng phiếu ở `scratch/v8/adjudication/v8_011_dev_003_v3_20261110/`, rồi `adjudicate_text_layer_diacritics.py seal`. Kiểm lại mù sàng lọc từ 17/11.
+1. Phân xử mù 9.733 mục (6.307 đơn vị, 648 trang) bằng phiếu ở `scratch/v8/adjudication/v8_011_dev_003_v3_20261110/` (không mở `ab_key.json`), rồi `adjudicate_text_layer_diacritics.py seal`. Kiểm lại mù sàng lọc từ 17/11.
 2. Xem 72 mục của phiếu số trong bảng, xuất JSONL, rồi `build_table_number_review.py seal`.
 3. Gán nhãn GT bằng `label_structured_gt.py` cho V8-060/070/071/080.
 4. Chạy Vintern theo [`vlm/README.md`](../../benchmark/challengers/vlm/README.md); V8-065/070/095 chưa ghim ứng viên.

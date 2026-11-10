@@ -69,15 +69,15 @@ def confusions(reference: str, prediction: str, counts: Dict[str, Counter]) -> N
         counts["ref_slots"]["all"] += len(ref_slots)
 
 
-def build(seal_path: Path) -> Dict:
+def adjudicated_units(seal_path: Path):
+    """(seal, PDFs fully adjudicated, [(document, unit, corrected reference)]) of a sealed adjudication."""
     seal = json.loads(seal_path.read_bytes())
-    sheet_dir = None
     measurement = json.loads(resolve(seal["measurement"]["path"]).read_bytes())
     complete = {d["pdf_sha256"] for d in seal["documents"] if d["fully_adjudicated"]}
     if not complete:
         raise ValueError("no PDF in this seal was fully adjudicated")
-    # The sealed decisions live next to the seal; the key next to the sheet the seal names.
     records = [json.loads(line) for line in (seal_path.parent / seal["sealed_file"]).read_text(encoding="utf-8").splitlines() if line]
+    sheet_dir = None
     for candidate in sorted((ROOT / "scratch" / "v8" / "adjudication").glob("*/sheet.json")):
         if json.loads(candidate.read_bytes())["sheet_id"] == seal["sheet_id"]:
             sheet_dir = candidate.parent
@@ -91,16 +91,22 @@ def build(seal_path: Path) -> Dict:
         outcome = {"A_CORRECT": "TEXT_LAYER_CORRECT" if side == "TEXT_LAYER" else "OCR_CORRECT",
                    "B_CORRECT": "OCR_CORRECT" if side == "TEXT_LAYER" else "TEXT_LAYER_CORRECT"}.get(record["choice"], record["choice"])
         by_unit.setdefault(segment["unit_id"], []).append((segment, outcome, record.get("corrected_text") or ""))
-    counts: Dict[str, Counter] = {name: Counter() for name in
-                                  ("ref_slots", "slot_errors", "pairs", "reference_chars", "spurious", "deleted_slots", "base_mismatch_slots")}
-    pdfs = []
+    rows, pdfs = [], []
     for document in measurement["documents"]:
         if document["pdf_sha256"] not in complete:
             continue
         pdfs.append(document["pdf"])
         for unit in document["units"]:
-            reference = adjudicate.corrected_reference(unit["reference"], by_unit.get(unit["unit_id"], []))
-            confusions(reference, unit["prediction"], counts)
+            rows.append((document, unit, adjudicate.corrected_reference(unit["reference"], by_unit.get(unit["unit_id"], []))))
+    return seal, pdfs, rows
+
+
+def build(seal_path: Path) -> Dict:
+    seal, pdfs, rows = adjudicated_units(seal_path)
+    counts: Dict[str, Counter] = {name: Counter() for name in
+                                  ("ref_slots", "slot_errors", "pairs", "reference_chars", "spurious", "deleted_slots", "base_mismatch_slots")}
+    for _, unit, reference in rows:
+        confusions(reference, unit["prediction"], counts)
     slots = counts["ref_slots"]["all"]
     return {"schema_version": SCHEMA, "seal": {"path": seal_path.as_posix(), "sheet_id": seal["sheet_id"]},
             "pdfs": pdfs, "scope": "fully adjudicated development PDFs only; not an accuracy claim",

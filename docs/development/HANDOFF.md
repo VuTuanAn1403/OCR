@@ -21,6 +21,7 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì 
   - Đếm bảo thủ 14.301/345.754; AAA 3,7%, AGR 2020 3,1%; ρ_U 0,026. OCR còn rất xa 99,99%.
   - 321 mục "cả hai sai" là chữ OCR chèn thêm mà phiếu hiển thị sai. Độ nhạy: 14.228/345.301. Phải sửa phiếu trước holdout.
   - Loại lỗi trên AAA và AGR 2020 (`scratch/v8/v8_012_diacritic_confusions_aaa_agr2020_20261111.json`, `scripts/diacritic_confusions.py`): 350/354 lỗi đ là Đ hoa đọc thành D, khoảng 209 lần HĐQT→HDQT, cùng BĐH và ĐHĐCĐ. Mất dấu nặng 260, mất dấu huyền 170, hỏi thành huyền hoặc sắc 260. Đây là mục tiêu cho V8-030 và V8-065.
+  - Challenger `benchmark/challengers/acronym_diacritics.py` (V8-030): `DSER_strict` 3.499→3.229 trên AAA và AGR 2020, 226 đơn vị được sửa, 2 bị làm sai (`scratch/v8/v8_030_acronym_challenger_dev_20261111.json`). Đo trên chính dữ liệu dev nên là `INCONCLUSIVE`; cần holdout.
 - **Cổng dấu:** `diacritic_acceptance.py` và `release_gate.py` đếm theo `DSER_strict`.
 - **V8-080:** audit v2 (`..._003_r2_20261110.json`) và phiếu 72 số trong bảng.
 - **`DONE` mới:** V8-150, V8-120, V8-170.

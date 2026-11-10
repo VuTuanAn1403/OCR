@@ -17,6 +17,7 @@ Mã của hợp đồng [05](../../cai%20tien%20v2/05_HOP_DONG_BENCHMARK_ADAPTER
 | `canonical.py` | Kiểm bản ghi dự đoán canonical (§4): `text_raw`, `bbox` + `coordinate_space`, `source_image_sha256`, `confidence` hoặc `null` kèm lý do; `MISSING_OUTPUT` vẫn là bản ghi |
 | `catalog.py`, `model_catalog.json` | Catalog ứng viên (V8-043): licence code/weights, URL, revision, sha weights, VRAM. `download_allowed` chỉ mở khi licence `VERIFIED`, revision đã ghim và có sha256 weights; licence copyleft/phi thương mại/có điều kiện cần thêm `licence_review` |
 | `reading_order_rules.py` | Thứ tự đọc rule-based theo 8 quy tắc R-RO của đặc tả 11 (V8-071), chỉ dùng thư viện chuẩn và tất định; chạy và so với production bằng `scripts/run_reading_order_challenger.py` |
+| `acronym_diacritics.py` | Khôi phục Đ trong từ viết tắt in hoa có trong danh sách (HĐQT, BĐH, ĐHĐCĐ…), không sửa chuỗi gốc. Đo fix/harm bằng `scripts/run_acronym_challenger.py` (V8-030) |
 | `vlm/` | VLM fallback (V8-090): `selection.py` chỉ chọn trang có chẩn đoán, `adapter.py` ghi bản ghi `page_text` canonical có `review_required`, `backends.py` chỉ mở model cục bộ khi catalog cho phép và sha weights khớp; CLI `scripts/run_vlm_challenger.py` |
 
 Thiếu bất kỳ trường identity nào thì manifest là `INCONCLUSIVE`, và quyết định duy nhất được phép là `INCONCLUSIVE`. Không có protocol LOCKED hoặc GT độc lập cũng vậy. Fix/harm tính bằng `benchmark/qa/paired_effects.py::summarize`; mẫu số 0 cho rate `null`.

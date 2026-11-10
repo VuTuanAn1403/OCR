@@ -1,6 +1,6 @@
 # Phương pháp Ground Truth và khóa benchmark
 
-Ngày 07/11/2026. **DRAFT — chưa khóa corpus/split/GT, chưa phê duyệt protocol hoặc ngưỡng.** Ngoại lệ duy nhất: §7, quy trình xác minh text layer cho cổng dấu, đã LOCKED v1 ngày 09/11/2026. Tài liệu này chuẩn hóa cách chuẩn bị, tương thích công cụ hiện có; không tự tạo một bộ đáp án. Tình trạng chưa có người A/B đã được bàn giao: không hỏi lại phân công, không dùng AI/model output thay GT. Chất lượng corpus giữ `NOT_EVALUATED`.
+Ngày 07/11/2026. **DRAFT — chưa khóa corpus/split/GT, chưa phê duyệt protocol hoặc ngưỡng.** Ngoại lệ duy nhất: §7, quy trình xác minh text layer cho cổng dấu, đã LOCKED v1 ngày 09/11/2026 và v2 (lựa chọn đo §7.6) ngày 10/11/2026. Tài liệu này chuẩn hóa cách chuẩn bị, tương thích công cụ hiện có; không tự tạo một bộ đáp án. Tình trạng chưa có người A/B đã được bàn giao: không hỏi lại phân công, không dùng AI/model output thay GT. Chất lượng corpus giữ `NOT_EVALUATED`.
 
 Nguồn chuẩn kỹ thuật: [catalog](../../src/ocr/collect/catalog.py), [ANNOTATION_V6](../../benchmark/ground_truth_tools/ANNOTATION_V6.md), [human annotations](../../benchmark/ground_truth_tools/human_annotations.py), [protocol_preflight](../../benchmark/scientific_evaluation/protocol_preflight.py) và [mẫu protocol hiện có](templates/benchmark_acceptance_protocol.example.yaml). Không sửa các schema hoặc mẫu DRAFT đó để ép preflight thành công.
 
@@ -168,7 +168,6 @@ Holdout nào đã bị xem hoặc dùng để chỉnh thì chuyển thành devel
 ### 7.5 Còn thiếu trước khi đo
 
 - Người duyệt sàng lọc 7 PDF development (58 trang, 24.194 slot). Đây là phần còn lại của V8-011.
-- Người dùng duyệt và khóa các lựa chọn ở §7.6 thành khóa v2 trước lần đo đầu tiên.
 - Holdout mới chưa được thu thập.
 
 Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trước khi sàng lọc xong):
@@ -184,23 +183,25 @@ Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trư�
 
 `native_diacritic_replay.py` đo luồng native, không phải bộ ghép OCR với text layer. `check_vietnamese_charset.py` kiểm từ điển ký tự của model, không kiểm trang.
 
-### 7.6 Đề xuất cho khóa v2 (chưa khóa)
+### 7.6 Khóa v2: các lựa chọn đo (LOCKED 10/11/2026)
 
-Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong khóa v1. Người dùng duyệt rồi khóa chúng trong v2 trước khi xem bất kỳ kết quả đo nào.
+Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong khóa v1. Người dùng (VuTuanAn1403) duyệt nguyên bản nháp r2 và khóa chúng trong v2 ngày 10/11/2026, trước mọi kết quả đo. Luồng đo là `text_corrected`.
+
+- **Khóa:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v2.json`, sha256 `a0dc5712dd767120aff2fe3031829d7195db2e101658429e5d61ed6ead0dc616` (byte LF, ghim qua `.gitattributes`).
+- **Kiểm lại:** `scripts/lock_text_layer_measurement.py --verify <khóa>`.
 
 Khóa v2 do `scripts/lock_text_layer_measurement.py` tạo:
 
 - Khóa gắn với khóa v1 qua sha256 và ghi giá trị của 7 lựa chọn, đọc thẳng từ mã.
 - Khóa ghim byte của 10 file công cụ (kể cả `diacritic_acceptance.py`, nơi quyết định đơn vị có dấu trơ), đọc CRLF thành LF. Sửa bất kỳ file nào trong số đó là khóa mất hiệu lực.
 - `measure_text_layer_diacritics.py` từ chối chạy khi thiếu khóa v2 ở trạng thái `LOCKED_PROCEDURE`, cùng khóa v1 và cùng luồng đo. `adjudicate_text_layer_diacritics.py` kiểm lại khóa này ở cả hai bước `build` và `seal`.
-- Bản nháp chờ duyệt ngày 10/11: `scratch/v8/v8_011_measurement_lock_v2_draft_r2_20261110.json`, sha256 `d1557cc0…`, trạng thái `DRAFT_NOT_LOCKED`, còn mở mục 4 (luồng đo).
-
-Khi người dùng duyệt, người vận hành chạy lệnh có `--stream`, `--reviewer`, `--decided-on` và `--report docs/quality_assurance/locks/<mới>.json`.
+- Bản nháp đã duyệt: `scratch/v8/v8_011_measurement_lock_v2_draft_r2_20261110.json` (sha256 `d1557cc0…`). Khóa v2 khác bản nháp ở ba chỗ: trạng thái, quyết định và luồng đo.
+- Muốn đổi bất kỳ lựa chọn nào thì phải lập khóa mới. Phép đo đã chạy theo khóa cũ vẫn ghi sha256 của khóa đó.
 
 1. **Glyph hiển thị:** render trang hai lần ở 144 DPI, nguyên trạng và sau khi gỡ mọi glyph bằng redaction (giữ ảnh và nét vẽ). Ký tự gốc hiển thị khi có ít nhất 2 pixel đổi trong hộp của nó. Ký tự có hộp rộng 0 (thành phần ligature như `h` trong `Th`) lấy kết quả của ký tự gốc đứng trước. Một chữ vào mẫu khi mọi ký tự gốc hiển thị; chữ hiển thị một phần bị loại và báo riêng. Trên 58 trang worklist: BHN có 10 chữ nằm dưới ảnh trùng nội dung (14 slot), BCE có 4 chữ bị che một phần (8 slot); 5 PDF còn lại không có chữ nào bị loại.
 2. **Đơn vị sàng lọc:** từng chữ có slot dấu. Người duyệt có thể ghi MATCH cho các chữ chưa quyết của một dòng bằng một thao tác; bản ghi đánh dấu `bulk: "line"`. Slot MATCH chỉ được đếm trên trang đã quyết đủ, theo thứ tự trong khóa.
 3. **Ghép OCR với text layer:** mục `b` của `extraction.json` và dòng text layer hiển thị được nối khi giao nhau theo chiều ngang và chồng nhau ít nhất một nửa chiều cao nhỏ hơn. Mỗi nhóm liên thông là một đơn vị, xếp theo hàng rồi từ trái sang phải. Dòng text layer không có OCR thì tính toàn bộ slot là lỗi xóa. Dòng OCR không có text layer được báo riêng.
-4. **Luồng đo:** `text_corrected` hay `text_raw` phải khóa trước khi đo; công cụ bắt chọn rõ ràng.
+4. **Luồng đo:** `text_corrected`, khóa ngày 10/11. Công cụ vẫn bắt chọn luồng rõ ràng và từ chối luồng khác luồng đã khóa.
 5. **Cổng:** số lỗi là `dser_errors` của `DSER_strict` trên `ref_slots`, đúng tham số `metric` của khóa v1. Từ 10/11, hai cổng `diacritic_acceptance.py` và `release_gate.py` cũng đếm theo `DSER_strict` như đặc tả 04 §3. DER_VN_v1 chỉ còn được báo bên cạnh.
 6. **ρ_U:** cận trên của profile likelihood beta-binomial (một phía 95%). Một mô phỏng với tỷ lệ lỗi 0,001–0,01 cho thấy cận F của ANOVA chỉ phủ ρ thật ở 58–89% số lần, còn bootstrap theo trang ở 58–85%; cả hai sẽ làm DEFF nhỏ hơn thực tế. Profile likelihood phủ ở 92–96%.
 7. **Phân xử:** mỗi đoạn token khác nhau có slot hoặc dấu là một mục. `Cả hai sai` bắt buộc người duyệt gõ chữ đúng. `Không quyết được` tính cả slot lệch chữ gốc của đoạn đó là lỗi.

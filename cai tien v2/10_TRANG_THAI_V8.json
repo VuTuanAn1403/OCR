@@ -661,7 +661,7 @@
   "diacritic_gate": {
     "target": "99,99%",
     "status": "NOT_EVALUATED",
-    "blocker": "Chưa có GT độc lập: cần N_eff >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788. Nguồn (b): quy trình LOCKED v1 (GROUND_TRUTH_PROTOCOL §7); 9 PDF inputs là development, 345.647 slot chưa xác minh. Công cụ sàng lọc, đo ghép bbox, phân xử và rho_U đã có (protocol §7.5). Chờ người duyệt sàng lọc 7 PDF, duyệt nháp khóa v2 §7.6 (đo bị chặn tới khi khóa), holdout PDF mới.",
+    "blocker": "Chưa có GT độc lập: cần N_eff >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788. Nguồn (b): quy trình LOCKED v1 (GROUND_TRUTH_PROTOCOL §7); 9 PDF inputs là development, 345.647 slot chưa xác minh. Công cụ sàng lọc, đo ghép bbox, phân xử và rho_U đã có (protocol §7.5). Chờ người duyệt sàng lọc 7 PDF, khóa v2 §7.6 đã LOCKED 10/11 (text_corrected, a0dc5712), holdout PDF mới.",
     "candidate_text_layer_slots": {
       "value": 345687,
       "scope": "scripts/inventory_text_layers.py trên 9 PDF inputs/ ngày 2026-11-09 tại 2af5454: 720/938 trang CANDIDATE; ứng viên chưa xác minh, không phải GT"
@@ -882,7 +882,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "a3d62c6eb6d5ec746fc433b34913665b7fef042154b4fc69117ef11b85432874"
+          "sha256": "136958dda4f9ed7c29d96cf2d6154822c828cccf5943977df56630218abe0a2c"
         }
       ]
     }

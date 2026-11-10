@@ -23,6 +23,8 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Mục nào cần GT do người
 
 ## Phát hiện còn mở
 
+- **Phiếu mất dữ liệu (10/11):** phiếu chỉ lưu trong localStorage, mà khung trình duyệt của app giữ bộ nhớ này trong RAM. Kết quả là mất 71 quyết định của phiếu số trong bảng và khoảng một nửa phiếu phân xử, không cứu được. Từ nay mở phiếu qua `scripts/serve_review_sheets.py` (cấu hình `screening-sheets`, `table-review`, `adjudication-sheets`); mỗi quyết định được ghi ra `<phiếu>/autosave/*.decisions.jsonl`.
+
 - **Đặc tả 13 §4.1:** 3.652 khối chữ trong ảnh bị loại vắng khỏi `extraction.json`, kể cả `text_evidence` (671/938 trang).
 - **Bảng heuristic:**
   - `src/ocr_structure/document_layout_engine.py:661` gán `bbox=r[0].bbox` cho mọi ô của hàng: 315/513 ô có số mang bbox lặp, 453 ô thiếu ánh xạ nguồn.

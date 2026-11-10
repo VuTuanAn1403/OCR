@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lock v2 of the V8-011 text-layer procedure: the measurement choices of GROUND_TRUTH_PROTOCOL 7.6.
+"""Measurement lock of the V8-011 text-layer procedure: the choices of GROUND_TRUTH_PROTOCOL 7.6.
 
 Lock v1 (`lock_text_layer_procedure.py`) fixed the inventory, the partitions, the bound and
 the screening order. The tools written after it make seven more choices: visible glyphs,
@@ -7,17 +7,26 @@ the screening unit, bbox matching, the measured stream, the gate count, rho_U an
 adjudication rules. This lock binds those choices to lock v1 by sha256 and pins the bytes
 of every tool that implements them, so a measurement can show that it ran under rules
 fixed before anyone saw a result. `measure_text_layer_diacritics.py` refuses to run
-without a valid v2 lock.
+without a valid lock of the current schema.
 
-  --draft   Write the proposal for the reviewer: status DRAFT_NOT_LOCKED, no decision, and
-            the stream may stay open. A draft never unlocks a measurement.
-  default   Write the lock once the reviewer has approved it; --reviewer, --decided-on and
-            --stream are required. The operator runs this only on the reviewer's decision.
-  --verify  Rebuild a lock and list every difference, including tools whose bytes changed.
+Version 3 (10/11/2026) adds two things. The matching rule is now a choice (`--matching`,
+one of `measure_text_layer_diacritics.MATCHING_METHODS`): lock v2 joined the text layer
+with extraction items of kind b only, so text inside tables counted as deleted. And the
+sealed screenings are written into the lock by sha256 (section 7.4 E); a measurement
+must then use exactly those seals. `--supersedes` records the lock this one replaces.
+
+  --draft   Write the proposal for the reviewer: status DRAFT_NOT_LOCKED, no decision; the
+            stream and the matching rule may stay open. A draft never unlocks a measurement.
+  default   Write the lock once the reviewer has approved it; --reviewer, --decided-on,
+            --stream and --matching are required. The operator runs this only on the
+            reviewer's decision.
+  --verify  Rebuild a lock and list every difference, including tools or seals whose bytes changed.
 
   python scripts/lock_text_layer_measurement.py --base-lock docs/quality_assurance/locks/v8_011_text_layer_procedure_lock_v1.json \
       --draft --report scratch/v8/<new>.json
   python scripts/lock_text_layer_measurement.py --base-lock <v1>.json --stream text_corrected \
+      --matching bbox-connected-groups-phase-a-v1 --screening-seal <seal.json>... \
+      --supersedes <old lock>.json --supersede-reason "<why>" \
       --reviewer <name> --decided-on YYYY-MM-DD --report docs/quality_assurance/locks/<new>.json
   python scripts/lock_text_layer_measurement.py --verify <lock>.json
 """
@@ -28,14 +37,15 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 for entry in (ROOT / "src", ROOT):
     if str(entry) not in sys.path:
         sys.path.insert(0, str(entry))
 
-SCHEMA = "ocr-v8-text-layer-measurement-lock-v2"
+SCHEMA = "ocr-v8-text-layer-measurement-lock-v3"
+PROCEDURE_VERSION = 3
 BASE_SCHEMA = "ocr-v8-text-layer-procedure-lock-v1"
 PROTOCOL = "docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md#7.6"
 LOCKED, DRAFT = "LOCKED_PROCEDURE", "DRAFT_NOT_LOCKED"
@@ -81,7 +91,7 @@ def relative(path: Path) -> str:
         return resolved.as_posix()
 
 
-def current_choices(base_parameters: Dict, stream: Optional[str]) -> Dict:
+def current_choices(base_parameters: Dict, stream: Optional[str], matching: Optional[str]) -> Dict:
     """The seven choices as the tools implement them now (values are read from the code)."""
     from benchmark.ground_truth_tools import text_layer_reference as tlr
     from benchmark.scientific_evaluation import cluster_correlation
@@ -89,6 +99,8 @@ def current_choices(base_parameters: Dict, stream: Optional[str]) -> Dict:
     from scripts import measure_text_layer_diacritics as measure
     from scripts import screen_text_layer as screen
 
+    if matching is not None and matching not in measure.MATCHING_METHODS:
+        raise LockError(f"matching must be one of {sorted(measure.MATCHING_METHODS)}")
     return {
         "visible_glyphs": {
             "method": tlr.VISIBILITY_METHOD, "render_dpi": round(72 * tlr.VISIBILITY_ZOOM),
@@ -103,13 +115,16 @@ def current_choices(base_parameters: Dict, stream: Optional[str]) -> Dict:
             "recheck_share": screen.RECHECK_SHARE, "recheck_minimum": screen.RECHECK_MINIMUM,
             "implemented_by": "scripts/screen_text_layer.py::verdict"},
         "matching": {
-            "method": measure.MATCHING_METHOD, "min_vertical_overlap": measure.MIN_VERTICAL_OVERLAP,
-            "join": "an extraction item of kind b and a visible text-layer line join when they intersect "
-                    "horizontally and overlap vertically by at least min_vertical_overlap of the smaller height",
+            "method": matching, "ocr_side": measure.MATCHING_METHODS.get(matching),
+            "min_vertical_overlap": measure.MIN_VERTICAL_OVERLAP,
+            "table_share": measure.TABLE_SHARE if matching == "bbox-connected-groups-no-tables-v1" else None,
+            "join": "an OCR line and a visible text-layer line join when they intersect horizontally and "
+                    "overlap vertically by at least min_vertical_overlap of the smaller height",
             "unit": "one connected group, ordered by rows then left to right",
             "text_layer_line_without_ocr": "every slot counts as deleted_slots",
             "ocr_line_without_text_layer": "reported apart as unmatched_ocr_lines",
-            "implemented_by": "scripts/measure_text_layer_diacritics.py::match_units"},
+            "allowed": sorted(measure.MATCHING_METHODS),
+            "implemented_by": "scripts/measure_text_layer_diacritics.py::ocr_lines, match_units"},
         "stream": {"value": stream, "allowed": list(STREAMS)},
         "gate": {
             "metric": base_parameters["metric"], "errors": "dser_errors", "denominator": "ref_slots",
@@ -137,8 +152,31 @@ def read_base(base_path: str) -> tuple[Dict, str]:
     return base, sha256_bytes(data)
 
 
-def build_lock(base_path: str, *, draft: bool, stream: Optional[str] = None, reviewer: Optional[str] = None,
-               decided_on: Optional[str] = None) -> Dict:
+def screening_seals(paths: Sequence[str], base_sha: str) -> List[Dict]:
+    """Section 7.4 E: each sealed screening is written into the next lock version by sha256."""
+    seals = []
+    for path in sorted(paths):
+        data = resolve(path).read_bytes()
+        seal = json.loads(data)
+        if (seal.get("lock") or {}).get("sha256") != base_sha:
+            raise LockError(f"{path}: the screening was sealed under another base lock")
+        seals.append({"pdf": seal["pdf"], "pdf_sha256": seal["pdf_sha256"], "producer": seal.get("producer"),
+                      "path": path, "sha256": sha256_bytes(data), "sealed_sha256": seal["sealed_sha256"],
+                      "verdict": seal["verdict"]["status"]})
+    return seals
+
+
+def superseded(path: Optional[str], reason: Optional[str]) -> Optional[Dict]:
+    if path is None:
+        return None
+    if not (reason or "").strip():
+        raise LockError("a superseded lock needs a reason (--supersede-reason)")
+    return {"path": path, "sha256": sha256_bytes(resolve(path).read_bytes()), "reason": reason}
+
+
+def build_lock(base_path: str, *, draft: bool, stream: Optional[str] = None, matching: Optional[str] = None,
+               reviewer: Optional[str] = None, decided_on: Optional[str] = None, seals: Sequence[str] = (),
+               supersedes: Optional[str] = None, supersede_reason: Optional[str] = None) -> Dict:
     base, base_sha = read_base(base_path)
     if stream is not None and stream not in STREAMS:
         raise LockError(f"stream must be one of {STREAMS}")
@@ -147,17 +185,20 @@ def build_lock(base_path: str, *, draft: bool, stream: Optional[str] = None, rev
             raise LockError("a draft carries no decision; drop --reviewer and --decided-on")
         decision = None
     else:
-        if not (reviewer or "").strip() or not decided_on or stream is None:
-            raise LockError("a lock needs the reviewer's decision: --reviewer, --decided-on and --stream")
+        if not (reviewer or "").strip() or not decided_on or stream is None or matching is None:
+            raise LockError("a lock needs the reviewer's decision: --reviewer, --decided-on, --stream and --matching")
         decision = {"decided_on": decided_on, "timezone": "Asia/Bangkok", "reviewer": reviewer}
+    choices = current_choices(base["parameters"], stream, matching)
     return {
-        "schema_version": SCHEMA, "procedure_version": 2, "status": DRAFT if draft else LOCKED,
+        "schema_version": SCHEMA, "procedure_version": PROCEDURE_VERSION, "status": DRAFT if draft else LOCKED,
         "gt_status": "NOT_VERIFIED", "quality_acceptance": "NOT_EVALUATED", "protocol": PROTOCOL,
         "base_lock": {"path": base_path, "sha256": base_sha, "schema_version": BASE_SCHEMA,
                       "procedure_version": base.get("procedure_version")},
+        "supersedes": superseded(supersedes, supersede_reason),
         "decision": decision,
-        "open_choices": ["stream"] if stream is None else [],
-        "choices": current_choices(base["parameters"], stream),
+        "open_choices": [name for name, value in (("matching", matching), ("stream", stream)) if value is None],
+        "choices": choices,
+        "screening_seals": screening_seals(seals, base_sha),
         "tools": {path: tool_sha256(ROOT / path) for path in TOOLS},
     }
 
@@ -167,10 +208,10 @@ def dump(lock: Dict) -> str:
 
 
 def verify(lock_path: Path) -> List[str]:
-    """Rebuild the lock from its own base, decision and stream; return the differences."""
+    """Rebuild the lock from its own base, decision, choices and seals; return the differences."""
     lock = json.loads(lock_path.read_bytes())
     if lock.get("schema_version") != SCHEMA:
-        return [f"schema must be {SCHEMA}"]
+        return [f"schema must be {SCHEMA} (an older lock version cannot authorise a measurement)"]
     problems = []
     for path, digest in lock.get("tools", {}).items():
         current = ROOT / path
@@ -178,34 +219,50 @@ def verify(lock_path: Path) -> List[str]:
             problems.append(f"tool missing: {path}")
         elif tool_sha256(current) != digest:
             problems.append(f"tool bytes changed since the lock: {path}")
+    for seal in lock.get("screening_seals", []):
+        current = resolve(seal["path"])
+        if not current.is_file() or sha256_bytes(current.read_bytes()) != seal["sha256"]:
+            problems.append(f"screening seal missing or changed since the lock: {seal['path']}")
+    if problems:
+        return problems
     decision = lock.get("decision") or {}
+    old = lock.get("supersedes") or {}
     try:
         rebuilt = build_lock(lock["base_lock"]["path"], draft=lock.get("status") == DRAFT,
-                             stream=lock["choices"]["stream"]["value"], reviewer=decision.get("reviewer"),
-                             decided_on=decision.get("decided_on"))
+                             stream=lock["choices"]["stream"]["value"], matching=lock["choices"]["matching"]["method"],
+                             reviewer=decision.get("reviewer"), decided_on=decision.get("decided_on"),
+                             seals=[seal["path"] for seal in lock.get("screening_seals", [])],
+                             supersedes=old.get("path"), supersede_reason=old.get("reason"))
     except (LockError, OSError, KeyError) as error:
-        return problems + [f"cannot rebuild: {error}"]
+        return [f"cannot rebuild: {error}"]
     if rebuilt["base_lock"]["sha256"] != lock["base_lock"]["sha256"]:
-        problems.append("base lock bytes differ from the lock")
-    if not problems and dump(rebuilt) != dump(lock):
-        problems.append("lock content differs from a rebuild with the current tools")
-    return problems
+        return ["base lock bytes differ from the lock"]
+    if dump(rebuilt) != dump(lock):
+        return ["lock content differs from a rebuild with the current tools"]
+    return []
 
 
-def require_locked(lock_path: Path, base_lock_sha256: str, stream: str) -> Dict:
-    """Gate for a measurement: a verified v2 lock on this base lock and this stream."""
+def require_locked(lock_path: Path, base_lock_sha256: str, stream: str, seal_paths: Sequence[Path] = ()) -> Dict:
+    """Gate for a measurement: a verified lock on this base lock and stream and, when it lists seals, these seals."""
     data = lock_path.read_bytes()
     lock = json.loads(data)
     if lock.get("status") != LOCKED:
-        raise LockError(f"{lock_path}: status {lock.get('status')}; only a {LOCKED} v2 lock allows a measurement")
+        raise LockError(f"{lock_path}: status {lock.get('status')}; only a {LOCKED} lock allows a measurement")
+    if lock.get("schema_version") != SCHEMA:
+        raise LockError(f"{lock_path}: schema must be {SCHEMA}")
     if lock["base_lock"]["sha256"] != base_lock_sha256:
         raise LockError(f"{lock_path}: bound to another base lock")
     if lock["choices"]["stream"]["value"] != stream:
         raise LockError(f"{lock_path}: locked stream is {lock['choices']['stream']['value']}, not {stream}")
+    locked_seals = {seal["sha256"] for seal in lock.get("screening_seals", [])}
+    given = {sha256_bytes(Path(path).read_bytes()) for path in seal_paths}
+    if locked_seals and given != locked_seals:
+        raise LockError(f"{lock_path}: the screening seals differ from the {len(locked_seals)} seals in the lock")
     problems = verify(lock_path)
     if problems:
         raise LockError(f"{lock_path}: " + "; ".join(problems))
-    return {"path": relative(lock_path), "sha256": sha256_bytes(data), "status": LOCKED}
+    return {"path": relative(lock_path), "sha256": sha256_bytes(data), "status": LOCKED,
+            "procedure_version": lock["procedure_version"], "matching": lock["choices"]["matching"]["method"]}
 
 
 def main(argv=None) -> int:
@@ -214,6 +271,10 @@ def main(argv=None) -> int:
     parser.add_argument("--report", type=Path, help="New lock or draft path (never overwritten)")
     parser.add_argument("--draft", action="store_true", help="Write a proposal without a decision")
     parser.add_argument("--stream", choices=STREAMS)
+    parser.add_argument("--matching", help="Matching rule, one of measure_text_layer_diacritics.MATCHING_METHODS")
+    parser.add_argument("--screening-seal", type=Path, nargs="*", default=[], help="seal.json of each sealed screening")
+    parser.add_argument("--supersedes", type=Path, help="The lock this one replaces")
+    parser.add_argument("--supersede-reason")
     parser.add_argument("--reviewer")
     parser.add_argument("--decided-on", help="Decision date, YYYY-MM-DD (Asia/Bangkok)")
     parser.add_argument("--verify", type=Path, help="Rebuild this lock and compare")
@@ -229,16 +290,19 @@ def main(argv=None) -> int:
     if args.report.exists():
         parser.error(f"{args.report} exists")
     try:
-        lock = build_lock(relative(args.base_lock), draft=args.draft, stream=args.stream, reviewer=args.reviewer,
-                          decided_on=args.decided_on)
+        lock = build_lock(relative(args.base_lock), draft=args.draft, stream=args.stream, matching=args.matching,
+                          reviewer=args.reviewer, decided_on=args.decided_on,
+                          seals=[relative(path) for path in args.screening_seal],
+                          supersedes=relative(args.supersedes) if args.supersedes else None,
+                          supersede_reason=args.supersede_reason)
     except LockError as error:
         parser.error(str(error))
     text = dump(lock).encode("utf-8")
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_bytes(text)  # LF only, so the printed sha256 matches the file
     open_choices = ", ".join(lock["open_choices"]) or "none"
-    print(f"{lock['status']}: {len(lock['tools'])} tools pinned, open choices: {open_choices} "
-          f"-> {args.report} sha256 {sha256_bytes(text)}")
+    print(f"{lock['status']} v{PROCEDURE_VERSION}: {len(lock['tools'])} tools, {len(lock['screening_seals'])} seals pinned, "
+          f"open choices: {open_choices} -> {args.report} sha256 {sha256_bytes(text)}")
     return 0
 
 

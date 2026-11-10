@@ -17,9 +17,11 @@ Order of the protocol, enforced here:
     the locked inventory with slots, no uncomposed mark after NFC, and visible glyphs
     only (``text_layer_reference``). Nothing is dropped after looking at results.
 
-Matching (item 7): OCR lines (extraction items of kind ``b``) and visible text-layer
-lines are joined when their boxes overlap by at least half the smaller height and
-intersect horizontally; each connected group is one unit. Characters are aligned only
+Matching (item 7): the OCR side follows the locked rule (``MATCHING_METHODS``): extraction
+items of kind ``b`` (lock v2, where text inside tables has no OCR line), the phase-A lines
+of ``text_evidence``, or items of kind ``b`` with text-layer lines inside table items left
+out. OCR lines and visible text-layer lines are joined when their boxes overlap by at least
+half the smaller height and intersect horizontally; each connected group is one unit. Characters are aligned only
 inside a unit, so a reading-order difference is not a deleted slot. A text-layer line
 without OCR is a unit with an empty prediction: its slots count as deleted. OCR lines
 without a text-layer line are reported apart (text inside images, or spurious lines).
@@ -58,7 +60,14 @@ from scripts import lock_text_layer_measurement as measurement_lock_v2  # noqa: 
 SCHEMA = "ocr-v8-text-layer-diacritic-measurement-v1"
 STREAMS = ("text_corrected", "text_raw")
 MIN_VERTICAL_OVERLAP = 0.5
-MATCHING_METHOD = "bbox-connected-groups-v1"
+MATCHING_METHOD = "bbox-connected-groups-v1"  # lock v2: OCR side is extraction items of kind b only
+# The matching rule is a locked choice (GROUND_TRUTH_PROTOCOL 7.6 item 3); the lock names one of these.
+MATCHING_METHODS = {
+    MATCHING_METHOD: "extraction items of kind b; text inside table items has no OCR line and counts as deleted",
+    "bbox-connected-groups-phase-a-v1": "phase-A OCR lines of the extraction page (text_evidence.items), tables included",
+    "bbox-connected-groups-no-tables-v1": "extraction items of kind b; text-layer lines lying in a table item leave the sample",
+}
+TABLE_SHARE = 0.5  # share of a text-layer line's box inside a table item that puts it in the table region
 STRICT_FIELDS = ("ref_slots", "dser_errors", "shape_errors", "tone_errors", "stroke_errors", "deleted_slots",
                  "spurious_marks", "uncomposed_prediction_marks", "base_mismatch_slots", "inserted_char_marks")
 DER_FIELDS = ("ref_diacritics", "diacritic_errors")
@@ -191,14 +200,32 @@ def reference_lines(units: Dict) -> Tuple[List[Dict], int]:
     return lines, hidden_slots
 
 
-def ocr_lines(extraction_page: Dict, stream: str) -> List[Dict]:
+def ocr_lines(extraction_page: Dict, stream: str, matching: str = MATCHING_METHOD) -> List[Dict]:
+    """OCR lines of one page under the locked matching rule."""
+    if matching == "bbox-connected-groups-phase-a-v1":
+        candidates = ((extraction_page.get("text_evidence") or {}).get("items") or ())
+    else:
+        candidates = (item for item in extraction_page.get("items", ()) if item.get("kind") == "b")
     lines = []
-    for item in extraction_page.get("items", ()):
+    for item in candidates:
         text = item.get(stream)
-        if item.get("kind") != "b" or not isinstance(text, str) or not text.strip() or not item.get("bbox"):
+        if not isinstance(text, str) or not text.strip() or not item.get("bbox"):
             continue
         lines.append({"id": item.get("source_id") or item.get("id"), "text": text, "bbox": tuple(item["bbox"])})
     return lines
+
+
+def table_boxes(extraction_page: Dict) -> List[Box]:
+    return [tuple(item["bbox"]) for item in extraction_page.get("items", ()) if item.get("kind") == "t" and item.get("bbox")]
+
+
+def in_table(box: Box, tables: Sequence[Box]) -> bool:
+    area = max(0.0, box[2] - box[0]) * max(0.0, box[3] - box[1])
+    for table in tables:
+        overlap = max(0.0, min(box[2], table[2]) - max(box[0], table[0])) * max(0.0, min(box[3], table[3]) - max(box[1], table[1]))
+        if area and overlap / area >= TABLE_SHARE:
+            return True
+    return False
 
 
 def identity_frame(units: Dict, extraction_page: Dict) -> bool:
@@ -212,12 +239,14 @@ def add_counts(total: Dict, details: Dict, fields: Sequence[str]) -> None:
         total[field] = total.get(field, 0) + int(details.get(field) or 0)
 
 
-def measure_pdf(pdf_path: Path, inventory_document: Dict, extraction: Dict, stream: str, unit_prefix: str) -> Dict:
+def measure_pdf(pdf_path: Path, inventory_document: Dict, extraction: Dict, stream: str, unit_prefix: str,
+                matching: str = MATCHING_METHOD) -> Dict:
     pdf_bytes = pdf_path.read_bytes()
     pages_by_number = {page["page"]: page for page in extraction["pages"]}
     strict_total, der_total = {}, {}
     pages, units_out, excluded = [], [], {"NOT_CANDIDATE_OR_NO_SLOT": 0, "UNCOMPOSED_REFERENCE": 0,
-                                          "UNSUPPORTED_FRAME": 0, "NOT_VISIBLE_SLOTS": 0, "MISSING_OCR_PAGE": 0}
+                                          "UNSUPPORTED_FRAME": 0, "NOT_VISIBLE_SLOTS": 0, "MISSING_OCR_PAGE": 0,
+                                          "TABLE_REGION_SLOTS": 0}
     unmatched_lines = 0
     import pymupdf
 
@@ -241,7 +270,11 @@ def measure_pdf(pdf_path: Path, inventory_document: Dict, extraction: Dict, stre
             continue
         references, hidden = reference_lines(units)
         excluded["NOT_VISIBLE_SLOTS"] += hidden
-        matched, unmatched = match_units(references, ocr_lines(extraction_page, stream))
+        if matching == "bbox-connected-groups-no-tables-v1":
+            tables = table_boxes(extraction_page)
+            excluded["TABLE_REGION_SLOTS"] += sum(line["slots"] for line in references if in_table(line["bbox"], tables))
+            references = [line for line in references if not in_table(line["bbox"], tables)]
+        matched, unmatched = match_units(references, ocr_lines(extraction_page, stream, matching))
         unmatched_lines += len(unmatched)
         page_strict = {}
         for index, unit in enumerate(matched):
@@ -268,7 +301,9 @@ def build(lock_path: Path, seal_paths: Sequence[Path], identity_report: Path, ou
         raise ValueError(f"stream must be one of {STREAMS}")
     lock_bytes = lock_path.read_bytes()
     lock = json.loads(lock_bytes)
-    choices = measurement_lock_v2.require_locked(measurement_lock, hashlib.sha256(lock_bytes).hexdigest(), stream)
+    choices = measurement_lock_v2.require_locked(measurement_lock, hashlib.sha256(lock_bytes).hexdigest(), stream,
+                                                 seal_paths)
+    matching = json.loads(measurement_lock.read_bytes())["choices"]["matching"]["method"]
     accepted = accepted_screenings(lock, seal_paths)
     inventory_path = ROOT / lock["inventory"]["path"] if not Path(lock["inventory"]["path"]).is_absolute() else Path(lock["inventory"]["path"])
     if sha256_file(inventory_path) != lock["inventory"]["sha256"]:
@@ -290,7 +325,7 @@ def build(lock_path: Path, seal_paths: Sequence[Path], identity_report: Path, ou
             raise ValueError(f"{pdf_path}: bytes differ from the screened PDF")
         doc_dir = output / documents[sha]["id"]
         extraction = json.loads((doc_dir / "extraction.json").read_bytes())
-        result = measure_pdf(pdf_path, inventory[sha], extraction, stream, sha[:16])
+        result = measure_pdf(pdf_path, inventory[sha], extraction, stream, sha[:16], matching)
         if result["excluded"]["MISSING_OCR_PAGE"]:
             raise ValueError(f"{screening['pdf']}: {result['excluded']['MISSING_OCR_PAGE']} eligible pages have no OCR page")
         add_counts(strict_total, result["strict"], STRICT_FIELDS)
@@ -323,7 +358,7 @@ def build(lock_path: Path, seal_paths: Sequence[Path], identity_report: Path, ou
         "lock": {"path": lock_path.as_posix(), "sha256": hashlib.sha256(lock_bytes).hexdigest()},
         "measurement_lock": choices,
         "partition": partition, "stream": stream, "output": output.as_posix(), "identity": identity,
-        "metric": lock["parameters"]["metric"], "matching": {"method": MATCHING_METHOD,
+        "metric": lock["parameters"]["metric"], "matching": {"method": matching,
                                                              "min_vertical_overlap": MIN_VERTICAL_OVERLAP,
                                                              "visibility": tlr.VISIBILITY_METHOD},
         "dser_strict": {**strict_total, "rate": errors / slots if slots else None},

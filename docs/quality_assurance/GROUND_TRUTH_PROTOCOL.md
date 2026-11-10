@@ -184,11 +184,12 @@ Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trư�
 
 `native_diacritic_replay.py` đo luồng native, không phải bộ ghép OCR với text layer. `check_vietnamese_charset.py` kiểm từ điển ký tự của model, không kiểm trang.
 
-### 7.6 Khóa v2: các lựa chọn đo (LOCKED 10/11/2026)
+### 7.6 Khóa đo v2 và v3 (LOCKED 10/11/2026; v3 thay v2)
 
 Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong khóa v1. Người dùng (VuTuanAn1403) duyệt nguyên bản nháp r2 và khóa chúng trong v2 ngày 10/11/2026, trước mọi kết quả đo. Luồng đo là `text_corrected`.
 
-- **Khóa:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v2.json`, sha256 `a0dc5712dd767120aff2fe3031829d7195db2e101658429e5d61ed6ead0dc616` (byte LF, ghim qua `.gitattributes`).
+- **Khóa hiện hành v3:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v3.json`, sha256 `396b1fd346098e1139dc8e68ea4cab5aeb7d403b9bcf04d73ee79be461639494`. Người dùng chọn quy tắc ghép `bbox-connected-groups-phase-a-v1`; khóa ghi 7 bản niêm phong sàng lọc.
+- **Khóa v2 (đã bị thay):** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v2.json`, sha256 `a0dc5712dd767120aff2fe3031829d7195db2e101658429e5d61ed6ead0dc616` (byte LF, ghim qua `.gitattributes`).
 - **Kiểm lại:** `scripts/lock_text_layer_measurement.py --verify <khóa>`.
 
 Khóa v2 do `scripts/lock_text_layer_measurement.py` tạo:
@@ -204,14 +205,26 @@ Khóa v2 do `scripts/lock_text_layer_measurement.py` tạo:
 - Đo theo khóa v2 cho `DSER_strict` 83.127/345.300 slot, trong đó 78.192 là slot bị xóa.
 - 71.884 slot bị xóa nằm trong item bảng (`t`). Lý do: mục 3 chỉ ghép text layer với item `b`, nên chữ trong bảng bị tính là OCR bỏ sót.
 - Vì vậy kết quả này không phải độ chính xác dấu, và chưa dựng phiếu phân xử.
-- Đề xuất khóa v3, chờ người dùng duyệt:
-  - ghép với dòng OCR pha A (`text_evidence.items` của extraction, luồng `text_corrected`);
-  - ghi sha256 của 7 bản niêm phong sàng lọc (§7.4 E).
+- Khóa v3 (`ocr-v8-text-layer-measurement-lock-v3`) biến quy tắc ghép thành một lựa chọn phải khóa, có ba giá trị:
+  - `bbox-connected-groups-v1`: như v2;
+  - `bbox-connected-groups-phase-a-v1`: ghép với dòng OCR pha A (`text_evidence.items`), phủ cả bảng;
+  - `bbox-connected-groups-no-tables-v1`: dòng text layer nằm trong bảng ra khỏi mẫu (`TABLE_REGION_SLOTS`).
+- Khóa v3 ghi sha256 của 7 bản niêm phong sàng lọc (§7.4 E), và phép đo phải dùng đúng 7 bản đó. Khóa cũng ghi khóa v2 là khóa bị thay thế, kèm lý do. Khóa v2 không còn cho phép đo.
+- Bản nháp v3: `scratch/v8/v8_011_measurement_lock_v3_draft_20261110.json` (`8794b17a…`). Người dùng chọn ghép pha A, và khóa v3 LOCKED ngày 10/11.
+
+**Đo development theo khóa v3 (10/11).** Báo cáo: `scratch/v8/v8_011_measurement_dev_003_v3_20261110.json`; trong mẫu, trước phân xử:
+
+- `DSER_strict`: 13.751/345.300 slot, trên 717 trang.
+- Lỗi theo loại: dấu thanh 4.421, đ 601, dấu mũ/móc 430, dấu thừa 366, slot bị xóa 7.933.
+- 3.195 slot bị xóa thuộc các khối mà pha A đánh `REJECTED` trong vùng ảnh, tức chính lỗi đặc tả 13 §4.1.
+- ρ = 0,022 (cận trên 0,025).
+- 6.307 đơn vị chờ phân xử mù (§7.4 C).
+- Đây là số đo trên development, không phải mệnh đề tổng quát. Số đếm chỉ chốt sau khi phân xử và kiểm lại mù.
 - Dữ liệu dùng ở đây là development nên được phép chỉnh; holdout vẫn chỉ đo một lần, theo khóa đã cố định trước khi xem.
 
 1. **Glyph hiển thị:** render trang hai lần ở 144 DPI, nguyên trạng và sau khi gỡ mọi glyph bằng redaction (giữ ảnh và nét vẽ). Ký tự gốc hiển thị khi có ít nhất 2 pixel đổi trong hộp của nó. Ký tự có hộp rộng 0 (thành phần ligature như `h` trong `Th`) lấy kết quả của ký tự gốc đứng trước. Một chữ vào mẫu khi mọi ký tự gốc hiển thị; chữ hiển thị một phần bị loại và báo riêng. Trên 58 trang worklist: BHN có 10 chữ nằm dưới ảnh trùng nội dung (14 slot), BCE có 4 chữ bị che một phần (8 slot); 5 PDF còn lại không có chữ nào bị loại.
 2. **Đơn vị sàng lọc:** từng chữ có slot dấu. Người duyệt có thể ghi MATCH cho các chữ chưa quyết của một dòng bằng một thao tác; bản ghi đánh dấu `bulk: "line"`. Slot MATCH chỉ được đếm trên trang đã quyết đủ, theo thứ tự trong khóa.
-3. **Ghép OCR với text layer:** mục `b` của `extraction.json` và dòng text layer hiển thị được nối khi giao nhau theo chiều ngang và chồng nhau ít nhất một nửa chiều cao nhỏ hơn. Mỗi nhóm liên thông là một đơn vị, xếp theo hàng rồi từ trái sang phải. Dòng text layer không có OCR thì tính toàn bộ slot là lỗi xóa. Dòng OCR không có text layer được báo riêng.
+3. **Ghép OCR với text layer:** từ khóa v3, phía OCR là dòng pha A (`text_evidence.items`); khóa v2 dùng mục `b` của `extraction.json`. Dòng OCR và dòng text layer hiển thị được nối khi giao nhau theo chiều ngang và chồng nhau ít nhất một nửa chiều cao nhỏ hơn. Mỗi nhóm liên thông là một đơn vị, xếp theo hàng rồi từ trái sang phải. Dòng text layer không có OCR thì tính toàn bộ slot là lỗi xóa. Dòng OCR không có text layer được báo riêng.
 4. **Luồng đo:** `text_corrected`, khóa ngày 10/11. Công cụ vẫn bắt chọn luồng rõ ràng và từ chối luồng khác luồng đã khóa.
 5. **Cổng:** số lỗi là `dser_errors` của `DSER_strict` trên `ref_slots`, đúng tham số `metric` của khóa v1. Từ 10/11, hai cổng `diacritic_acceptance.py` và `release_gate.py` cũng đếm theo `DSER_strict` như đặc tả 04 §3. DER_VN_v1 chỉ còn được báo bên cạnh.
 6. **ρ_U:** cận trên của profile likelihood beta-binomial (một phía 95%). Một mô phỏng với tỷ lệ lỗi 0,001–0,01 cho thấy cận F của ANOVA chỉ phủ ρ thật ở 58–89% số lần, còn bootstrap theo trang ở 58–85%; cả hai sẽ làm DEFF nhỏ hơn thực tế. Profile likelihood phủ ở 92–96%.

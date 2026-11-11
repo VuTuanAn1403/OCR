@@ -27,6 +27,9 @@ not a random subset. It cannot be combined with a sample.
 Version 6 (11/11/2026) adds no choice: the adjudication sheet now names items where one side
 is empty and shows neutral context, so the pinned tool bytes changed.
 
+Version 7 (11/11/2026) adds no choice: for an item where only the OCR has words, the sheet now
+boxes the empty place (`adjudicate_text_layer_diacritics.gap_box`) instead of the neighbouring word.
+
   --draft   Write the proposal for the reviewer: status DRAFT_NOT_LOCKED, no decision; the
             stream and the matching rule may stay open. A draft never unlocks a measurement.
   default   Write the lock once the reviewer has approved it; --reviewer, --decided-on,
@@ -56,8 +59,8 @@ for entry in (ROOT / "src", ROOT):
     if str(entry) not in sys.path:
         sys.path.insert(0, str(entry))
 
-SCHEMA = "ocr-v8-text-layer-measurement-lock-v6"
-PROCEDURE_VERSION = 6
+SCHEMA = "ocr-v8-text-layer-measurement-lock-v7"
+PROCEDURE_VERSION = 7
 BASE_SCHEMA = "ocr-v8-text-layer-procedure-lock-v1"
 PROTOCOL = "docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md#7.6"
 LOCKED, DRAFT = "LOCKED_PROCEDURE", "DRAFT_NOT_LOCKED"

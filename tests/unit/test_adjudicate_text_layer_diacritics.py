@@ -175,3 +175,15 @@ def test_migration_can_leave_one_kind_to_be_decided_again(tmp_path):
                             for item in sheet["items"]), encoding="utf-8")
     result = migrate.migrate(tmp_path / "old", tmp_path / "new", [path], ("ONE_SIDE_EMPTY",))
     assert len(result["records"]) == 1 and result["skipped_by_kind"] == 1
+
+
+def test_an_insertion_is_boxed_at_the_empty_place_not_on_a_neighbouring_word():
+    words = [(10.0, 100.0, 40.0, 112.0), (45.0, 100.0, 70.0, 112.0), (10.0, 120.0, 50.0, 132.0)]
+    assert adjudicate.gap_box(words, 1, (0, 0, 1, 1)) == (40.0, 100.0, 45.0, 112.0)  # space between two words
+    assert adjudicate.gap_box(words, 2, (0, 0, 1, 1)) == (70.0, 100.0, 94.0, 112.0)  # next word is on another line
+    assert adjudicate.gap_box(words, 3, (0, 0, 1, 1)) == (50.0, 120.0, 74.0, 132.0)  # after the last word
+    assert adjudicate.gap_box(words, 0, (0, 0, 1, 1)) == (-14.0, 100.0, 10.0, 112.0)  # before the first word
+    assert adjudicate.gap_box([], 0, (1, 2, 3, 4)) == (1, 2, 3, 4)
+    for at in range(4):  # never overlaps a word box
+        x0, y0, x1, y1 = adjudicate.gap_box(words, at, (0, 0, 1, 1))
+        assert not any(x0 < w[2] and w[0] < x1 and y0 < w[3] and w[1] < y1 for w in words)

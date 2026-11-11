@@ -110,7 +110,7 @@ function render() {
     $("context").append(document.createTextNode("Ngữ cảnh: " + before), mark, document.createTextNode(after));
   }
   const hint = item.kind === "ONE_SIDE_EMPTY"
-    ? "Một bên trống, bên kia có chữ. Xem ảnh ở chỗ [ ? ] (giữa hai chữ ngữ cảnh): nếu chữ đó có in ở đó thì chọn bên có chữ; nếu không có thì chọn bên trống. Chỉ chọn \"Cả hai sai\" khi ở chỗ đó in một chữ khác cả hai."
+    ? "Một bên trống, bên kia có chữ. Khung vàng đánh dấu chỗ [ ? ] (chỗ trống giữa hoặc cạnh các chữ ngữ cảnh), không phải chữ bên cạnh: nếu chữ đó có in ở đó thì chọn bên có chữ; nếu không có thì chọn bên trống. Chỉ chọn \"Cả hai sai\" khi ở chỗ đó in một chữ khác cả hai."
     : "";
   $("hint").textContent = hint; $("hint").style.display = hint ? "block" : "none";
   const d = decisions[item.item_id];

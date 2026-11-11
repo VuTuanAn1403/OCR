@@ -9,18 +9,19 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì 
 - **Sàng lọc:** người dùng sàng lọc 7 PDF development; cả 7 `ACCEPTED` (24.172 slot `MATCH`, 0 `MISMATCH`), seal ở `scratch/v8/screening/sealed/`. Kiểm lại mù 1.552 chữ làm từ 17/11 (`scratch/v8/screening/recheck/`).
 - **Khóa đo (§7.6):**
   - v2→v5: bỏ ghép chỉ item `b` (tính bảng là xóa), ghép dòng pha A và ghi 7 seal, phân xử một phần (mục chưa chấm là lỗi). Chi tiết ở protocol §7.6.
-  - v6 (hiện hành, `5fc27a6f…`): không thêm lựa chọn; phiếu ghi loại mục ("một bên trống") và ngữ cảnh chỉ gồm chữ giống nhau ở cả hai bên.
+  - v6 (`5fc27a6f…`): phiếu ghi loại mục ("một bên trống") và ngữ cảnh trung lập.
+  - v7 (hiện hành, `e7e875ce…`): khung đóng vào chỗ trống, không vào chữ bên cạnh (`gap_box`). Cả hai không thêm lựa chọn.
 - **Đo dev** (`..._dev_003_v6_20261111.json`), trước phân xử: 13.751/345.300 (thanh 4.421, đ 601, xóa 7.933; 3.195 slot xóa do lỗi §4.1).
 - **Phân xử v6 (seal `scratch/v8/adjudication/sealed/v8_011_dev_003_v6_partial_20261111/`):** 5.021/9.733 mục; AAA, AGR 2022, ASM, BCE đủ, AGR 2020 782/783; VIC chưa chấm.
   - Khi khác OCR: text layer đúng 82,2%, OCR đúng 6,1%, cả hai sai 11,6%. ASM: text layer dùng `ƣ` thay `ư` (352 mục).
   - Đếm bảo thủ 14.274/346.402 (4,1%); AAA 3,7%, ASM 3,6%; ρ_U 0,026. OCR còn rất xa 99,99%.
-  - 464 mục "cả hai sai" là chữ OCR chèn ở đầu/cuối dòng; khung đóng vào chữ bên cạnh nên người duyệt gõ lại chữ đó. Độ nhạy: 14.175/345.779. Sửa khung trước holdout.
+  - 464 mục "cả hai sai" là chữ OCR chèn ở đầu/cuối dòng; khung đóng vào chữ bên cạnh nên người duyệt gõ lại chữ đó. Độ nhạy: 14.175/345.779. Khóa v7 đã sửa khung.
   - Loại lỗi (seal v5) AAA+AGR 2020 (`..._v8_012_diacritic_confusions_aaa_agr2020_20261111.json`): 350/354 lỗi đ là Đ hoa→D (HĐQT→HDQT ~209); mất dấu nặng 260, huyền 170; hỏi→huyền/sắc 260.
   - Challenger `benchmark/challengers/acronym_diacritics.py` (V8-030): `DSER_strict` 3.499→3.229 trên AAA và AGR 2020, 226 đơn vị được sửa, 2 bị làm sai (`scratch/v8/v8_030_acronym_challenger_dev_20261111.json`). Đo trên chính dữ liệu dev nên là `INCONCLUSIVE`; cần holdout.
 - **Cổng dấu:** `diacritic_acceptance.py` và `release_gate.py` đếm theo `DSER_strict`.
 - **V8-080:** audit v2 (`..._003_r2_20261110.json`) và phiếu 72 số trong bảng.
 - **`DONE` mới:** V8-150, V8-120, V8-170.
-- **Hồi quy CPU sau khóa v6:** 2.647 passed, 1 skipped (`scratch/runs/20261111-202819-279c30b3`).
+- **Hồi quy CPU sau khóa v7:** 2.648 passed, 1 skipped (`scratch/runs/20261111-232032-ae46506f`).
 
 ## Phát hiện còn mở
 

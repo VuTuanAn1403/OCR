@@ -148,6 +148,27 @@ def context(reference: str, prediction: str, segment: Dict):
     return " ".join(before), " ".join(after)
 
 
+def gap_box(boxes: Sequence[Tuple[float, float, float, float]], at: int, fallback: Sequence[float]):
+    """Box of the empty place where text was inserted before reference word ``at``.
+
+    The box marks the space itself, never a neighbouring word: between two words on one line it is
+    the space between them; after the last word of a line (or before the first) it is a stretch of
+    two line heights next to that word. The neighbours stay visible in the padded view around it.
+    """
+    before = boxes[at - 1] if 0 < at <= len(boxes) else None
+    after = boxes[at] if 0 <= at < len(boxes) else None
+    same_line = before and after and after[0] > before[2] and min(before[3], after[3]) > max(before[1], after[1])
+    if same_line:
+        return (before[2], min(before[1], after[1]), after[0], max(before[3], after[3]))
+    if before:
+        height = before[3] - before[1]
+        return (before[2], before[1], before[2] + 2 * height, before[3])
+    if after:
+        height = after[3] - after[1]
+        return (after[0] - 2 * height, after[1], after[0], after[3])
+    return tuple(fallback)
+
+
 def a_is_text_layer(seed: str, item_id: str) -> bool:
     return int(hashlib.sha256(f"{seed}:adjudicate:{item_id}".encode()).hexdigest()[0], 16) % 2 == 0
 
@@ -229,8 +250,7 @@ def build_sheet(measurement_path: Path, pdf_root: Path, out: Path, reviewer: str
                     if f"{unit['unit_id']}:s{index:02d}" not in chosen_ids:
                         continue
                     i0, i1 = segment["ref_tokens"]
-                    chosen = boxes[i0:i1] or boxes[max(0, i0 - 1):i0 + 1] or [tuple(unit["bbox"])]
-                    word_box = tlr._union(chosen)
+                    word_box = tlr._union(boxes[i0:i1]) if i1 > i0 and boxes[i0:i1] else gap_box(boxes, i0, unit["bbox"])
                     padded = (word_box[0] - CROP_PAD_POINTS, word_box[1] - CROP_PAD_POINTS,
                               word_box[2] + CROP_PAD_POINTS, word_box[3] + CROP_PAD_POINTS)
                     px = tlr.pixel_box(page, padded, SHEET_ZOOM, image["image_size"][0], image["image_size"][1])

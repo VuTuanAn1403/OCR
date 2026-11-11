@@ -2,7 +2,8 @@
 from bisect import bisect_right
 import unicodedata
 
-from ocr_keywords.alias_map import _candidate_id, find_alias_candidates, reconcile_keyword_tiers
+from ocr_keywords.alias_map import (SINGLE_WORD_VARIANT_POLICY, _candidate_id, find_alias_candidates,
+                                    find_single_word_variants, reconcile_keyword_tiers)
 from ocr_keywords.citations import _context
 from ocr_keywords.global_rules import match_rule, validate_frozen_rules
 
@@ -12,6 +13,10 @@ def build_tiered_report(report, dictionary, text, *, decisions=None, decision_sn
     candidates = find_alias_candidates(clean, dictionary)
     result = reconcile_keyword_tiers(report, dictionary, candidates, decisions)
     result["decision_snapshot_sha256"] = None if decision_snapshot is None else decision_snapshot["snapshot_sha256"]
+    # V8-031: one-word keywords read with another accent are listed, never counted.
+    variants = find_single_word_variants(clean, dictionary)
+    result.update(single_word_variant_policy=SINGLE_WORD_VARIANT_POLICY, single_word_variants=variants,
+                  single_word_variant_occurrences=sum(row["occurrences"] for row in variants))
     if rules is None:
         return result
     validate_frozen_rules(rules, dictionary)

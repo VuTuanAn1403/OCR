@@ -17,6 +17,7 @@ from src.ocr.collect.catalog import read_sources
 
 from .canonical_predictions import pair_predictions
 from .cluster_statistics import BOUNDED_RATIOS, ERROR_RATE_METRICS, company_cluster_bootstrap, holm_adjust
+from .exact_bounds import valid_design_effect, zero_event_interval
 from .formula_scorecard import METRICS as FORMULA_METRICS
 from .protocol_preflight import load_verified_protocol, preflight
 
@@ -101,6 +102,8 @@ def _precision_plan(plan, statistics, family_size):
              and _finite(plan["minimum_denominator"]) and plan["minimum_denominator"] > 0
              and _finite(plan["maximum_ci_width"]) and plan["maximum_ci_width"] > 0,
              "Sample plan requires positive document, company, denominator and CI width limits")
+    _require("design_effect" not in plan or valid_design_effect(plan["design_effect"]),
+             "A locked design effect must be finite and >= 1")
     power = plan["power"]
     target, sd, gap = (power[k] for k in ("target", "pilot_company_influence_sd", "detectable_gap"))
     _require(_finite(target) and .5 < target < 1 and _finite(sd) and sd > 0 and _finite(gap) and gap > 0
@@ -120,7 +123,21 @@ def _precision_plan(plan, statistics, family_size):
 
 
 def _adequate_interval(interval, maximum_width):
+    # A zero-width percentile interval (all resamples equal) carries no precision; zero
+    # events are bounded by ``_error_rate_interval`` instead.
     return bool(interval and 0 < interval["upper"] - interval["lower"] <= maximum_width)
+
+
+def _error_rate_interval(score, metric, confidence, design):
+    """Use the exact zero-event bound where the bootstrap interval collapses to [0, 0]."""
+    ci = score["candidate_ci_unadjusted"]
+    counts = score["counts"]
+    denominator = counts["reference_denominator"]
+    # ``ci`` is None when the bootstrap lacked company clusters; that stays unscored.
+    if (ci is None or metric not in ERROR_RATE_METRICS or counts["candidate_numerator"] != 0
+            or not float(denominator).is_integer()):
+        return ci
+    return zero_event_interval(0, int(denominator), confidence, design.get("design_effect")) or ci
 
 
 def evaluate(sample, split, inventory, plan, family, thresholds, margins, baseline, candidate, statistics):
@@ -164,7 +181,7 @@ def evaluate(sample, split, inventory, plan, family, thresholds, margins, baseli
         enough = (bool(keys) and not incomplete and len(score["counts_by_document"]) >= design["minimum_documents"]
                   and score["counts"]["reference_denominator"] >= design["minimum_denominator"])
         lower_is_better = metric in ERROR_RATE_METRICS
-        ci = score["candidate_ci_unadjusted"]
+        ci = _error_rate_interval(score, metric, statistics["confidence_level"], design)
         absolute_status, observed = "NOT_EVALUATED", None
         if enough and _adequate_interval(ci, design["maximum_ci_width"]):
             observed = (score["candidate"] if absolute["basis"] == "point" else ci["upper" if lower_is_better else "lower"])
@@ -180,7 +197,8 @@ def evaluate(sample, split, inventory, plan, family, thresholds, margins, baseli
                                                    "candidate": sum(right[k]["status"] == "MISSING_OUTPUT" for k in keys)},
                          "sampling_plan": design, "sample_requirements_met": enough and
                          score["company_count"] >= design["required_companies"],
-                         "scores": score, "absolute": {**absolute, "status": absolute_status, "tested_value": observed},
+                         "scores": score, "candidate_interval_used": ci,
+                         "absolute": {**absolute, "status": absolute_status, "tested_value": observed},
                          "noninferiority": {"margin": margin, "eligible": eligible_ni}}
     alpha = 1 - statistics["confidence_level"]
     for name, adjusted in holm_adjust(p_values).items():

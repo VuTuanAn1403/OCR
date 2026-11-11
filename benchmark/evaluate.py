@@ -7,7 +7,11 @@ for stream in (sys.stdout, sys.stderr):
 
 import os
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
+# The ocr_* packages live in src/; the legacy src.ocr namespace used to add it as a side effect.
+if str(_ROOT / "src") not in sys.path:
+    sys.path.append(str(_ROOT / "src"))
 
 import re
 import json
@@ -16,7 +20,8 @@ import unicodedata
 from typing import List, Dict, Tuple, Optional, Any
 from tabulate import tabulate
 
-from src.ocr.domain.models.accuracy import AccuracyReport, PageAccuracyReport
+# V8-042: the contract module itself, not its legacy alias src.ocr.domain.models.accuracy.
+from ocr_contracts.accuracy import AccuracyReport, PageAccuracyReport
 
 VIETNAMESE_DIACRITIC_CHARS = set(
     "ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ"

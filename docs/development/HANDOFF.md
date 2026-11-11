@@ -1,30 +1,47 @@
 # Bàn giao
 
-Cập nhật 07/11/2026, Asia/Bangkok. Gốc `4852f53`; 08/11 đã commit lên main, chưa push. Working tree có test numeric guard do người dùng sửa trước phiên, được giữ nguyên. [Báo cáo dọn dẹp](../../CLEANUP_REPORT.md), [phiên](../../scratch/dev_sessions/20261106-project-cleanup/session.md).
+Cập nhật 10/11/2026 tối, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1); đã push tới `e422ced`. Không phiên nào sửa `src/`, nên OCR identity vẫn khớp khóa `BASELINE-V8-20261109-003`. Trạng thái: skill `ocr-pdf-knowledge-map` hoặc `scripts/check_knowledge_map.py --summary`. Nhật ký: [10/11](../../scratch/dev_sessions/20261110-v8-goal-tools/session.md), [P1](../../scratch/dev_sessions/20261109-v8-p1-gt-lock/session.md).
 
-QA-02 07/11: đã triển khai [Registry offline v1](../../benchmark/qa/README.md): import review, validate, revision append-only; giữ raw/source và hash evidence. [Phiên/bằng chứng](../../scratch/dev_sessions/20261107-qa-registry/session.md). 90 test chọn lọc pass; hồi quy CPU unit/scientific/legacy: 2290 pass/1 skip. Gói review lịch sử 40 mục/131 file được nhập và kiểm hash; vẫn NEEDS_REVIEW, không phải 40 lỗi xác nhận. [Sáu đặc tả QA](../quality_assurance/CURRENT_ARCHITECTURE.md) đã bỏ ignore. GT/quality NOT_EVALUATED; chưa chạy OCR/GPU. Audit trước và 152 test có phạm vi riêng ở [phiên audit](../../scratch/dev_sessions/20261107-qa-repository-audit/session.md).
+## 10/11: P1 (V8-011/012)
 
-08/11: CLAUDE.md nạp `@AGENTS.md`; AGENTS thêm node ID, import contracts, legacy `src/ocr`; 13 pass/16 contract ([run](../../scratch/runs/20261108-152658-95374b64/run.json)). Xóa `Cai Tien/` chưa commit (3 test cần template). Bỏ ignore `matchAt.js`; checkout sạch: 547 pass, 18 lỗi vì `Test case/` bị ignore ([run](../../scratch/runs/20261108-153425-7e563d34-clean-vendor-fix/run.json)).
+Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì không đánh `DONE`.
 
-## Phiên dọn dẹp hiện tại
+- **Sàng lọc:** người dùng sàng lọc 7 PDF development; cả 7 `ACCEPTED` (24.172 slot `MATCH`, 0 `MISMATCH`), seal ở `scratch/v8/screening/sealed/`. Kiểm lại mù 1.552 chữ làm từ 17/11 (`scratch/v8/screening/recheck/`).
+- **Khóa đo (§7.6):**
+  - v2→v5: bỏ ghép chỉ item `b` (tính bảng là xóa), ghép dòng pha A và ghi 7 seal, phân xử một phần (mục chưa chấm là lỗi). Chi tiết ở protocol §7.6.
+  - v6 (`5fc27a6f…`): phiếu ghi loại mục ("một bên trống") và ngữ cảnh trung lập.
+  - v7 (hiện hành, `e7e875ce…`): khung đóng vào chỗ trống, không vào chữ bên cạnh (`gap_box`). Cả hai không thêm lựa chọn.
+- **Đo dev** (`..._dev_003_v6_20261111.json`), trước phân xử: 13.751/345.300 (thanh 4.421, đ 601, xóa 7.933; 3.195 slot xóa do lỗi §4.1).
+- **Phân xử v6 (seal `scratch/v8/adjudication/sealed/v8_011_dev_003_v6_partial_20261111/`):** 5.021/9.733 mục; AAA, AGR 2022, ASM, BCE đủ, AGR 2020 782/783; VIC chưa chấm.
+  - Khi khác OCR: text layer đúng 82,2%, OCR đúng 6,1%, cả hai sai 11,6%. ASM: text layer dùng `ƣ` thay `ư` (352 mục).
+  - Đếm bảo thủ 14.274/346.402 (4,1%); AAA 3,7%, ASM 3,6%; ρ_U 0,026. OCR còn rất xa 99,99%.
+  - 464 mục "cả hai sai" là chữ OCR chèn ở đầu/cuối dòng; khung đóng vào chữ bên cạnh nên người duyệt gõ lại chữ đó. Độ nhạy: 14.175/345.779. Khóa v7 đã sửa khung.
+  - Loại lỗi, 4 PDF đủ (`..._v8_012_diacritic_confusions_v6_4pdf_20261112.json`): mất gạch đ 557 (Đ hoa 544), mất nặng 399, hỏi→huyền/sắc 355.
+  - Challenger `acronym_diacritics.py` (V8-030, `..._v8_030_acronym_challenger_v6_by_pdf_20261112.json`): 5.307→4.960, 277 sửa, 4 làm sai (PDF in sẵn "HDQT"). AGR 2022, ASM, BCE chưa dùng khi thiết kế: 2.797→2.720, 51 sửa, 2 sai. Vẫn dev nên `INCONCLUSIVE`; cần holdout.
+- **Cổng dấu:** `diacritic_acceptance.py` và `release_gate.py` đếm theo `DSER_strict`.
+- **V8-080:** audit v2 (`..._003_r2_20261110.json`) và phiếu 72 số trong bảng.
+- **`DONE` mới:** V8-150, V8-120, V8-170.
+- **Hồi quy CPU sau khóa v7:** 2.648 passed, 1 skipped (`scratch/runs/20261111-232032-ae46506f`).
 
-- Xóa 789 file sinh tự động: 301 build, 483 bytecode có source, 5 metadata pytest; 6.291.651 byte file. Không xóa source/test/config/GT/model/evidence; .cache OCR/output/scratch lịch sử giữ nguyên. Manifest từng file và bản nén build cũ ở phiên.
-- Trước sửa tài liệu, cả 815 file Git quản lý còn nguyên SHA; cuối phiên chỉ HANDOFF thay đổi có chủ đích và tạo CLEANUP_REPORT. Test người dùng SHA `20cd4a48…e020` nguyên byte. [Đối chiếu](../../scratch/dev_sessions/20261106-project-cleanup/final-preservation.json).
-- Baseline 23 pass. Hồi quy CPU unit/scientific/legacy + keyword e2e: 2245 pass/1 skip, exit 0. [JUnit](../../scratch/runs/20261106-project-cleanup-regression/evidence/junit.xml). 16 import contracts đạt; cú pháp 587 file đạt.
-- Build sdist → wheel v7.0 thành công từ bản sao scratch, 407 file gói khớp nguồn; import/CLI/keyword probe đạt. Wheel mới chỉ là artifact kiểm đóng gói CPU, chưa phát hành: [identity](../../scratch/dev_sessions/20261106-project-cleanup/build-elevated/build-verification.json). Không build Docker/chạy GPU/đo accuracy. Baseline/build đầu bị sandbox mode-0700; chạy lại quyền phù hợp ở output mới, không sửa ACL.
+## Phát hiện còn mở
 
-## Bằng chứng trước phiên: giữ nguyên, chưa đo lại
+- **Phiếu mất dữ liệu:** khung trình duyệt của app giữ localStorage trong RAM, nên đã mất 71 quyết định bảng và khoảng nửa phiếu phân xử đầy đủ. Từ nay chỉ mở phiếu qua `scripts/serve_review_sheets.py` (cấu hình `screening-sheets`, `table-review`, `adjudication-sheets`); mọi quyết định được ghi ra `<phiếu>/autosave/`.
+- **Đặc tả 13 §4.1:** 3.652 khối chữ trong ảnh vắng khỏi `extraction.json`.
+- **Bảng heuristic:** `src/ocr_structure/document_layout_engine.py:661` gán `bbox=r[0].bbox` cho cả hàng (315/513 ô có số). Cùng hàm sửa "12…HDPE" thành "D…" (646–647) và bỏ ô đầu "0"/"-" (651–652).
+- **Lỗi nhỏ:** `validation.py` import lười `benchmark.accuracy_first`; `runtime-models.json` ghi nhầm `V8-065` (manifest model: để nguyên).
+- Sửa các lỗi `src/` ở trên là đổi identity, cần khóa baseline mới.
 
-[HANDOFF nguyên byte trước dọn](../../scratch/dev_sessions/20261106-project-cleanup/handoff-before-cleanup.md) giữ đầy đủ kết luận, identity và link cũ; không coi chúng là phép đo checkout hiện tại. Các đầu mối tiếp tục:
+## Bước kế tiếp (cần người dùng)
 
-- Global Alias: giữ v1 86/86; keywords SHA `63737b33…0b9800`; bản 88/87 nguyên byte ở keywords-v1-original.txt. CPU final `output/analysis_global_alias_final_20261106` có 9 PDF/938 trang, 165 literal/15 alias chấp nhận/3 loại trừ/5 Pending. [Phiên Alias/Kaggle](../../scratch/dev_sessions/20261106-alias-rules-kaggle/session.md). ZIP nguồn Kaggle cũ STALE sau sửa tài liệu, chưa chạy Kaggle thật/100–1.000 PDF.
-- GAP-03: snapshot riêng 80 trang/10 PDF dẫn xuất, đủ coverage/frame; thiếu GT hướng/nội dung/ownership. DC-02 crop retry chỉ là diagnostic target-only, không GT độc lập. [Phiên](../../scratch/dev_sessions/20261106-retry-alias-rotation/session.md).
-- DC-01: sáu VIC O2O còn sai, chỉ review/đề xuất, không đổi số. [Failure](../../scratch/dev_sessions/20261105-table-source-ownership/ppocr-probe-failure.json).
-- TAB_05: bridge thêm frozen OCR sources, AGR/ASM có cải thiện placement; còn review, auto stitch chưa nối. [Phiên](../../scratch/dev_sessions/20261106-bridge-frozen-sources/session.md).
-- TXT/MD numeric oracle và warm/resume đã có bằng chứng trước; giữ hai cache và mọi archive/output, không chạy thay thế. [Warm](../../scratch/dev_sessions/20261106-warm-resume-recheck/session.md).
+1. Kiểm lại mù sàng lọc từ 17/11. Quyết định có chuẩn hóa `ƣ`→`ư` cho text layer không (đổi quy trình, cần khóa mới).
+2. Chấm 72 mục phiếu số trong bảng, rồi `build_table_number_review.py seal`.
+3. Gán nhãn GT bằng `label_structured_gt.py` (V8-060/070/071/080); chạy Vintern theo [`vlm/README.md`](../../benchmark/challengers/vlm/README.md).
+4. Quyết định thời điểm sửa lỗi `src/`, và push.
 
-## Giới hạn và bước kế tiếp
+## 11/11 tối — kiểm tra phiên Claude Code
 
-User xác nhận không có người A/B; không hỏi lại phân công, không dùng AI/protocol làm GT. Nhãn nhận dạng 0/38, keyword 0/12, L5 0/13, formula 0/3; workbook chỉ chuẩn tổng, formula bắt buộc, dung sai CDM duyệt 0,0005. GT/split/quyền/protocol/ngưỡng/renderer và official OmniDocBench còn thiếu; quality NOT_EVALUATED.
-
-Mục tiêu QA-01–09 tạm dừng. QA-03 có mã paired/report và 117 test chọn lọc đạt theo [artifact](../../scratch/runs/20261107-qa-report-contracts/run.json). Probe DRAFT giữ `NOT_READY`. Kiểm CLI detector ngoài pytest và render dashboard còn mở. [Nghiên cứu báo cáo Word](../../scratch/dev_sessions/20261107-ocr-tech-docx-review/session.md) ghi các điểm cần khóa cho benchmark PP-OCRv6, gồm recipe ONNX, crop cố định và giới hạn frame detector. GT chỉ khóa khi đủ nguồn/nhãn/hồ sơ thật. Bằng chứng scratch/output bị ignore cần lưu kèm khi bàn giao.
+- HEAD `ce4c58a`, hơn ref `origin` cục bộ 9 commit. Claude đang dựng phiếu V8-011 v6 và chuẩn bị chuyển quyết định cũ. Khóa v6 tái lập được. Đo 7 PDF dev trước phân xử cho `DSER_strict` 13.751/345.300. Cổng dấu 99,99% vẫn `NOT_EVALUATED`.
+- Hồi quy của Claude có 2.646 đạt, 1 bỏ qua. Sau sửa chuyển quyết định, nhóm test phân xử có 10 đạt. Bản đồ v8 và diff check qua.
+- Tái hiện `context()` có thể chứa từ đang khác giữa OCR và text layer ở mục bên cạnh. Kiểm tra tính trung lập trước khi dùng phiếu cho holdout.
+  - Đã sửa trước khi khóa v6 lần cuối: ngữ cảnh chỉ lấy chữ nằm trong khối giống nhau và dừng ở chữ lệch đầu tiên (test `test_items_say_when_one_side_is_empty_and_show_neutral_context`).
+- [Nhật ký và bằng chứng](../../scratch/dev_sessions/20261111-project-claude-status/session.md).

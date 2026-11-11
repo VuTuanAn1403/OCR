@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phiếu phân xử dấu</title>
+<style>
+  :root { --bg:#f6f6f4; --panel:#ffffff; --ink:#1d1d1b; --muted:#6b6b66; --line:#d9d9d4; --accent:#2557a7; --focus:#ffcc00; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161615; --panel:#202020; --ink:#ececea; --muted:#a3a39e; --line:#3a3a37; --accent:#7aa7ff; --focus:#ffd84d; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 "Segoe UI", "Noto Sans", Arial, sans-serif; }
+  header { position:sticky; top:0; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 16px;
+           background:var(--panel); border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0 8px 0 0; }
+  .stat { color:var(--muted); } .stat b { color:var(--ink); }
+  button, input { font:inherit; color:inherit; }
+  button { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:6px 12px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  main { max-width:1100px; margin:16px auto; padding:0 16px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; }
+  canvas { width:100%; height:auto; background:#fff; border:1px solid var(--line); border-radius:4px; display:block; }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
+  @media (max-width:700px) { .pair { grid-template-columns:1fr; } }
+  .choice { border:1px solid var(--line); border-radius:8px; padding:10px; }
+  .choice .label { color:var(--muted); font-size:13px; }
+  .choice .text { font-size:40px; line-height:1.2; word-break:break-word; min-height:1.2em; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  #corrected { display:none; margin-top:10px; width:100%; font-size:24px; padding:6px; }
+  #status { margin-top:10px; font-weight:600; }
+  kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 5px; font-size:12px; }
+  .help { color:var(--muted); font-size:13px; }
+  #hint { margin-top:10px; padding:8px 10px; border-left:4px solid var(--accent); background:var(--bg); display:none; }
+  #context { margin-top:8px; color:var(--muted); font-size:18px; }
+  #context b { color:var(--ink); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Phân xử dấu (mù A/B)</h1>
+  <span class="stat">Mục <b id="pos">0</b>/<b id="total">0</b></span>
+  <span class="stat">Đã quyết <b id="done">0</b></span>
+  <label class="stat">Người duyệt <input id="reviewer" size="14"></label>
+  <button id="export">Xuất JSONL</button>
+  <label><button id="importbtn" type="button">Nạp JSONL</button><input id="import" type="file" accept=".jsonl" hidden></label>
+</header>
+<main>
+  <section>
+    <canvas id="crop" width="1000" height="200"></canvas>
+    <div id="context"></div>
+    <div id="hint"></div>
+    <div class="pair">
+      <div class="choice"><div class="label">A</div><div class="text" id="a"></div></div>
+      <div class="choice"><div class="label">B</div><div class="text" id="b"></div></div>
+    </div>
+    <div class="controls">
+      <button data-c="A_CORRECT"><kbd>1</kbd> A đúng</button>
+      <button data-c="B_CORRECT"><kbd>2</kbd> B đúng</button>
+      <button data-c="BOTH_WRONG"><kbd>3</kbd> Cả hai sai</button>
+      <button data-c="UNRESOLVED"><kbd>4</kbd> Không quyết được</button>
+    </div>
+    <input id="corrected" placeholder="Gõ đúng chữ đọc được trên ảnh, rồi Enter">
+    <div id="status"></div>
+    <p class="help"><kbd>←</kbd>/<kbd>→</kbd> mục trước/sau, <kbd>N</kbd> mục chưa quyết kế tiếp. Chỉ dựa vào ảnh.
+      Phiếu không cho biết bên nào là OCR; ô trống nghĩa là bên đó không có chữ ở vị trí này.</p>
+  </section>
+</main>
+<script>
+"use strict";
+const SHEET = /*__SHEET__*/null;
+const STORE = "adjudication:" + SHEET.sheet_id;
+const items = SHEET.items;
+let decisions = {}, revisions = {}, cursor = 0;
+const $ = id => document.getElementById(id);
+const image = new Image();
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(STORE) || "{}");
+        decisions = s.decisions || {}; revisions = s.revisions || {}; cursor = s.cursor || 0;
+        if (s.reviewer) $("reviewer").value = s.reviewer; } catch (e) {}
+  if (!$("reviewer").value) $("reviewer").value = SHEET.reviewer || "";
+}
+function save() { try { localStorage.setItem(STORE, JSON.stringify({decisions, revisions, cursor, reviewer:$("reviewer").value})); } catch (e) {} }
+function bangkokNow() { return new Date(Date.now() + 7 * 3600e3).toISOString().replace(/\.\d+Z$/, "+07:00"); }
+function decide(choice, corrected) {
+  const item = items[cursor], reviewer = $("reviewer").value.trim();
+  if (!reviewer) { $("status").textContent = "Nhập tên người duyệt trước."; return; }
+  revisions[item.item_id] = (revisions[item.item_id] || 0) + 1;
+  decisions[item.item_id] = {schema_version:"ocr-v8-diacritic-adjudication-decision-v1",
+    decision_id:item.item_id + "#r" + revisions[item.item_id], sheet_id:SHEET.sheet_id, item_id:item.item_id,
+    crop_sha256:item.crop_sha256, a:item.a, b:item.b, choice, corrected_text: choice === "BOTH_WRONG" ? corrected : null,
+    reviewer, decided_at:bangkokNow(), tool_commit:SHEET.tool_commit};
+  $("corrected").style.display = "none";
+  next();
+}
+function next() {
+  for (let k = 1; k <= items.length; k++) { const i = (cursor + k) % items.length;
+    if (!decisions[items[i].item_id]) { cursor = i; render(); return; } }
+  render(); $("status").textContent = "Mọi mục đã có quyết định. Hãy xuất JSONL.";
+}
+function render() {
+  const item = items[cursor], page = SHEET.pages[item.image];
+  $("pos").textContent = cursor + 1; $("total").textContent = items.length;
+  $("done").textContent = Object.keys(decisions).length;
+  $("a").textContent = item.a; $("b").textContent = item.b;
+  const [before, after] = item.context || ["", ""];
+  $("context").innerHTML = "";
+  if (before || after) {
+    const mark = document.createElement("b"); mark.textContent = " [ ? ] ";
+    $("context").append(document.createTextNode("Ngữ cảnh: " + before), mark, document.createTextNode(after));
+  }
+  const hint = item.kind === "ONE_SIDE_EMPTY"
+    ? "Một bên trống, bên kia có chữ. Khung vàng đánh dấu chỗ [ ? ] (chỗ trống giữa hoặc cạnh các chữ ngữ cảnh), không phải chữ bên cạnh: nếu chữ đó có in ở đó thì chọn bên có chữ; nếu không có thì chọn bên trống. Chỉ chọn \"Cả hai sai\" khi ở chỗ đó in một chữ khác cả hai."
+    : "";
+  $("hint").textContent = hint; $("hint").style.display = hint ? "block" : "none";
+  const d = decisions[item.item_id];
+  $("status").textContent = d ? "Đã quyết: " + d.choice + (d.corrected_text ? " → " + d.corrected_text : "") : "Chưa quyết";
+  const draw = () => {
+    const c = $("crop"), ctx = c.getContext("2d"), [x0, y0, x1, y1] = item.crop_px, pad = 40 * page.zoom;
+    const sx = Math.max(0, x0 - pad), sy = Math.max(0, y0 - 4 * page.zoom);
+    const sw = Math.min(page.image_size[0], x1 + pad) - sx, sh = Math.min(page.image_size[1], y1 + 4 * page.zoom) - sy;
+    const scale = Math.min((c.clientWidth || 1000) / sw, 8);
+    c.width = Math.round(sw * scale); c.height = Math.round(sh * scale);
+    ctx.drawImage(image, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    ctx.strokeStyle = "#ffcc00"; ctx.lineWidth = 3;
+    ctx.strokeRect((x0 - sx) * scale, (y0 - sy) * scale, (x1 - x0) * scale, (y1 - y0) * scale);
+  };
+  if (image.dataset.src !== page.image) { image.onload = draw; image.dataset.src = page.image; image.src = page.image; } else draw();
+  save();
+}
+function exportJsonl() {
+  const lines = items.filter(i => decisions[i.item_id]).map(i => JSON.stringify(decisions[i.item_id]));
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], {type:"application/x-ndjson"}));
+  link.download = `adjudication-${SHEET.sheet_id}-${bangkokNow().replace(/[:+]/g, "")}.jsonl`; link.click();
+}
+function importJsonl(file) {
+  file.text().then(text => { let n = 0;
+    for (const line of text.split(/\r?\n/)) { if (!line.trim()) continue; const r = JSON.parse(line);
+      if (r.sheet_id !== SHEET.sheet_id) continue; decisions[r.item_id] = r;
+      revisions[r.item_id] = Number((r.decision_id || "").split("#r")[1] || 1); n++; }
+    $("status").textContent = `Đã nạp ${n} quyết định.`; render(); });
+}
+document.querySelectorAll("button[data-c]").forEach(b => b.onclick = () => choose(b.dataset.c));
+function choose(choice) {
+  if (choice === "BOTH_WRONG") { const box = $("corrected"); box.style.display = "block"; box.value = ""; box.focus(); return; }
+  decide(choice);
+}
+$("corrected").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.value.trim()) decide("BOTH_WRONG", e.target.value.trim());
+                                                   if (e.key === "Escape") e.target.style.display = "none"; });
+$("export").onclick = exportJsonl;
+$("importbtn").onclick = () => $("import").click();
+$("import").onchange = e => e.target.files[0] && importJsonl(e.target.files[0]);
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  const k = e.key.toLowerCase();
+  if (k === "arrowright") { cursor = Math.min(items.length - 1, cursor + 1); render(); }
+  else if (k === "arrowleft") { cursor = Math.max(0, cursor - 1); render(); }
+  else if (k === "1") choose("A_CORRECT"); else if (k === "2") choose("B_CORRECT");
+  else if (k === "3") choose("BOTH_WRONG"); else if (k === "4") choose("UNRESOLVED");
+  else if (k === "n") next(); else return;
+  e.preventDefault();
+});
+if (!items.length) document.body.textContent = "Không có mục nào cần phân xử.";
+else { load(); cursor = Math.min(cursor, items.length - 1); render(); }
+</script>
+</body>
+</html>

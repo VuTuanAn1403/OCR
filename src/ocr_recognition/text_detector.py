@@ -50,6 +50,11 @@ class ONNXTextDetector:
         self.expansion = float(options.get("rectangle_expansion", 1.5))
         if self.limit < 32 or not 0 < self.threshold < 1 or not 0 < self.box_threshold < 1 or self.expansion < 0:
             raise ValueError("Invalid DB detector thresholds/resize contract")
+        # Channel order the model was trained with (PP-OCRv6 inference.yml: img_mode BGR); the
+        # default keeps the historical RGB feed of the PP-OCRv4 contract unchanged.
+        self.channel_order = options.get("channel_order", "RGB")
+        if self.channel_order not in ("RGB", "BGR"):
+            raise ValueError("Detector channel_order must be RGB or BGR")
         self.mean = np.asarray(options.get("mean", [.485, .456, .406]), dtype=np.float32)
         self.std = np.asarray(options.get("std", [.229, .224, .225]), dtype=np.float32)
         if self.mean.shape != (3,) or self.std.shape != (3,) or not np.isfinite(self.mean).all() or not np.isfinite(self.std).all() or (self.std <= 0).any():
@@ -81,8 +86,11 @@ class ONNXTextDetector:
             raise ValueError("Empty page image")
         scale = min(1., self.limit / max(h, w))
         height, width = max(32, int(math.ceil(h * scale / 32)) * 32), max(32, int(math.ceil(w * scale / 32)) * 32)
-        rgb = cv2.cvtColor(cv2.resize(image, (width, height)), cv2.COLOR_BGR2RGB).astype(np.float32) / 255.
-        tensor = ((rgb - self.mean) / self.std).transpose(2, 0, 1)[None]
+        resized = cv2.resize(image, (width, height))
+        if self.channel_order == "RGB":
+            resized = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        pixels = resized.astype(np.float32) / 255.
+        tensor = ((pixels - self.mean) / self.std).transpose(2, 0, 1)[None]
         return np.ascontiguousarray(tensor), {"source_shape": [h, w], "resized_shape": [height, width],
                                              "scope": "full_page", "layout_roi_gate": False}
 

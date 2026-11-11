@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phiếu xem số trong bảng</title>
+<style>
+  :root { --bg:#f6f6f4; --panel:#ffffff; --ink:#1d1d1b; --muted:#6b6b66; --line:#d9d9d4; --accent:#2557a7; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161615; --panel:#202020; --ink:#ececea; --muted:#a3a39e; --line:#3a3a37; --accent:#7aa7ff; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 "Segoe UI", "Noto Sans", Arial, sans-serif; }
+  header { position:sticky; top:0; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 16px;
+           background:var(--panel); border-bottom:1px solid var(--line); z-index:1; }
+  header h1 { font-size:16px; margin:0 8px 0 0; }
+  .stat { color:var(--muted); } .stat b { color:var(--ink); }
+  button, input { font:inherit; color:inherit; }
+  button { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:6px 12px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  main { max-width:1100px; margin:16px auto; padding:0 16px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; }
+  canvas { width:100%; height:auto; background:#fff; border:1px solid var(--line); border-radius:4px; display:block; }
+  .question { font-size:18px; margin:12px 0 6px; }
+  .number { font-size:34px; font-weight:700; letter-spacing:.02em; }
+  .facts { display:grid; grid-template-columns:max-content 1fr; gap:4px 12px; margin-top:8px; }
+  .facts dt { color:var(--muted); } .facts dd { margin:0; word-break:break-word; }
+  .legend { color:var(--muted); font-size:13px; margin-top:6px; }
+  .swatch { display:inline-block; width:12px; height:12px; vertical-align:-1px; border:3px solid; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  #status { margin-top:10px; font-weight:600; }
+  kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 5px; font-size:12px; }
+  .help { color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Xem số trong bảng</h1>
+  <span class="stat">Mục <b id="pos">0</b>/<b id="total">0</b></span>
+  <span class="stat">Đã quyết <b id="done">0</b></span>
+  <label class="stat">Người duyệt <input id="reviewer" size="14"></label>
+  <button id="export">Xuất JSONL</button>
+  <label><button id="importbtn" type="button">Nạp JSONL</button><input id="import" type="file" accept=".jsonl" hidden></label>
+</header>
+<main>
+  <section>
+    <canvas id="crop" width="1000" height="200"></canvas>
+    <div class="legend"><span class="swatch" style="border-color:#ffcc00"></span> ô của bảng
+      &nbsp; <span class="swatch" style="border-color:#2f7de1"></span> dòng OCR liên quan</div>
+    <div class="question" id="question"></div>
+    <div class="number" id="number"></div>
+    <dl class="facts">
+      <dt>Ô</dt><dd id="where"></dd>
+      <dt>Chữ của ô</dt><dd id="cell"></dd>
+      <dt>Dòng OCR</dt><dd id="lines"></dd>
+    </dl>
+    <div class="controls">
+      <button data-c="IN_IMAGE"><kbd>1</kbd> Có in trong ảnh</button>
+      <button data-c="NOT_IN_IMAGE"><kbd>2</kbd> Không có trong ảnh</button>
+      <button data-c="UNRESOLVED"><kbd>3</kbd> Không quyết được</button>
+    </div>
+    <div id="status"></div>
+    <p class="help"><kbd>←</kbd>/<kbd>→</kbd> mục trước/sau, <kbd>N</kbd> mục chưa quyết kế tiếp.
+      Chỉ dựa vào ảnh: số phải in đúng từng chữ số, dấu và dấu phân cách. Khung lệch hay ảnh mờ thì chọn "Không quyết được".</p>
+  </section>
+</main>
+<script>
+"use strict";
+const SHEET = /*__SHEET__*/null;
+const STORE = "table-number-review:" + SHEET.sheet_id;
+const items = SHEET.items;
+const QUESTIONS = {
+  MISSING_FROM_TABLE: "Dòng OCR trong ô có số này, nhưng không ô nào của bảng có. Số này có in trong ảnh ở ô này không?",
+  UNTRACED: "Ô có số này, nhưng không dòng OCR nào của ô có. Số này có in trong ảnh ở ô này không?"
+};
+let decisions = {}, revisions = {}, cursor = 0;
+const $ = id => document.getElementById(id);
+const image = new Image();
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(STORE) || "{}");
+        decisions = s.decisions || {}; revisions = s.revisions || {}; cursor = s.cursor || 0;
+        if (s.reviewer) $("reviewer").value = s.reviewer; } catch (e) {}
+  if (!$("reviewer").value) $("reviewer").value = SHEET.reviewer || "";
+}
+function save() { try { localStorage.setItem(STORE, JSON.stringify({decisions, revisions, cursor, reviewer:$("reviewer").value})); } catch (e) {} }
+function bangkokNow() { return new Date(Date.now() + 7 * 3600e3).toISOString().replace(/\.\d+Z$/, "+07:00"); }
+function decide(choice) {
+  const item = items[cursor], reviewer = $("reviewer").value.trim();
+  if (!reviewer) { $("status").textContent = "Nhập tên người duyệt trước."; return; }
+  revisions[item.item_id] = (revisions[item.item_id] || 0) + 1;
+  decisions[item.item_id] = {schema_version:SHEET.record_schema, decision_id:item.item_id + "#r" + revisions[item.item_id],
+    sheet_id:SHEET.sheet_id, item_id:item.item_id, kind:item.kind, number:item.number, image_sha256:item.image_sha256,
+    choice, reviewer, decided_at:bangkokNow(), tool_commit:SHEET.tool_commit};
+  next();
+}
+function next() {
+  for (let k = 1; k <= items.length; k++) { const i = (cursor + k) % items.length;
+    if (!decisions[items[i].item_id]) { cursor = i; render(); return; } }
+  render(); $("status").textContent = "Mọi mục đã có quyết định. Hãy xuất JSONL.";
+}
+function render() {
+  const item = items[cursor], page = SHEET.pages[item.image];
+  $("pos").textContent = cursor + 1; $("total").textContent = items.length;
+  $("done").textContent = Object.keys(decisions).length;
+  $("question").textContent = QUESTIONS[item.kind] || item.kind;
+  $("number").textContent = item.number;
+  $("where").textContent = `${item.document}, trang ${item.page}, ${item.table_id} hàng ${item.row} cột ${item.col} (${item.origin})`;
+  $("cell").textContent = item.cell_text || "(trống)";
+  $("lines").textContent = item.lines.join(" | ") || "(không có)";
+  const d = decisions[item.item_id];
+  $("status").textContent = d ? "Đã quyết: " + d.choice : "Chưa quyết";
+  const draw = () => {
+    const boxes = [item.cell_px, ...item.line_px];
+    const x0 = Math.min(...boxes.map(b => b[0])), y0 = Math.min(...boxes.map(b => b[1]));
+    const x1 = Math.max(...boxes.map(b => b[2])), y1 = Math.max(...boxes.map(b => b[3]));
+    const pad = 30 * page.zoom, c = $("crop"), ctx = c.getContext("2d");
+    const sx = Math.max(0, x0 - pad), sy = Math.max(0, y0 - pad);
+    const sw = Math.min(page.image_size[0], x1 + pad) - sx, sh = Math.min(page.image_size[1], y1 + pad) - sy;
+    const scale = Math.min((c.clientWidth || 1000) / sw, 6);
+    c.width = Math.round(sw * scale); c.height = Math.round(sh * scale);
+    ctx.drawImage(image, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    const frame = (b, color) => { ctx.strokeStyle = color; ctx.lineWidth = 3;
+      ctx.strokeRect((b[0] - sx) * scale, (b[1] - sy) * scale, (b[2] - b[0]) * scale, (b[3] - b[1]) * scale); };
+    item.line_px.forEach(b => frame(b, "#2f7de1")); frame(item.cell_px, "#ffcc00");
+  };
+  if (image.dataset.src !== page.image) { image.onload = draw; image.dataset.src = page.image; image.src = page.image; } else draw();
+  save();
+}
+function exportJsonl() {
+  const lines = items.filter(i => decisions[i.item_id]).map(i => JSON.stringify(decisions[i.item_id]));
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], {type:"application/x-ndjson"}));
+  link.download = `table-number-review-${SHEET.sheet_id}-${bangkokNow().replace(/[:+]/g, "")}.jsonl`; link.click();
+}
+function importJsonl(file) {
+  file.text().then(text => { let n = 0;
+    for (const line of text.split(/\r?\n/)) { if (!line.trim()) continue; const r = JSON.parse(line);
+      if (r.sheet_id !== SHEET.sheet_id) continue; decisions[r.item_id] = r;
+      revisions[r.item_id] = Number((r.decision_id || "").split("#r")[1] || 1); n++; }
+    $("status").textContent = `Đã nạp ${n} quyết định.`; render(); });
+}
+document.querySelectorAll("button[data-c]").forEach(b => b.onclick = () => decide(b.dataset.c));
+$("export").onclick = exportJsonl;
+$("importbtn").onclick = () => $("import").click();
+$("import").onchange = e => e.target.files[0] && importJsonl(e.target.files[0]);
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  const k = e.key.toLowerCase();
+  if (k === "arrowright") { cursor = Math.min(items.length - 1, cursor + 1); render(); }
+  else if (k === "arrowleft") { cursor = Math.max(0, cursor - 1); render(); }
+  else if (k === "1") decide("IN_IMAGE"); else if (k === "2") decide("NOT_IN_IMAGE"); else if (k === "3") decide("UNRESOLVED");
+  else if (k === "n") next(); else return;
+  e.preventDefault();
+});
+if (!items.length) document.body.textContent = "Không có mục nào cần xem.";
+else { load(); cursor = Math.min(cursor, items.length - 1); render(); }
+</script>
+</body>
+</html>

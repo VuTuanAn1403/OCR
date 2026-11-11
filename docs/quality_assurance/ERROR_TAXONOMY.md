@@ -139,6 +139,27 @@ Các mức dưới là impact dự kiến khi lỗi được xác nhận. `root_
 - **Metric/sửa:** fail/timeout/retry/OOM theo workload, latency/resource và recovery consistency; giữ tài liệu failed/pending là unknown, không 0 count.
 - **Regression:** [test_stage_cache](../../tests/unit/test_stage_cache.py), [test_v63_pipeline](../../tests/unit/test_v63_pipeline.py), [test_release_gate](../../tests/scientific/test_release_gate.py). Soak thật cần kế hoạch/evidence riêng.
 
+## Ánh xạ danh sách E01–E13 của v8 (V8-110)
+
+Tài liệu nguồn v8 (`tai lieu diem yeu.md`, commit `08f7602`) đề xuất 13 nhóm E01–E13. Registry giữ nguyên 14 mã đang dùng trong `benchmark/qa/error_registry.py::ERROR_CODES`. Bảng dưới chỉ để đối chiếu khi đọc tài liệu v8. Số thứ tự hai bên **không** tương ứng: E06 của v8 là thứ tự đọc, còn E06 ở đây là bảng/công thức.
+
+| v8 | Tên trong v8 | Mã registry | Ghi chú |
+| --- | --- | --- | --- |
+| E01 | PDF Parsing | `E01-PDF` | 1:1 |
+| E02 | Image Quality | `E02-IMAGE` | 1:1 |
+| E03 | Detection | `E03-DETECTION` | 1:1 |
+| E04 | Recognition | `E04-TEXT`, `E04-VI` | Registry tách riêng lỗi dấu tiếng Việt |
+| E05 | Layout Classification | `E05-LAYOUT` | |
+| E06 | Reading Order | `E05-ORDER` | Khác số họ |
+| E07 | Table Structure | `E06-TABLE` | Khác số họ |
+| E08 | Formula Recognition | `E06-FORMULA` | Khác số họ |
+| E09 | Unicode | `E04-VI`, `E08-POSTPROCESS` | Dấu đọc sai thuộc `E04-VI`. Chuẩn hóa làm đổi nội dung thuộc `E08-POSTPROCESS`. Byte raw khác NFC nhưng cùng nội dung không phải lỗi |
+| E10 | Numeric | `E08-POSTPROCESS`, `E04-TEXT`, `E06-TABLE` | Không 1:1. Guard sửa số thuộc `E08`; đọc sai chữ số thuộc `E04-TEXT`; ô số sai địa chỉ thuộc `E06-TABLE` |
+| E11 | Source Ownership | `E07-OWNERSHIP` | Khác số họ |
+| E12 | Keyword Extraction | `E09-KEYWORD` | Khác số họ |
+| E13 | Export | `E10-EXPORT` | Khác số họ |
+| — | (không có) | `E10-RUNTIME` | v8 không có nhóm scheduler/resume/tài nguyên |
+
 ## Hồ sơ registry đề nghị
 
 Đây là **đặc tả metadata**, không thêm field vào extraction/receipt. Wire schema v1 ở [error_registry.py](../../benchmark/qa/error_registry.py), tham chiếu record hiện có qua adapter. V1 chỉ kiểm metadata/hash và lifecycle kỹ thuật; `QUALITY_ACCEPTED` chưa được hỗ trợ, vẫn dùng release workflow độc lập hiện hữu. Không coi việc kiểm hash là xác minh nội dung chứng cứ điều tra.

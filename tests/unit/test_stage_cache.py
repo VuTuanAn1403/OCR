@@ -335,3 +335,20 @@ def test_phase_worker_refuses_code_that_differs_from_its_stage_key(tmp_path):
     result = subprocess.run([sys.executable, "-m", "ocr_workers.phases", "--request", str(path), "--phase", "export"],
                             cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120)
     assert result.returncode != 0 and "differs from its stage key" in result.stderr
+
+
+def test_phase_logs_of_each_run_survive_a_later_run_of_the_same_identity(harness):
+    # V8-120: the generation directory is shared by identity; logs must not be overwritten.
+    def phase_logs():
+        (audit,) = (harness.tmp / "jobs").glob("*/scheduler.json")
+        return {phase: Path(record["log_path"]) for phase, record in
+                json.loads(audit.read_text(encoding="utf-8"))["phases"].items()}
+
+    harness.run(resume=False)
+    first = phase_logs()
+    harness.run(resume=False)
+    second = phase_logs()
+    assert set(first) == set(second) == {"text", "structure", "export"}
+    for phase in first:
+        assert first[phase] != second[phase] and first[phase].is_file() and second[phase].is_file()
+        assert first[phase].parent.parent == second[phase].parent.parent  # <generation>/logs/<run>/

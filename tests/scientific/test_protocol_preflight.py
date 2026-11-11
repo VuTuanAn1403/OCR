@@ -10,7 +10,7 @@ from benchmark.scientific_evaluation.protocol_preflight import REQUIRED_ARTIFACT
 from src.ocr.collect.catalog import ACCEPTANCE_SPLITS, FIELDS, file_sha256, lock_company_splits
 
 
-TEMPLATE = Path(__file__).resolve().parents[2] / "Cai Tien/templates/benchmark_acceptance_protocol.example.yaml"
+TEMPLATE = Path(__file__).resolve().parents[2] / "docs/quality_assurance/templates/benchmark_acceptance_protocol.example.yaml"
 
 
 @pytest.fixture

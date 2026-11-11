@@ -1,6 +1,6 @@
 # Gate bảo toàn dấu OCR và bản sao native v7.0
 
-Gate phát hành áp đặc tả 09 cho OCR và native NFC. Source counts OCR giữ cả lỗi dấu thừa ở vùng GT không dấu; `diacritic_gate` ghi dấu tổ hợp còn rời sau NFC. GT còn dấu rời giữ `NOT_EVALUATED`. Gate OCR dùng số nguyên `gate_errors × 10000 <= reference_diacritics`, không lấy tỷ lệ đã làm tròn hoặc ngưỡng DER nới hơn để thay điều kiện này. DER có thể lớn hơn 1 khi nhiều dấu được thêm vào mẫu ít dấu; không chặn về 1.
+Gate phát hành áp đặc tả 09 cho OCR và native NFC. Source counts OCR giữ cả lỗi dấu thừa ở vùng GT không dấu; `diacritic_gate` ghi dấu tổ hợp còn rời sau NFC. GT còn dấu rời giữ `NOT_EVALUATED`. Từ 09/11 (V8-022), gate OCR dùng cận trên Clopper-Pearson một phía của `gate_errors / reference_diacritics` trên số nguyên chưa làm tròn (`exact_bounds.py::upper_bound_gate`, design effect đã khóa trong `plan.ocr_diacritics`). Điều kiện cũ `gate_errors × 10000 <= reference_diacritics` chỉ còn là `point_status` trong `diacritic_acceptance.py`. Từ 10/11, số lỗi của cổng là `dser_errors` của `DSER_strict` trên `ref_slots` (đặc tả 04 §3). DER_VN_v1 chỉ được báo bên cạnh trong `der_vn_v1`. DER có thể lớn hơn 1 khi nhiều dấu được thêm vào mẫu ít dấu; không chặn về 1.
 
 Nhánh native đọc PDF gốc được ghim hash bằng `NativeTextExtractor`, giữ raw và chỉ áp NFC. Prediction native không nhận từ file chữ do người gọi tự khai. Phạm vi hiện hỗ trợ các đơn vị text toàn trang vật lý (`region_id: page`) trong mẫu DER đã khóa. Các ô/bảng trên trang nằm trong bản chép đầy đủ của trang; không dùng phiếu keyword từng vùng để giả thành GT toàn trang.
 
@@ -38,4 +38,4 @@ Native dùng CI biên của tỷ lệ lỗi, không dùng CI chênh lệch raw�
 
 `quality.diacritic_preservation_gate` ghi điểm OCR; `quality.native_preservation_gate` ghi raw/NFC, CI, counts, scope bị loại theo manifest và provenance. Lỗi native chặn phát hành, kể cả khi các metric OCR và keyword đạt. Gate vẫn kiểm nguồn/count, nhãn độc lập, protocol và vận hành theo các yêu cầu khác.
 
-Đã kiểm bằng PDF/GT tạo bằng chương trình và fixture thống kê. Chưa có phép đo nghiệm thu native hoặc OCR trên GT độc lập của chín PDF. [Đặc tả](../../Cai%20Tien/09_DAC_TA_BAO_TOAN_DAU_9999.md) · [Bộ chấm](native_diacritic_replay.py).
+Đã kiểm bằng PDF/GT tạo bằng chương trình và fixture thống kê. Chưa có phép đo nghiệm thu native hoặc OCR trên GT độc lập của chín PDF. [Đặc tả](../../cai%20tien%20v2/04_DAC_TA_DO_DAU_9999.md) · [Bộ chấm](native_diacritic_replay.py).

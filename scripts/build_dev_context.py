@@ -25,6 +25,27 @@ DOC_BUDGETS = {
     "docs/development/PROJECT_MAP.md": 8000,
     "docs/development/README.md": 16000,
     "docs/development/templates/SESSION.md": 5000,
+    # v8 knowledge map: scripts/check_knowledge_map.py requires an entry per file.
+    "cai tien v2/00_README.md": 6000,
+    "cai tien v2/01_RADAR_CONG_NGHE_THEO_TANG.md": 16000,
+    "cai tien v2/02_KIEM_TOAN_KHOANG_TRONG.md": 12000,
+    "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md": 14000,
+    "cai tien v2/04_DAC_TA_DO_DAU_9999.md": 16000,
+    "cai tien v2/05_HOP_DONG_BENCHMARK_ADAPTER.md": 12000,
+    "cai tien v2/06_BACKLOG_V8.csv": 24000,
+    "cai tien v2/07_PHUONG_PHAP_DU_AN_LON_AI.md": 14000,
+    "cai tien v2/08_TOI_UU_TOKEN.md": 8000,
+    "cai tien v2/09_LUU_TRU_CAI_TIEN_V7.md": 8000,
+    "cai tien v2/10_TRANG_THAI_V8.json": 28000,
+    "cai tien v2/11_DAC_TA_THU_TU_DOC_TU_NHIEN.md": 14000,
+    "cai tien v2/12_HUONG_VA_XOAY_TRANG_1UP_2UP.md": 14000,
+    "cai tien v2/13_DAC_TA_CHU_THIEU_THUA_SAI.md": 12000,
+    "cai tien v2/bao_cao/BASELINE_LOCK_REPORT.md": 10000,
+    ".claude/skills/ocr-pdf-knowledge-map/SKILL.md": 5000,
+    ".claude/skills/ocr-pdf-knowledge-map/references/layers.md": 8000,
+    ".claude/skills/ocr-pdf-knowledge-map/references/evidence.md": 5000,
+    ".claude/skills/ocr-pdf-knowledge-map/references/constraints.md": 4000,
+    ".claude/skills/ocr-pdf-knowledge-map/references/refresh.md": 4000,
 }
 STARTUP_DOCS = ("AGENTS.md", "CLAUDE.md", "docs/development/HANDOFF.md")
 
@@ -91,7 +112,8 @@ def documentation(root: Path) -> dict:
     for name, budget in DOC_BUDGETS.items():
         path = repo_path(root, name)
         exists = path.is_file()
-        size = path.stat().st_size if exists else None
+        # Count LF line endings so CRLF (Git autocrlf) and LF checkouts share one budget.
+        size = len(path.read_bytes().replace(b"\r\n", b"\n")) if exists else None
         record = {"path": name, "exists": exists, "bytes": size, "budget_bytes": budget,
                   "within_budget": exists and size <= budget}
         if exists and size <= MAX_FILE_BYTES:

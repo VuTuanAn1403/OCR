@@ -61,6 +61,25 @@ def _worker_environment(options: dict[str, Any]) -> dict[str, str]:
     return env
 
 
+def worker_exit_message(process: Any, log_path: Path, wait_seconds: float = 5.0) -> str:
+    """Why the worker's stdout ended: its exit code (NTSTATUS in hex on Windows) and its log.
+
+    V8-120: a worker that dies without a traceback leaves an empty log, so the exit code
+    is the only evidence of how it ended.
+    """
+    try:
+        code = process.wait(timeout=wait_seconds)
+    except subprocess.TimeoutExpired:
+        code = None
+    if code is None:
+        detail = "exit code unknown (stdout closed while the process was still running)"
+    elif code < 0 or code > 0xFFFF:
+        detail = f"exit code {code} (0x{code & 0xFFFFFFFF:08X})"
+    else:
+        detail = f"exit code {code}"
+    return f"Docling worker exited; {detail}; inspect {log_path}"
+
+
 class DoclingStructureError(RuntimeError):
     pass
 
@@ -156,7 +175,7 @@ class DoclingStructureExtractor:
             self._process.kill()
             self._process.wait()
             raise
-        process, responses = self._process, self._responses
+        process, responses, log_path = self._process, self._responses, self._job_dir / "worker.log"
 
         def read_responses():
             for line in process.stdout:
@@ -164,7 +183,7 @@ class DoclingStructureExtractor:
                     responses.put(json.loads(line))
                 except json.JSONDecodeError:
                     responses.put({"status": "error", "error": "Invalid worker protocol response"})
-            responses.put({"status": "error", "error": "Docling worker exited; inspect worker.log"})
+            responses.put({"status": "error", "error": worker_exit_message(process, log_path)})
 
         threading.Thread(target=read_responses, daemon=True).start()
 

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-from src.ocr.runtime.atomic_io import atomic_write_json
+from ocr_artifacts.atomic_io import atomic_write_json
 
 ERROR_RATIOS = ("cer", "wer", "der")
 ERROR_RATE_METRICS = (*ERROR_RATIOS, "layout_errors_per_gt", "formula_detection_errors_per_gt",

@@ -4,6 +4,7 @@ These common multiword terms provide context for otherwise valid syllables
 (e.g. ``trị`` versus ``trí``). This is a small review vocabulary, not a spell
 checker or proof that an arbitrary sentence has correct Vietnamese accents.
 """
+import functools
 import re
 import unicodedata
 
@@ -49,6 +50,11 @@ def build_terms(phrases: tuple[str, ...] | list[str], min_words: int = 2) -> tup
     return tuple(terms)
 
 
+@functools.lru_cache(maxsize=128)
+def _cached_terms(phrases: tuple[str, ...]) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    return build_terms(phrases)
+
+
 _TERMS = tuple((phrase, tuple(map(_fold, phrase.split()))) for phrase in _PHRASES)
 
 
@@ -70,10 +76,11 @@ def diacritic_suspicions(text: str, phrases: tuple[str, ...] | list[str] | None 
     folded = [_fold(m.group()) for m in words]
     reasons = []
     if extra_phrases:
-        combined = tuple(dict.fromkeys([*(phrases or _PHRASES), *extra_phrases]))
-        terms = build_terms(combined)
+        phrases_tuple = tuple(phrases) if phrases is not None else _PHRASES
+        combined = tuple(dict.fromkeys([*phrases_tuple, *extra_phrases]))
+        terms = _cached_terms(combined)
     elif phrases is not None:
-        terms = build_terms(phrases)
+        terms = _cached_terms(tuple(phrases))
     else:
         terms = _TERMS
     for phrase, term in terms:

@@ -43,4 +43,4 @@ Khi duyệt báo cáo đã đo, truyền `--baseline-cdm` và `--candidate-cdm` 
 
 `formula-output` cần là thư mục mới, nằm ngoài batch/PDF. File report của gate nằm ngoài thư mục replay. Phiếu critical của lượt chuẩn bị phải khớp các file alignment/cặp được dựng lại. Manifest mã evaluator cần ghim cả các module công thức, nhận nhãn và kiểm split mà gate liệt kê. Dùng output mới khi danh tính thay đổi.
 
-Thiếu mẫu, GT, CDM, hồ sơ critical, cỡ mẫu hoặc CI hợp lệ vẫn làm các phép đo chưa đánh giá. Trạng thái `INPUTS_VERIFIED` chỉ xác nhận hồ sơ trước đo. Phát hành còn cần các cổng review/vận hành và quyết định độc lập theo protocol. [Chính sách công thức](FORMULA_ACCEPTANCE_POLICY_V7.md) · [Phạm vi v7.0](../../Cai%20Tien/11_NGHIEM_THU_CONG_THUC_V70.md).
+Thiếu mẫu, GT, CDM, hồ sơ critical, cỡ mẫu hoặc CI hợp lệ vẫn làm các phép đo chưa đánh giá. Trạng thái `INPUTS_VERIFIED` chỉ xác nhận hồ sơ trước đo. Phát hành còn cần các cổng review/vận hành và quyết định độc lập theo protocol. [Chính sách công thức](FORMULA_ACCEPTANCE_POLICY_V7.md) · [Phạm vi v7.0](../../cai%20tien%20v2/09_LUU_TRU_CAI_TIEN_V7.md#ct-11).

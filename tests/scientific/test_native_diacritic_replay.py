@@ -56,7 +56,10 @@ def source(tmp_path, reader_hash):
 def test_real_pdf_copy_is_not_accepted_as_population_proof_without_a_locked_precision_plan(source):
     inputs, _, _, _ = source
     result = native.recompute_native_diacritics(inputs)
-    assert result["native_raw"]["status"] == result["native_nfc"]["status"] == "PASS"
+    assert result["native_raw"]["point_status"] == result["native_nfc"]["point_status"] == "PASS"
+    # One slot is far from the 29,956 the exact bound needs; the stream claim stays open.
+    assert result["native_nfc"]["status"] == "NOT_EVALUATED"
+    assert result["native_nfc"]["bound"]["reason"] == "INSUFFICIENT_SLOTS_FOR_BOUND"
     assert result["excluded_scan_unit_ids"] == ["scan"]
     assert result["source_units"]["native"]["blocks"][0]["text_raw"] == "á"
     assert result["native_confidence"]["reason"] == "LOCKED_NATIVE_PRECISION_PLAN_REQUIRED"
@@ -167,7 +170,8 @@ def _precision_case():
 
 
 @pytest.mark.parametrize("change,expected", [("adequate", "PASS"), ("errors", "FAIL"),
-    ("one_company", "NOT_EVALUATED"), ("zero_errors", "NOT_EVALUATED"), ("small_denominator", "NOT_EVALUATED")])
+    ("one_company", "NOT_EVALUATED"), ("zero_errors", "NOT_EVALUATED"), ("zero_errors_locked_deff", "PASS"),
+    ("zero_errors_one_company", "NOT_EVALUATED"), ("small_denominator", "NOT_EVALUATED")])
 def test_native_confidence_uses_company_clusters_and_locked_precision_requirements(change, expected):
     inputs, records = _precision_case()
     if change == "errors":
@@ -176,12 +180,31 @@ def test_native_confidence_uses_company_clusters_and_locked_precision_requiremen
     elif change == "one_company":
         for row in records:
             row["company_id"] = "same"
-    elif change == "zero_errors":
+    elif change.startswith("zero_errors"):
         for row in records:
             row["numerator"] = 0
+        if change == "zero_errors_locked_deff":
+            # V8-021: zero events on 600k slots with a locked DEFF is bounded, not unscored.
+            inputs["plan"]["native_diacritics"]["design_effect"] = 4.0
+        elif change == "zero_errors_one_company":
+            inputs["plan"]["native_diacritics"]["design_effect"] = 4.0
+            for row in records:
+                row["company_id"] = "same"
     elif change == "small_denominator":
         inputs["plan"]["native_diacritics"]["minimum_denominator"] = 1000000
-    assert native._confidence(inputs, records)["status"] == expected
+    result = native._confidence(inputs, records)
+    assert result["status"] == expected
+    if change == "zero_errors":
+        assert result["reason"] == "LOCKED_DESIGN_EFFECT_REQUIRED"
+    if change == "zero_errors_locked_deff":
+        interval = result["marginal_confidence"]["error_rate_ci_unadjusted"]
+        assert interval["method"] == "clopper_pearson_zero_event" and interval["effective_trials"] == 150000
+
+
+def test_native_confidence_uses_the_exact_bound_as_a_floor_for_few_clusters():
+    inputs, records = _precision_case()
+    marginal = native._confidence(inputs, records)["marginal_confidence"]
+    assert marginal["error_rate_ci_unadjusted"]["upper"] >= marginal["exact_upper_bound"] > 0
 
 
 def test_runtime_cli_records_identity_without_approving_quality_and_refuses_overwrite(tmp_path, reader_hash):

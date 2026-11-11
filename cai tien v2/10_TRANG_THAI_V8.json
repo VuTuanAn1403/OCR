@@ -1,0 +1,890 @@
+{
+  "schema_version": "ocr-v8-knowledge-map-v1",
+  "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
+  "pipeline_version": "7.0.0",
+  "verified_head": "883769bee9d77d756582f2b9acc4910b01f82aef",
+  "last_verified": "2026-11-11",
+  "verified_scope": "HEAD 883769b (chỉ khác 2af5454 ở tài liệu, registry, khóa GT, scripts/, benchmark/ và test; không đổi src/, config, model). Hồi quy CPU tại 883769b: 2648 passed, 1 skipped; cổng dấu đếm DSER_strict; khóa đo v7 LOCKED. Detector production PP-OCRv6 là ngoại lệ chưa qua GT. Khóa hiện hành BASELINE-V8-20261109-003 (fingerprint khớp HEAD); khóa 002 (PP-OCRv4) dùng cho V8-006. Quality = NOT_EVALUATED.",
+  "sources": [
+    {
+      "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
+      "sha256": "72f712a96e770fc7f0f5f8f3db82dee47bbad62538e3f46c41d1fa75ef16e30b",
+      "git_preserved": {
+        "commit": "08f7602ea8bd7fa4db0775924f47ac9960306e58"
+      }
+    },
+    {
+      "path": "cai tien v2/Ke_hoach_ky_thuat_nang_cap_OCR_pdf_Benchmark_First.docx",
+      "sha256": "a76b6600742c10ccc0608f3bb72ba22c444b090fd7e0f3abdc788eb19a8de7df",
+      "git_preserved": {
+        "commit": "08f7602ea8bd7fa4db0775924f47ac9960306e58"
+      }
+    },
+    {
+      "path": "cai tien v2/tai lieu diem yeu.md",
+      "sha256": "85c0dfc4e385b2642a2ce4c770585ef2e1fe9cf9ffa8606fd6de792bf2fbe23f",
+      "git_preserved": {
+        "commit": "08f7602ea8bd7fa4db0775924f47ac9960306e58"
+      }
+    }
+  ],
+  "layers": [
+    {
+      "id": "L0",
+      "name": "PDF, render, text layer",
+      "capability": "IMPLEMENTED",
+      "quality": "NOT_EVALUATED",
+      "phase": "P2",
+      "backlog": [
+        "V8-011",
+        "V8-050"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_pdf_io/pdf_renderer.py",
+          "symbol": "PDFRenderer",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_pdf_io/native_text_extractor.py",
+          "symbol": "NativeTextExtractor",
+          "label": "VERIFIED"
+        }
+      ]
+    },
+    {
+      "id": "L1",
+      "name": "Ảnh trang và tiền xử lý",
+      "capability": "IMPLEMENTED",
+      "quality": "NOT_EVALUATED",
+      "phase": "P2",
+      "backlog": [
+        "V8-050"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_pdf_io/scan_image.py",
+          "symbol": "acquire_page_image",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_recognition/orientation.py",
+          "symbol": "orientation_candidate_score",
+          "label": "VERIFIED"
+        }
+      ]
+    },
+    {
+      "id": "L2",
+      "name": "Phát hiện dòng chữ (PP-OCRv6_medium_det ONNX DB từ 09/11)",
+      "capability": "IMPLEMENTED",
+      "quality": "NOT_EVALUATED",
+      "phase": "P3",
+      "backlog": [
+        "V8-060"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_recognition/text_detector.py",
+          "symbol": "ONNXTextDetector",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_contracts/text_detection.py",
+          "symbol": "validate_snapshot",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "models/v62/runtime-models.json",
+          "symbol": "PP-OCRv6_medium_det",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/compare_detector_snapshots.py",
+          "symbol": "compare_page",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "Ngoại lệ do người dùng quyết ngày 09/11: production thay PP-OCRv4 bằng PP-OCRv6_medium_det (BGR, threshold 0.2/0.45) khi chưa so trên GT, trái nguyên tắc challenger của 00/03. Khóa 002 và V8-006 là v4; khóa 003 (fingerprint extraction ccdbe84a3691d645) là v6. EXP-V8-DET-20261109-002: 9/9 PDF, 938 trang; đồng thuận IoU 0,811; so text layer chưa xác minh (653 trang) v6 Hmean 0,838, v4 0,825; AAA hết arena ONNX dưới v6 ở 1/2 lần chạy. INCONCLUSIVE vì chưa có GT detection."
+    },
+    {
+      "id": "L3",
+      "name": "Nhận dạng chữ (VietOCR) và retry dấu/token ngắn",
+      "capability": "IMPLEMENTED",
+      "quality": "NOT_EVALUATED",
+      "phase": "P4",
+      "backlog": [
+        "V8-065",
+        "V8-030"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_recognition/vietnamese_seq2seq_engine.py",
+          "symbol": "VietnameseSeq2SeqEngine",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_recognition/diacritic_retry.py",
+          "symbol": "retry_diacritic_blocks",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "Retry dấu hỗ trợ extra_phrases từ từ điển keyword hoặc cấu hình (V8-030)."
+    },
+    {
+      "id": "L4",
+      "name": "Layout (Docling Heron RT-DETR)",
+      "capability": "IMPLEMENTED",
+      "quality": "NOT_EVALUATED",
+      "phase": "P5",
+      "backlog": [
+        "V8-070"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_layout/torch_layout.py",
+          "symbol": "TorchLayout",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_layout/dla_engine.py",
+          "symbol": "HeuristicLayoutClassifier",
+          "label": "VERIFIED"
+        }
+      ]
+    },
+    {
+      "id": "L5",
+      "name": "Thứ tự đọc, cột, header/footer",
+      "capability": "IMPLEMENTED",
+      "quality": "NOT_EVALUATED",
+      "phase": "P5",
+      "backlog": [
+        "V8-071"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_document/reading_order_graph.py",
+          "symbol": "solve_order",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_document/region_tree.py",
+          "symbol": "infer_region_tree",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_document/column_continuity.py",
+          "symbol": "join_column_continuations",
+          "label": "VERIFIED"
+        }
+      ]
+    },
+    {
+      "id": "L6",
+      "name": "Cấu trúc: bảng, công thức, OCR bridge (Docling)",
+      "capability": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "phase": "P6",
+      "backlog": [
+        "V8-080",
+        "V8-085"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_structure/docling_client.py",
+          "symbol": "DoclingStructureExtractor",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_document/auto_table_stitch.py",
+          "symbol": "build_auto_stitches",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "Ownership bảng còn mở (DC-01, TAB_05); nối bảng tự động vẫn cần review."
+    },
+    {
+      "id": "L7",
+      "name": "Hậu xử lý: Unicode NFC, dấu, numeric guard",
+      "capability": "IMPLEMENTED",
+      "quality": "NOT_EVALUATED",
+      "phase": "P8",
+      "backlog": [
+        "V8-020",
+        "V8-033"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_text/unicode_normalizer.py",
+          "symbol": "UnicodeNormalizer",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_text/numeric_guard.py",
+          "symbol": "protected_numeric_spans",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_text/vietnamese_diacritics.py",
+          "symbol": "diacritic_suspicions",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "V8-033 sửa 09/11: luật 'cổ ông' chỉ viết lại 'cổ ông'/'CỔ ÔNG', giữ danh xưng 'Cổ Ông'; replay V8-006: 0 dòng đổi; đổi OCR identity."
+    },
+    {
+      "id": "L8",
+      "name": "Đếm keyword literal, alias, pending",
+      "capability": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "phase": "P8",
+      "backlog": [
+        "V8-031",
+        "V8-032",
+        "V8-100"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_keywords/counter.py",
+          "label": "VERIFIED",
+          "symbol": "KeywordCounter"
+        },
+        {
+          "path": "src/ocr_keywords/counter.py",
+          "label": "VERIFIED",
+          "symbol": "resolve_literal_v2"
+        },
+        {
+          "path": "src/ocr_keywords/alias_map.py",
+          "label": "VERIFIED",
+          "symbol": "find_alias_candidates"
+        },
+        {
+          "path": "src/ocr_keywords/alias_map.py",
+          "label": "VERIFIED",
+          "symbol": "find_single_word_variants"
+        },
+        {
+          "path": "scripts/compare_keyword_policies.py",
+          "label": "VERIFIED",
+          "symbol": "compare_text"
+        }
+      ],
+      "note": "Sản phẩm: literal_v1 (chuỗi con). Challenger literal_v2 (ranh giới từ) ngoài CLI; V8-006: 164 so với 154 (B2B/B2C trong B2B2C). Keyword một từ sai dấu vào single_word_variants, không cộng."
+    },
+    {
+      "id": "L9",
+      "name": "Export, Excel, scheduler, identity",
+      "capability": "IMPLEMENTED",
+      "quality": "NOT_EVALUATED",
+      "phase": "P9",
+      "backlog": [
+        "V8-120",
+        "V8-130"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_document/export.py",
+          "symbol": "DocumentExporter",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_reporting/workbooks.py",
+          "symbol": "export_document",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_pipeline/scheduler.py",
+          "symbol": "run_document",
+          "label": "VERIFIED"
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "G01",
+      "title": "Benchmark framework thực thi",
+      "status": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "qa_ref": [
+        "QA-G03",
+        "QA-G04"
+      ],
+      "backlog": [
+        "V8-001",
+        "V8-006",
+        "V8-040",
+        "V8-041",
+        "V8-042"
+      ],
+      "evidence": [
+        {
+          "path": "benchmark/scientific_evaluation/release_gate.py",
+          "symbol": "run_gate",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/qa/paired_effects.py",
+          "symbol": "summarize",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/qa/report_view.py",
+          "symbol": "write_html",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/scientific_evaluation/matrix_runner.py",
+          "symbol": "MATRIX",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/lock_baseline.py",
+          "symbol": "build_lock",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/challengers/experiment.py",
+          "label": "VERIFIED",
+          "symbol": "validate_manifest"
+        },
+        {
+          "path": "benchmark/challengers/canonical.py",
+          "label": "VERIFIED",
+          "symbol": "validate_prediction"
+        },
+        {
+          "path": "benchmark/challengers/importlinter.toml",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/product_run.py",
+          "symbol": "run_product",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "Có baseline/candidate, fix/harm, HTML report, khóa BASELINE-V8-20261109-002, experiment_id, manifest, output canonical, contract challengers/v8-runners; chưa có adapter tầng."
+    },
+    {
+      "id": "G02",
+      "title": "Ground Truth và annotation",
+      "status": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "qa_ref": [
+        "QA-G01"
+      ],
+      "backlog": [
+        "V8-010",
+        "V8-011",
+        "V8-012",
+        "V8-013",
+        "V8-150"
+      ],
+      "evidence": [
+        {
+          "path": "benchmark/ground_truth_tools/human_annotations.py",
+          "symbol": "seal_submissions",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/ground_truth/clw_page_0001.txt",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/inventory_diacritic_slots.py",
+          "symbol": "count_slots",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/ground_truth_tools/synthetic_diacritics.py",
+          "symbol": "build",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/lock_text_layer_procedure.py",
+          "symbol": "build_lock",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/screen_text_layer.py",
+          "symbol": "seal",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/ground_truth_tools/text_layer_reference.py",
+          "symbol": "mark_visibility",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/label_structured_gt.py",
+          "symbol": "export",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "Có schema, CLI intake/seal và GT tổng hợp chỉ cho stress test (V8-010); chưa có GT độc lập cho 9 PDF; nhãn 0/38, keyword 0/12, L5 0/13, công thức 0/3; công cụ gán nhãn trực quan V8-150 có từ 09/11, chưa có nhãn thật. 09/11: nguồn (b) và người duyệt đã chọn (V8-013); quy trình text layer LOCKED v1, 9 PDF là development, chưa trang nào được xác minh nên chưa là GT. 09/11 đêm: có phiếu sàng lọc, phân xử mù A/B và lọc glyph hiển thị cho text layer (protocol §7.5)."
+    },
+    {
+      "id": "G03",
+      "title": "Layout intelligence và reading order",
+      "status": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "qa_ref": [
+        "QA-G05"
+      ],
+      "backlog": [
+        "V8-070",
+        "V8-071"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_document/region_tree.py",
+          "symbol": "infer_region_tree",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_document/document_furniture.py",
+          "symbol": "DocumentFurnitureResolver",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_document/figures.py",
+          "symbol": "link_table_captions",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "Heuristic gutter/cột/header-footer/caption đã có; chưa đánh giá trên GT; chưa có Document Structure Graph tổng quát."
+    },
+    {
+      "id": "G04",
+      "title": "Tái tạo bảng",
+      "status": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "qa_ref": [
+        "QA-G08"
+      ],
+      "backlog": [
+        "V8-080"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_contracts/table.py",
+          "symbol": "TableCell",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_document/table_stitch.py",
+          "symbol": "project_table",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_structure/ocr_bridge.py",
+          "symbol": "ocr_bridge",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "Có span, stitch, hierarchy và kiểm tài chính; ownership và nối bảng tự động còn review."
+    },
+    {
+      "id": "G05",
+      "title": "VLM và Hybrid Document AI",
+      "status": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "qa_ref": [
+        "QA-G08"
+      ],
+      "backlog": [
+        "V8-090",
+        "V8-095"
+      ],
+      "evidence": [
+        {
+          "path": "benchmark/challengers/vlm/adapter.py",
+          "symbol": "run",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "10/11: adapter VLM challenger, chọn trang theo chẩn đoán và cổng catalog (V8-090); chưa ghim model nào nên chưa chạy. Production không có đường gọi VLM; PaddleOCR-VL-1.6 trước đây chỉ ở Doi_Chieu/ (Git bỏ qua)."
+    },
+    {
+      "id": "G06",
+      "title": "Error taxonomy và registry",
+      "status": "IMPLEMENTED",
+      "quality": "NOT_EVALUATED",
+      "qa_ref": [
+        "QA-G02"
+      ],
+      "backlog": [
+        "V8-110"
+      ],
+      "evidence": [
+        {
+          "path": "benchmark/qa/error_registry.py",
+          "symbol": "ERROR_CODES",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "docs/quality_assurance/ERROR_TAXONOMY.md",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "10 họ / 14 mã (E01-PDF..E10-RUNTIME); bảng ánh xạ sang E01-E13 của v8 có trong ERROR_TAXONOMY.md (V8-110), không đổi mã; mới có adapter review."
+    },
+    {
+      "id": "G07",
+      "title": "Thống kê đánh giá",
+      "status": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "qa_ref": [
+        "QA-G04"
+      ],
+      "backlog": [
+        "V8-021",
+        "V8-022"
+      ],
+      "evidence": [
+        {
+          "path": "benchmark/scientific_evaluation/cluster_statistics.py",
+          "label": "VERIFIED",
+          "symbol": "company_cluster_bootstrap"
+        },
+        {
+          "path": "benchmark/scientific_evaluation/stratified_scorecard.py",
+          "label": "VERIFIED",
+          "symbol": "_error_rate_interval"
+        },
+        {
+          "path": "benchmark/scientific_evaluation/exact_bounds.py",
+          "label": "VERIFIED",
+          "symbol": "clopper_pearson_upper"
+        },
+        {
+          "path": "benchmark/scientific_evaluation/exact_bounds.py",
+          "label": "VERIFIED",
+          "symbol": "upper_bound_gate"
+        }
+      ],
+      "note": "Bootstrap cụm công ty, Holm, noninferiority đã có. Từ 09/11 (V8-021/022): 0 lỗi dùng cận Clopper-Pearson trên N_eff khi design effect đã khóa; cổng dấu OCR dùng cận trên, đếm DSER_strict từ 10/11. Chưa có rho."
+    },
+    {
+      "id": "G08",
+      "title": "Vòng đời model và registry",
+      "status": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "qa_ref": [],
+      "backlog": [
+        "V8-043",
+        "V8-160"
+      ],
+      "evidence": [
+        {
+          "path": "models/v62/runtime-models.json",
+          "symbol": "sha256",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_runtime/model_registry.py",
+          "symbol": "validate_registry",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/challengers/catalog.py",
+          "symbol": "download_allowed",
+          "label": "VERIFIED"
+        }
+      ],
+      "searched": "grep -c '\"license\"' models/v62/runtime-models.json => 1 (chỉ text_detector, 09/11)",
+      "note": "Baseline có sha256 và revision HF; từ 09/11 riêng text_detector có source/revision/licence, các model khác chưa có licence/URL/VRAM. Challenger: model_catalog.json, cổng tải cần licence VERIFIED, revision và sha weights."
+    },
+    {
+      "id": "G09",
+      "title": "Observability và hiệu năng",
+      "status": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "qa_ref": [
+        "QA-G07"
+      ],
+      "backlog": [
+        "V8-120"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_runtime/structured_logging.py",
+          "symbol": "JsonFormatter",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/scientific_evaluation/measure_operations.py",
+          "symbol": "measure",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/summarize_batch_operations.py",
+          "symbol": "build",
+          "label": "VERIFIED"
+        }
+      ],
+      "note": "Log JSON theo run/doc/page/stage và đo RSS/VRAM đỉnh; chưa có dashboard. Soak 938 trang khóa 003 ngày 10/11 có latency, VRAM, 2 lần chạy lại đã phục hồi (V8-120)."
+    },
+    {
+      "id": "G10",
+      "title": "Tái tạo tài liệu và export",
+      "status": "PARTIAL",
+      "quality": "NOT_EVALUATED",
+      "qa_ref": [
+        "QA-G08"
+      ],
+      "backlog": [
+        "V8-130"
+      ],
+      "evidence": [
+        {
+          "path": "src/ocr_document/export.py",
+          "symbol": "DocumentExporter",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_document/contract_schema.py",
+          "symbol": "DocumentContract",
+          "label": "VERIFIED"
+        }
+      ],
+      "searched": "git grep -nil docx -- src => 0 kết quả",
+      "note": "Có MD/TXT/JSON, Excel keyword; DOCX/XLSX giữ bảng là công cụ CPU (V8-130), chưa vào output sản phẩm."
+    }
+  ],
+  "diacritic_gate": {
+    "target": "99,99%",
+    "status": "NOT_EVALUATED",
+    "blocker": "Chưa có GT độc lập: cần N_eff >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788. Nguồn (b): quy trình LOCKED v1 (GROUND_TRUTH_PROTOCOL §7); 9 PDF inputs là development, 345.647 slot chưa xác minh. Công cụ sàng lọc, đo ghép bbox, phân xử và rho_U đã có (protocol §7.5). 7 PDF dev sàng lọc ACCEPTED 10/11 (kiểm lại mù từ 17/11); dev theo khóa v6 (v7 sửa khung phiếu), phân xử 5.021/9.733: 14.274/346.402 bảo thủ, AAA đủ 3,7%, rho_U 0,026, OCR còn xa 99,99%; holdout PDF mới.",
+    "candidate_text_layer_slots": {
+      "value": 345687,
+      "scope": "scripts/inventory_text_layers.py trên 9 PDF inputs/ ngày 2026-11-09 tại 2af5454: 720/938 trang CANDIDATE; ứng viên chưa xác minh, không phải GT"
+    },
+    "required_slots_zero_errors_95": 29956,
+    "available_slots_counted": {
+      "value": 1788,
+      "scope": "benchmark/ground_truth/clw_page_{0001,0003,0005,0011}.txt, đếm theo slot DER_VN_v1 ngày 2026-11-08 (ref_slots của DSER_strict cũng 1.788, đếm lại 10/11); CLW không thuộc 9 PDF đầu vào; custody GT chưa rõ"
+    },
+    "evidence": [
+      {
+        "path": "benchmark/scientific_evaluation/NATIVE_DIACRITIC_RELEASE_V7.md",
+        "label": "VERIFIED"
+      },
+      {
+        "path": "benchmark/scientific_evaluation/diacritic_acceptance.py",
+        "label": "VERIFIED",
+        "symbol": "evaluate_diacritic_acceptance"
+      },
+      {
+        "path": "benchmark/scientific_evaluation/release_gate.py",
+        "label": "VERIFIED",
+        "symbol": "_ocr_diacritic_bound_gate"
+      },
+      {
+        "path": "benchmark/scientific_evaluation/exact_bounds.py",
+        "label": "VERIFIED",
+        "symbol": "minimum_trials"
+      },
+      {
+        "path": "benchmark/scientific_evaluation/ocr_metric.py",
+        "label": "VERIFIED",
+        "symbol": "compute_dser_strict_detailed"
+      },
+      {
+        "path": "scripts/measure_text_layer_diacritics.py",
+        "symbol": "match_units",
+        "label": "VERIFIED"
+      },
+      {
+        "path": "benchmark/scientific_evaluation/cluster_correlation.py",
+        "symbol": "page_icc",
+        "label": "VERIFIED"
+      }
+    ]
+  },
+  "phases": [
+    {
+      "id": "R1",
+      "title": "Tài liệu nền, bản đồ kiến thức, skill",
+      "status": "IN_PROGRESS",
+      "exit_gate": "check_knowledge_map exit 0; hồi quy không có lỗi mới",
+      "backlog": [
+        "V8-002",
+        "V8-003",
+        "V8-004",
+        "V8-005",
+        "V8-170"
+      ]
+    },
+    {
+      "id": "P0",
+      "title": "Khóa baseline",
+      "status": "DONE",
+      "exit_gate": "BASELINE_LOCK_REPORT có đủ identity",
+      "backlog": [
+        "V8-001",
+        "V8-006"
+      ]
+    },
+    {
+      "id": "P1",
+      "title": "Ground Truth và protocol",
+      "status": "IN_PROGRESS",
+      "exit_gate": "Protocol LOCKED, GT độc lập đủ cỡ mẫu",
+      "backlog": [
+        "V8-010",
+        "V8-011",
+        "V8-012",
+        "V8-013"
+      ]
+    },
+    {
+      "id": "P2",
+      "title": "Tiền xử lý ảnh IMG-01..06",
+      "status": "IN_PROGRESS",
+      "exit_gate": "Paired fix/harm từng biến",
+      "backlog": [
+        "V8-050"
+      ]
+    },
+    {
+      "id": "P3",
+      "title": "Phát hiện chữ DET-01..07",
+      "status": "IN_PROGRESS",
+      "exit_gate": "TP/FP/FN cùng snapshot",
+      "backlog": [
+        "V8-060"
+      ]
+    },
+    {
+      "id": "P4",
+      "title": "Nhận dạng chữ A/B/C/D",
+      "status": "IN_PROGRESS",
+      "exit_gate": "Tách hiệu ứng detector và recognizer",
+      "backlog": [
+        "V8-065",
+        "V8-030"
+      ]
+    },
+    {
+      "id": "P5",
+      "title": "Layout và thứ tự đọc",
+      "status": "IN_PROGRESS",
+      "exit_gate": "Class/region/order scorecard trên GT",
+      "backlog": [
+        "V8-070",
+        "V8-071"
+      ]
+    },
+    {
+      "id": "P6",
+      "title": "Bảng và công thức",
+      "status": "IN_PROGRESS",
+      "exit_gate": "TEDS, numeric cell, ownership",
+      "backlog": [
+        "V8-080",
+        "V8-085"
+      ]
+    },
+    {
+      "id": "P7",
+      "title": "VLM fallback và parser đối chứng",
+      "status": "IN_PROGRESS",
+      "exit_gate": "Identity, tài nguyên, GT",
+      "backlog": [
+        "V8-090",
+        "V8-095"
+      ]
+    },
+    {
+      "id": "P8",
+      "title": "Hậu xử lý, dấu, keyword",
+      "status": "IN_PROGRESS",
+      "exit_gate": "Cổng dấu 99,99% và 0 thiếu/thừa occurrence",
+      "backlog": [
+        "V8-020",
+        "V8-021",
+        "V8-022",
+        "V8-031",
+        "V8-032",
+        "V8-100"
+      ]
+    },
+    {
+      "id": "P9",
+      "title": "End-to-end và hồ sơ quyết định",
+      "status": "TODO",
+      "exit_gate": "Quyết định thủ công PROMOTE/KEEP/REJECT/INCONCLUSIVE",
+      "backlog": [
+        "V8-140",
+        "V8-160"
+      ]
+    }
+  ],
+  "exports": [
+    {
+      "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
+      "sha256": "a6ff6229b649250cdc60966317809af35ce72770488cc7286cece7b01ce074f1",
+      "sources": [
+        {
+          "path": "cai tien v2/00_README.md",
+          "sha256": "8ac2f03a1570ae9e8a9e42b9534a00ba480270466003ca21507384be6f2b7bd5"
+        },
+        {
+          "path": "cai tien v2/01_RADAR_CONG_NGHE_THEO_TANG.md",
+          "sha256": "1ea0724451189b891138a69242896576895fdaef6bafb093230848b900d7a946"
+        },
+        {
+          "path": "cai tien v2/02_KIEM_TOAN_KHOANG_TRONG.md",
+          "sha256": "70f71da9d6d2632d82348d40d0bc36560ac24a28352a68601b150fe3dd92a85d"
+        },
+        {
+          "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
+          "sha256": "499680575557c8c5ed4b223307c2dc0ae23af40bedc6cf2dbfcc5bc83b9e11cd"
+        },
+        {
+          "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
+          "sha256": "8b76e8057833c80debb2f0a16b21a6c0bb23187a34fc671d582a50704496b3f1"
+        },
+        {
+          "path": "cai tien v2/05_HOP_DONG_BENCHMARK_ADAPTER.md",
+          "sha256": "e00410afa01640567d5693e3a2165be88467cb6ec33570609ff7700734bd4f44"
+        },
+        {
+          "path": "cai tien v2/07_PHUONG_PHAP_DU_AN_LON_AI.md",
+          "sha256": "c4c2811866de0d64f11cbf666faf0d5675dcf14fd93adb45021c8c242b59032f"
+        },
+        {
+          "path": "cai tien v2/08_TOI_UU_TOKEN.md",
+          "sha256": "4ba188c77ea4545cb12461bf2ea72af9d763550770a23a2407a35665a0b603d6"
+        },
+        {
+          "path": "cai tien v2/09_LUU_TRU_CAI_TIEN_V7.md",
+          "sha256": "35ca3cbc04d47975c5fd01f3b2575576ef61bca29d283b8714a8aa8632c59598"
+        },
+        {
+          "path": "cai tien v2/11_DAC_TA_THU_TU_DOC_TU_NHIEN.md",
+          "sha256": "6cf0607ad277e251293707f975337cbff4112ac24a38d1cd0f1cb12d7383e7c8"
+        },
+        {
+          "path": "cai tien v2/12_HUONG_VA_XOAY_TRANG_1UP_2UP.md",
+          "sha256": "8a659efe8cfc25a57cd75786d322d89c4d250d5ce2f6b6370a799cad980d1876"
+        },
+        {
+          "path": "cai tien v2/13_DAC_TA_CHU_THIEU_THUA_SAI.md",
+          "sha256": "54a21147af044601fe41180b96eb05f3e2eb1843cc3bc7fca0b4bd9a6a5f5ce9"
+        },
+        {
+          "path": "cai tien v2/06_BACKLOG_V8.csv",
+          "sha256": "c16ebe8d2c63a526fcfe90402398e27f4dcba79511044917a7d7070aa2d90fd5"
+        }
+      ]
+    }
+  ]
+}

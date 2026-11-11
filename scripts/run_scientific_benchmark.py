@@ -451,6 +451,8 @@ def evaluate_document_scientific(
             "micro_cer": primary_aggregate["micro_cer"],
             "micro_wer": primary_aggregate["micro_wer"],
             "micro_der": primary_aggregate["micro_der"],
+            # V8-020: DSER_strict on the same alignment as DER_VN_v1.
+            "micro_dser_strict": primary_aggregate.get("micro_dser_strict"),
             "counts": primary_aggregate["counts"],
             "reading_normalized_v1": secondary_aggregate,
             "mean_cer": mean_cer,

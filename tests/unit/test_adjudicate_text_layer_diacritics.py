@@ -149,3 +149,29 @@ def test_decisions_move_to_a_rebuilt_sheet_only_when_the_items_are_identical(tmp
     decisions.write_text(json.dumps({**record, "a": "other"}, ensure_ascii=False) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="other strings or another crop"):
         migrate.migrate(tmp_path / "old", tmp_path / "new", [decisions])
+
+
+def test_items_say_when_one_side_is_empty_and_show_neutral_context(tmp_path):
+    sheet = adjudicate.build_sheet(_measured(tmp_path), tmp_path / "pdfs", tmp_path / "sheet", "reviewer")
+    key = json.loads((tmp_path / "sheet" / "ab_key.json").read_text(encoding="utf-8"))["items"]
+    kinds = {key[item["item_id"]]["text_layer"]: item["kind"] for item in sheet["items"]}
+    assert kinds == {"trị": "SUBSTITUTION", "Báo cáo năm": "ONE_SIDE_EMPTY"}
+    trị = next(item for item in sheet["items"] if key[item["item_id"]]["text_layer"] == "trị")
+    assert trị["context"] == ["Hội đồng quản", ""]  # equal tokens only, so no side is revealed
+    assert adjudicate.context("a b c d e", "a b X c d e", {"ref_tokens": [2, 2]}) == ("a b", "c d e")
+    # a neighbouring word that differs (y vs Y) ends the context instead of revealing a side
+    assert adjudicate.context("a y b c d", "a Y b C d", {"ref_tokens": [3, 4]}) == ("b", "d")
+
+
+def test_migration_can_leave_one_kind_to_be_decided_again(tmp_path):
+    from scripts import migrate_adjudication_decisions as migrate
+    measured = _measured(tmp_path, partial=True)
+    adjudicate.build_sheet(measured, tmp_path / "pdfs", tmp_path / "old", "reviewer")
+    adjudicate.build_sheet(measured, tmp_path / "pdfs", tmp_path / "new", "reviewer")
+    sheet = json.loads((tmp_path / "old" / "sheet.json").read_text(encoding="utf-8"))
+    key = json.loads((tmp_path / "old" / "ab_key.json").read_text(encoding="utf-8"))["items"]
+    path = tmp_path / "all.jsonl"
+    path.write_text("".join(json.dumps(_answer(sheet, key, item, "TEXT_LAYER_CORRECT"), ensure_ascii=False) + "\n"
+                            for item in sheet["items"]), encoding="utf-8")
+    result = migrate.migrate(tmp_path / "old", tmp_path / "new", [path], ("ONE_SIDE_EMPTY",))
+    assert len(result["records"]) == 1 and result["skipped_by_kind"] == 1

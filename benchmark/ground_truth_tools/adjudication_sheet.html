@@ -31,6 +31,9 @@
   #status { margin-top:10px; font-weight:600; }
   kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 5px; font-size:12px; }
   .help { color:var(--muted); font-size:13px; }
+  #hint { margin-top:10px; padding:8px 10px; border-left:4px solid var(--accent); background:var(--bg); display:none; }
+  #context { margin-top:8px; color:var(--muted); font-size:18px; }
+  #context b { color:var(--ink); }
 </style>
 </head>
 <body>
@@ -45,6 +48,8 @@
 <main>
   <section>
     <canvas id="crop" width="1000" height="200"></canvas>
+    <div id="context"></div>
+    <div id="hint"></div>
     <div class="pair">
       <div class="choice"><div class="label">A</div><div class="text" id="a"></div></div>
       <div class="choice"><div class="label">B</div><div class="text" id="b"></div></div>
@@ -98,6 +103,16 @@ function render() {
   $("pos").textContent = cursor + 1; $("total").textContent = items.length;
   $("done").textContent = Object.keys(decisions).length;
   $("a").textContent = item.a; $("b").textContent = item.b;
+  const [before, after] = item.context || ["", ""];
+  $("context").innerHTML = "";
+  if (before || after) {
+    const mark = document.createElement("b"); mark.textContent = " [ ? ] ";
+    $("context").append(document.createTextNode("Ngữ cảnh: " + before), mark, document.createTextNode(after));
+  }
+  const hint = item.kind === "ONE_SIDE_EMPTY"
+    ? "Một bên trống, bên kia có chữ. Xem ảnh ở chỗ [ ? ] (giữa hai chữ ngữ cảnh): nếu chữ đó có in ở đó thì chọn bên có chữ; nếu không có thì chọn bên trống. Chỉ chọn \"Cả hai sai\" khi ở chỗ đó in một chữ khác cả hai."
+    : "";
+  $("hint").textContent = hint; $("hint").style.display = hint ? "block" : "none";
   const d = decisions[item.item_id];
   $("status").textContent = d ? "Đã quyết: " + d.choice + (d.corrected_text ? " → " + d.corrected_text : "") : "Chưa quyết";
   const draw = () => {

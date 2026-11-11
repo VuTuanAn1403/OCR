@@ -8,24 +8,19 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì 
 
 - **Sàng lọc:** người dùng sàng lọc 7 PDF development; cả 7 `ACCEPTED` (24.172 slot `MATCH`, 0 `MISMATCH`), seal ở `scratch/v8/screening/sealed/`. Kiểm lại mù 1.552 chữ làm từ 17/11 (`scratch/v8/screening/recheck/`).
 - **Khóa đo (§7.6):**
-  - v2: lần đo đầu tính chữ trong bảng là bị xóa (71.884/78.192 slot), nên bị thay.
-  - v3: ghép với dòng pha A (`text_evidence`) và ghi 7 seal.
-  - v4: mẫu 3.000 mục theo seed (không dùng, vì người duyệt chấm theo thứ tự phiếu).
-  - v5 (hiện hành, `f495a7d2…`): phân xử một phần, mục chưa chấm tính là lỗi.
-- **Đo dev theo v4** (`scratch/v8/v8_011_measurement_dev_003_v4_20261110.json`), trước phân xử:
-  - `DSER_strict` 13.751/345.300: dấu thanh 4.421, đ 601, xóa 7.933;
-  - 3.195 slot xóa do lỗi §4.1;
-  - ρ_U 0,025.
+  - v2→v5: bỏ ghép chỉ item `b` (tính bảng là xóa), ghép dòng pha A và ghi 7 seal, phân xử một phần (mục chưa chấm là lỗi). Chi tiết ở protocol §7.6.
+  - v6 (hiện hành, `5fc27a6f…`): không thêm lựa chọn; phiếu ghi loại mục ("một bên trống") và ngữ cảnh chỉ gồm chữ giống nhau ở cả hai bên.
+- **Đo dev** (`..._dev_003_v6_20261111.json`), trước phân xử: 13.751/345.300 (thanh 4.421, đ 601, xóa 7.933; 3.195 slot xóa do lỗi §4.1).
 - **Phân xử (seal `scratch/v8/adjudication/sealed/v8_011_dev_003_v5_partial_20261111/`):** 3.006/9.733 mục (AAA, AGR 2020 đủ).
   - Khi khác OCR, text layer đúng 88,3%, OCR đúng 0,9%.
   - Đếm bảo thủ 14.301/345.754; AAA 3,7%, AGR 2020 3,1%; ρ_U 0,026. OCR còn rất xa 99,99%.
   - 321 mục "cả hai sai" là chữ OCR chèn thêm mà phiếu hiển thị sai. Độ nhạy: 14.228/345.301. Phải sửa phiếu trước holdout.
-  - Loại lỗi trên AAA và AGR 2020 (`scratch/v8/v8_012_diacritic_confusions_aaa_agr2020_20261111.json`, `scripts/diacritic_confusions.py`): 350/354 lỗi đ là Đ hoa đọc thành D, khoảng 209 lần HĐQT→HDQT, cùng BĐH và ĐHĐCĐ. Mất dấu nặng 260, mất dấu huyền 170, hỏi thành huyền hoặc sắc 260. Đây là mục tiêu cho V8-030 và V8-065.
+  - Loại lỗi AAA+AGR 2020 (`..._v8_012_diacritic_confusions_aaa_agr2020_20261111.json`): 350/354 lỗi đ là Đ hoa→D (HĐQT→HDQT ~209); mất dấu nặng 260, huyền 170; hỏi→huyền/sắc 260.
   - Challenger `benchmark/challengers/acronym_diacritics.py` (V8-030): `DSER_strict` 3.499→3.229 trên AAA và AGR 2020, 226 đơn vị được sửa, 2 bị làm sai (`scratch/v8/v8_030_acronym_challenger_dev_20261111.json`). Đo trên chính dữ liệu dev nên là `INCONCLUSIVE`; cần holdout.
 - **Cổng dấu:** `diacritic_acceptance.py` và `release_gate.py` đếm theo `DSER_strict`.
 - **V8-080:** audit v2 (`..._003_r2_20261110.json`) và phiếu 72 số trong bảng.
 - **`DONE` mới:** V8-150, V8-120, V8-170.
-- **Hồi quy CPU sau khóa v5:** passed (`scratch/runs/20261111-000819-6cbdcf05`); test phân xử, khóa và chuyển quyết định: 24 + 1 passed.
+- **Hồi quy CPU sau khóa v6:** 2.647 passed, 1 skipped (`scratch/runs/20261111-202819-279c30b3`).
 
 ## Phát hiện còn mở
 
@@ -37,7 +32,15 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì 
 
 ## Bước kế tiếp (cần người dùng)
 
-1. Kiểm lại mù sàng lọc từ 17/11. Muốn phân xử thêm thì chấm tiếp phiếu v5 (`..._v5_partial_20261111`, qua server tự lưu) rồi seal lại.
+1. Phiếu phân xử v6: `scratch/v8/adjudication/v8_011_dev_003_v6_20261111/`, mở qua server tự lưu. 2.291 quyết định đã chuyển sang; 715 mục "một bên trống" chấm dưới phiếu cũ cần chấm lại, kèm các mục chưa chấm. Seal bằng `--decisions <phiếu>/autosave/*.decisions.jsonl`. Kiểm lại mù sàng lọc từ 17/11.
 2. Chấm 72 mục phiếu số trong bảng, rồi `build_table_number_review.py seal`.
 3. Gán nhãn GT bằng `label_structured_gt.py` (V8-060/070/071/080); chạy Vintern theo [`vlm/README.md`](../../benchmark/challengers/vlm/README.md).
 4. Quyết định thời điểm sửa lỗi `src/`, và push.
+
+## 11/11 tối — kiểm tra phiên Claude Code
+
+- HEAD `ce4c58a`, hơn ref `origin` cục bộ 9 commit. Claude đang dựng phiếu V8-011 v6 và chuẩn bị chuyển quyết định cũ. Khóa v6 tái lập được. Đo 7 PDF dev trước phân xử cho `DSER_strict` 13.751/345.300. Cổng dấu 99,99% vẫn `NOT_EVALUATED`.
+- Hồi quy của Claude có 2.646 đạt, 1 bỏ qua. Sau sửa chuyển quyết định, nhóm test phân xử có 10 đạt. Bản đồ v8 và diff check qua.
+- Tái hiện `context()` có thể chứa từ đang khác giữa OCR và text layer ở mục bên cạnh. Kiểm tra tính trung lập trước khi dùng phiếu cho holdout.
+  - Đã sửa trước khi khóa v6 lần cuối: ngữ cảnh chỉ lấy chữ nằm trong khối giống nhau và dừng ở chữ lệch đầu tiên (test `test_items_say_when_one_side_is_empty_and_show_neutral_context`).
+- [Nhật ký và bằng chứng](../../scratch/dev_sessions/20261111-project-claude-status/session.md).

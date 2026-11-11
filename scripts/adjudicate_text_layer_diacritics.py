@@ -107,6 +107,47 @@ def segments(reference: str, prediction: str) -> List[Dict]:
     return found
 
 
+CONTEXT_TOKENS = 3
+
+
+def item_kind(segment: Dict) -> str:
+    """INSERTION: only the OCR has words here; DELETION: only the text layer; else SUBSTITUTION.
+
+    The kind is shown without saying which side is OCR: for both INSERTION and DELETION one
+    string is empty and the reviewer is asked whether the other string is printed there.
+    """
+    if not segment["text_layer"] or not segment["ocr"]:
+        return "ONE_SIDE_EMPTY"
+    return "SUBSTITUTION"
+
+
+def context(reference: str, prediction: str, segment: Dict):
+    """Up to three tokens before and after the segment that are equal on both sides.
+
+    Only tokens inside ``equal`` blocks of the same alignment that cut the segments are used,
+    and the context stops at the first token that differs, so it never shows a word that
+    belongs to one side only and cannot reveal which side is OCR.
+    """
+    ref_tokens, pred_tokens = reference.split(), prediction.split()
+    matcher = difflib.SequenceMatcher(a=ref_tokens, b=pred_tokens, autojunk=False)
+    equal = set()
+    for tag, i0, i1, _, _ in matcher.get_opcodes():
+        if tag == "equal":
+            equal.update(range(i0, i1))
+    start, end = segment["ref_tokens"]
+    before = []
+    for index in range(start - 1, max(-1, start - 1 - CONTEXT_TOKENS), -1):
+        if index not in equal:
+            break
+        before.insert(0, ref_tokens[index])
+    after = []
+    for index in range(end, min(len(ref_tokens), end + CONTEXT_TOKENS)):
+        if index not in equal:
+            break
+        after.append(ref_tokens[index])
+    return " ".join(before), " ".join(after)
+
+
 def a_is_text_layer(seed: str, item_id: str) -> bool:
     return int(hashlib.sha256(f"{seed}:adjudicate:{item_id}".encode()).hexdigest()[0], 16) % 2 == 0
 
@@ -201,7 +242,8 @@ def build_sheet(measurement_path: Path, pdf_root: Path, out: Path, reviewer: str
                                     "pdf_sha256": document["pdf_sha256"], "page": unit["page"], **segment}
                     items.append({"item_id": item_id, "page": unit["page"], "pdf": document["pdf"], "image": image_key,
                                   "a": a_text, "b": b_text, "crop_px": list(px), "crop_sha256": sha256_bytes(crop.tobytes()),
-                                  "context_bbox": list(unit["bbox"])})
+                                  "context_bbox": list(unit["bbox"]), "kind": item_kind(segment),
+                                  "context": list(context(unit["reference"], unit["prediction"], segment))})
     pages_public = {name: {k: v for k, v in page.items() if k != "pixels"} for name, page in pages_out.items()}
     sheet_id = sha256_bytes(measurement_bytes)[:16]
     manifest = {"schema_version": SHEET_SCHEMA, "mode": "adjudication", "sheet_id": sheet_id,

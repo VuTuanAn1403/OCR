@@ -185,11 +185,12 @@ Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trư�
 
 `native_diacritic_replay.py` đo luồng native, không phải bộ ghép OCR với text layer. `check_vietnamese_charset.py` kiểm từ điển ký tự của model, không kiểm trang.
 
-### 7.6 Khóa đo v2 đến v5 (LOCKED 10–11/11/2026; v5 hiện hành)
+### 7.6 Khóa đo v2 đến v6 (LOCKED 10–11/11/2026; v6 hiện hành)
 
 Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong khóa v1. Người dùng (VuTuanAn1403) duyệt nguyên bản nháp r2 và khóa chúng trong v2 ngày 10/11/2026, trước mọi kết quả đo. Luồng đo là `text_corrected`.
 
-- **Khóa hiện hành v5:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v5.json`, sha256 `f495a7d24fefc1cad48d988e0899e8e5b20d80d4c73ee347fd7e62fbebe2f37e`. Người duyệt đã chấm 3.006 mục theo thứ tự phiếu, không theo mẫu của v4, và ngày 11/11 chọn seal số này. Khóa v5 cho phép phân xử một phần: mục chưa chấm tính là `UNRESOLVED`, và không có ước lượng cho toàn bộ. Quyết định được chuyển sang phiếu dựng lại bằng `scripts/migrate_adjudication_decisions.py`; công cụ chỉ chuyển khi ảnh cắt, chuỗi A/B và bên A trùng hệt.
+- **Khóa hiện hành v6:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v6.json`, sha256 `5fc27a6f7f43a4e969b95c9b9ea7eba6a6a4ffa97431146ce2e944eee4e9b001`. Khóa không đổi lựa chọn nào. Phiếu phân xử ghi loại mục: `ONE_SIDE_EMPTY` khi một bên trống, kèm hướng dẫn "chữ có in ở chỗ [ ? ] không". Phiếu cũng hiện ngữ cảnh, chỉ gồm chữ giống nhau ở cả hai bên. Quyết định cũ cho mục `ONE_SIDE_EMPTY` không được chuyển sang, vì chúng được đưa ra khi phiếu còn hiển thị sai.
+- **Khóa v5 (đã bị thay):** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v5.json`, sha256 `f495a7d24fefc1cad48d988e0899e8e5b20d80d4c73ee347fd7e62fbebe2f37e`. Người duyệt đã chấm 3.006 mục theo thứ tự phiếu, không theo mẫu của v4, và ngày 11/11 chọn seal số này. Khóa v5 cho phép phân xử một phần: mục chưa chấm tính là `UNRESOLVED`, và không có ước lượng cho toàn bộ. Quyết định được chuyển sang phiếu dựng lại bằng `scripts/migrate_adjudication_decisions.py`; công cụ chỉ chuyển khi ảnh cắt, chuỗi A/B và bên A trùng hệt.
 - **Kết quả phân xử dev (11/11).** Seal: `scratch/v8/adjudication/sealed/v8_011_dev_003_v5_partial_20261111/seal.json`.
   - Mục đã chấm: AAA 1.734/1.734, AGR 2020 783/783, AGR 2022 489/734. Bốn PDF còn lại chưa chấm.
   - Khi OCR khác text layer: text layer đúng 88,3% [87,1; 89,4], OCR đúng 0,9% [0,6; 1,3], cả hai sai 10,8%.

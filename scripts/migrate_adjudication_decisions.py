@@ -33,11 +33,11 @@ def load_sheet(folder: Path):
     return sheet, {item["item_id"]: item for item in sheet["items"]}, key
 
 
-def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path]) -> Dict:
+def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path], skip_kinds=()) -> Dict:
     old_sheet, old_items, old_key = load_sheet(from_sheet)
     new_sheet, new_items, new_key = load_sheet(to_sheet)
     records = read_jsonl(decision_paths)
-    problems, moved = [], []
+    problems, moved, skipped = [], [], 0
     for record in sorted(records, key=lambda r: r["item_id"]):
         item_id = record["item_id"]
         where = f"{item_id}"
@@ -51,6 +51,9 @@ def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path]) -> Dic
         if (old["crop_sha256"], old["a"], old["b"]) != (new["crop_sha256"], new["a"], new["b"]):
             problems.append(f"{where}: crop or strings differ between the sheets")
             continue
+        if new.get("kind") in skip_kinds:  # decided under a display the new sheet replaces; to be re-decided
+            skipped += 1
+            continue
         if old_key[item_id]["A"] != new_key[item_id]["A"]:
             problems.append(f"{where}: side A differs between the sheets")
             continue
@@ -61,7 +64,8 @@ def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path]) -> Dic
                       "migrated_decision_id": record["decision_id"]})
     if problems:
         raise ValueError(f"{len(problems)} decisions cannot move:\n  " + "\n  ".join(problems[:40]))
-    return {"from_sheet": old_sheet["sheet_id"], "to_sheet": new_sheet["sheet_id"], "records": moved}
+    return {"from_sheet": old_sheet["sheet_id"], "to_sheet": new_sheet["sheet_id"], "records": moved,
+            "skipped_by_kind": skipped, "skip_kinds": list(skip_kinds)}
 
 
 def main(argv=None) -> int:
@@ -70,11 +74,14 @@ def main(argv=None) -> int:
     parser.add_argument("--to-sheet", type=Path, required=True)
     parser.add_argument("--decisions", type=Path, nargs="+", required=True)
     parser.add_argument("--out", type=Path, required=True, help="New JSONL (never overwritten)")
+    parser.add_argument("--skip-kind", action="append", default=[],
+                        help="Leave items of this kind on the new sheet undecided, e.g. ONE_SIDE_EMPTY")
     args = parser.parse_args(argv)
-    result = migrate(args.from_sheet, args.to_sheet, args.decisions)
+    result = migrate(args.from_sheet, args.to_sheet, args.decisions, tuple(args.skip_kind))
     data = "".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in result["records"]).encode("utf-8")
     write_new(args.out, data)
-    print(f"{len(result['records'])} decisions moved {result['from_sheet']} -> {result['to_sheet']}: "
+    print(f"{len(result['records'])} decisions moved, {result['skipped_by_kind']} left to re-decide "
+          f"{result['from_sheet']} -> {result['to_sheet']}: "
           f"{args.out} sha256 {sha256_bytes(data)}")
     return 0
 

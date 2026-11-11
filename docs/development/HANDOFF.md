@@ -16,8 +16,8 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì 
   - Khi khác OCR: text layer đúng 82,2%, OCR đúng 6,1%, cả hai sai 11,6%. ASM: text layer dùng `ƣ` thay `ư` (352 mục).
   - Đếm bảo thủ 14.274/346.402 (4,1%); AAA 3,7%, ASM 3,6%; ρ_U 0,026. OCR còn rất xa 99,99%.
   - 464 mục "cả hai sai" là chữ OCR chèn ở đầu/cuối dòng; khung đóng vào chữ bên cạnh nên người duyệt gõ lại chữ đó. Độ nhạy: 14.175/345.779. Khóa v7 đã sửa khung.
-  - Loại lỗi (seal v5) AAA+AGR 2020 (`..._v8_012_diacritic_confusions_aaa_agr2020_20261111.json`): 350/354 lỗi đ là Đ hoa→D (HĐQT→HDQT ~209); mất dấu nặng 260, huyền 170; hỏi→huyền/sắc 260.
-  - Challenger `benchmark/challengers/acronym_diacritics.py` (V8-030): `DSER_strict` 3.499→3.229 trên AAA và AGR 2020, 226 đơn vị được sửa, 2 bị làm sai (`scratch/v8/v8_030_acronym_challenger_dev_20261111.json`). Đo trên chính dữ liệu dev nên là `INCONCLUSIVE`; cần holdout.
+  - Loại lỗi, 4 PDF đủ (`..._v8_012_diacritic_confusions_v6_4pdf_20261112.json`): mất gạch đ 557 (Đ hoa 544), mất nặng 399, hỏi→huyền/sắc 355.
+  - Challenger `acronym_diacritics.py` (V8-030, `..._v8_030_acronym_challenger_v6_by_pdf_20261112.json`): 5.307→4.960, 277 sửa, 4 làm sai (PDF in sẵn "HDQT"). AGR 2022, ASM, BCE chưa dùng khi thiết kế: 2.797→2.720, 51 sửa, 2 sai. Vẫn dev nên `INCONCLUSIVE`; cần holdout.
 - **Cổng dấu:** `diacritic_acceptance.py` và `release_gate.py` đếm theo `DSER_strict`.
 - **V8-080:** audit v2 (`..._003_r2_20261110.json`) và phiếu 72 số trong bảng.
 - **`DONE` mới:** V8-150, V8-120, V8-170.
@@ -28,7 +28,7 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì 
 - **Phiếu mất dữ liệu:** khung trình duyệt của app giữ localStorage trong RAM, nên đã mất 71 quyết định bảng và khoảng nửa phiếu phân xử đầy đủ. Từ nay chỉ mở phiếu qua `scripts/serve_review_sheets.py` (cấu hình `screening-sheets`, `table-review`, `adjudication-sheets`); mọi quyết định được ghi ra `<phiếu>/autosave/`.
 - **Đặc tả 13 §4.1:** 3.652 khối chữ trong ảnh vắng khỏi `extraction.json`.
 - **Bảng heuristic:** `src/ocr_structure/document_layout_engine.py:661` gán `bbox=r[0].bbox` cho cả hàng (315/513 ô có số). Cùng hàm sửa "12…HDPE" thành "D…" (646–647) và bỏ ô đầu "0"/"-" (651–652).
-- **Lỗi nhỏ:** `validation.py` import lười `benchmark.accuracy_first`; `runtime-models.json` ghi nhầm `V8-065`.
+- **Lỗi nhỏ:** `validation.py` import lười `benchmark.accuracy_first`; `runtime-models.json` ghi nhầm `V8-065` (manifest model: để nguyên).
 - Sửa các lỗi `src/` ở trên là đổi identity, cần khóa baseline mới.
 
 ## Bước kế tiếp (cần người dùng)

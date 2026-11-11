@@ -35,29 +35,31 @@ SCHEMA = "ocr-v8-acronym-challenger-report-v1"
 def evaluate(seal_path: Path) -> Dict:
     seal, pdfs, rows = adjudicated_units(seal_path)
     totals = Counter()
+    by_pdf: Dict[str, Counter] = {}
     edits = Counter()
     examples = []
-    for _, unit, reference in rows:
+    for document, unit, reference in rows:
         restored, made = challenger.restore(unit["prediction"])
         before = compute_dser_strict_detailed(reference, unit["prediction"])
         after = compute_dser_strict_detailed(reference, restored) if made else before
-        totals["units"] += 1
-        totals["ref_slots"] += before["ref_slots"]
-        totals["errors_before"] += before["dser_errors"]
-        totals["errors_after"] += after["dser_errors"]
+        pdf = by_pdf.setdefault(document["pdf"], Counter())
+        for count in (totals, pdf):
+            count["units"] += 1
+            count["ref_slots"] += before["ref_slots"]
+            count["errors_before"] += before["dser_errors"]
+            count["errors_after"] += after["dser_errors"]
+            count["units_edited"] += bool(made)
+            count["units_fixed"] += after["dser_errors"] < before["dser_errors"]
+            count["units_harmed"] += after["dser_errors"] > before["dser_errors"]
         if made:
-            totals["units_edited"] += 1
             edits.update(f"{e['from']} -> {e['to']}" for e in made)
-        if after["dser_errors"] < before["dser_errors"]:
-            totals["units_fixed"] += 1
-        elif after["dser_errors"] > before["dser_errors"]:
-            totals["units_harmed"] += 1
+        if after["dser_errors"] > before["dser_errors"]:
             if len(examples) < 10:
                 examples.append({"reference": reference[:120], "prediction": unit["prediction"][:120], "restored": restored[:120]})
     return {"schema_version": SCHEMA, "method": challenger.METHOD, "acronyms": list(challenger.ACRONYMS),
             "seal": seal_path.as_posix(), "pdfs": pdfs, "partition": "development",
             "scope": "fully adjudicated development PDFs; the target was found on this data",
-            "totals": dict(totals), "edits": edits.most_common(),
+            "totals": dict(totals), "by_pdf": {name: dict(count) for name, count in by_pdf.items()}, "edits": edits.most_common(),
             "harm_examples": examples, "quality_acceptance": "NOT_EVALUATED", "decision_options": ["INCONCLUSIVE"]}
 
 

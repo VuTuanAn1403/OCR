@@ -11,11 +11,11 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì 
   - v2→v5: bỏ ghép chỉ item `b` (tính bảng là xóa), ghép dòng pha A và ghi 7 seal, phân xử một phần (mục chưa chấm là lỗi). Chi tiết ở protocol §7.6.
   - v6 (hiện hành, `5fc27a6f…`): không thêm lựa chọn; phiếu ghi loại mục ("một bên trống") và ngữ cảnh chỉ gồm chữ giống nhau ở cả hai bên.
 - **Đo dev** (`..._dev_003_v6_20261111.json`), trước phân xử: 13.751/345.300 (thanh 4.421, đ 601, xóa 7.933; 3.195 slot xóa do lỗi §4.1).
-- **Phân xử (seal `scratch/v8/adjudication/sealed/v8_011_dev_003_v5_partial_20261111/`):** 3.006/9.733 mục (AAA, AGR 2020 đủ).
-  - Khi khác OCR, text layer đúng 88,3%, OCR đúng 0,9%.
-  - Đếm bảo thủ 14.301/345.754; AAA 3,7%, AGR 2020 3,1%; ρ_U 0,026. OCR còn rất xa 99,99%.
-  - 321 mục "cả hai sai" là chữ OCR chèn thêm mà phiếu hiển thị sai. Độ nhạy: 14.228/345.301. Phải sửa phiếu trước holdout.
-  - Loại lỗi AAA+AGR 2020 (`..._v8_012_diacritic_confusions_aaa_agr2020_20261111.json`): 350/354 lỗi đ là Đ hoa→D (HĐQT→HDQT ~209); mất dấu nặng 260, huyền 170; hỏi→huyền/sắc 260.
+- **Phân xử v6 (seal `scratch/v8/adjudication/sealed/v8_011_dev_003_v6_partial_20261111/`):** 5.021/9.733 mục; AAA, AGR 2022, ASM, BCE đủ, AGR 2020 782/783; VIC chưa chấm.
+  - Khi khác OCR: text layer đúng 82,2%, OCR đúng 6,1%, cả hai sai 11,6%. ASM: text layer dùng `ƣ` thay `ư` (352 mục).
+  - Đếm bảo thủ 14.274/346.402 (4,1%); AAA 3,7%, ASM 3,6%; ρ_U 0,026. OCR còn rất xa 99,99%.
+  - 464 mục "cả hai sai" là chữ OCR chèn ở đầu/cuối dòng; khung đóng vào chữ bên cạnh nên người duyệt gõ lại chữ đó. Độ nhạy: 14.175/345.779. Sửa khung trước holdout.
+  - Loại lỗi (seal v5) AAA+AGR 2020 (`..._v8_012_diacritic_confusions_aaa_agr2020_20261111.json`): 350/354 lỗi đ là Đ hoa→D (HĐQT→HDQT ~209); mất dấu nặng 260, huyền 170; hỏi→huyền/sắc 260.
   - Challenger `benchmark/challengers/acronym_diacritics.py` (V8-030): `DSER_strict` 3.499→3.229 trên AAA và AGR 2020, 226 đơn vị được sửa, 2 bị làm sai (`scratch/v8/v8_030_acronym_challenger_dev_20261111.json`). Đo trên chính dữ liệu dev nên là `INCONCLUSIVE`; cần holdout.
 - **Cổng dấu:** `diacritic_acceptance.py` và `release_gate.py` đếm theo `DSER_strict`.
 - **V8-080:** audit v2 (`..._003_r2_20261110.json`) và phiếu 72 số trong bảng.
@@ -32,7 +32,7 @@ Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì 
 
 ## Bước kế tiếp (cần người dùng)
 
-1. Phiếu phân xử v6: `scratch/v8/adjudication/v8_011_dev_003_v6_20261111/`, mở qua server tự lưu. 2.291 quyết định đã chuyển sang; 715 mục "một bên trống" chấm dưới phiếu cũ cần chấm lại, kèm các mục chưa chấm. Seal bằng `--decisions <phiếu>/autosave/*.decisions.jsonl`. Kiểm lại mù sàng lọc từ 17/11.
+1. Kiểm lại mù sàng lọc từ 17/11. Quyết định có chuẩn hóa `ƣ`→`ư` cho text layer không (đổi quy trình, cần khóa mới).
 2. Chấm 72 mục phiếu số trong bảng, rồi `build_table_number_review.py seal`.
 3. Gán nhãn GT bằng `label_structured_gt.py` (V8-060/070/071/080); chạy Vintern theo [`vlm/README.md`](../../benchmark/challengers/vlm/README.md).
 4. Quyết định thời điểm sửa lỗi `src/`, và push.

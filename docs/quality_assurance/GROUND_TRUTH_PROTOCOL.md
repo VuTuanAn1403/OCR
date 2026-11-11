@@ -190,8 +190,14 @@ Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trư�
 Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong khóa v1. Người dùng (VuTuanAn1403) duyệt nguyên bản nháp r2 và khóa chúng trong v2 ngày 10/11/2026, trước mọi kết quả đo. Luồng đo là `text_corrected`.
 
 - **Khóa hiện hành v6:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v6.json`, sha256 `5fc27a6f7f43a4e969b95c9b9ea7eba6a6a4ffa97431146ce2e944eee4e9b001`. Khóa không đổi lựa chọn nào. Phiếu phân xử ghi loại mục: `ONE_SIDE_EMPTY` khi một bên trống, kèm hướng dẫn "chữ có in ở chỗ [ ? ] không". Phiếu cũng hiện ngữ cảnh, chỉ gồm chữ giống nhau ở cả hai bên. Quyết định cũ cho mục `ONE_SIDE_EMPTY` không được chuyển sang, vì chúng được đưa ra khi phiếu còn hiển thị sai.
+- **Kết quả phân xử dev v6 (11/11).** Người duyệt chấm 5.021/9.733 mục và chọn seal số này: `scratch/v8/adjudication/sealed/v8_011_dev_003_v6_partial_20261111/seal.json` (sha256 bản ghi `bbc31ca6…`). 2.289 quyết định đến từ phiếu v5.
+  - Mục đã chấm: AAA, AGR 2022, ASM, BCE đủ; AGR 2020 782/783; BHN 122/1.070; VIC 0/3.763.
+  - Khi OCR khác text layer: text layer đúng 82,2% [81,1; 83,2], OCR đúng 6,1% [5,5; 6,8], cả hai sai 11,6%.
+  - Text layer của ASM dùng `ƣ` (U+01A3) thay `ư` (U+01B0) ở 352 mục; hai chữ trông giống hệt nên sàng lọc không bắt được, phân xử thì bắt được. Chuẩn hóa ký tự này là đổi quy trình đo, cần người dùng quyết định và khóa mới.
+  - `DSER_strict` đếm bảo thủ: 14.274/346.402 = 4,1%. AAA 2.510/68.019 = 3,7%; ASM 1.081/30.262 = 3,6%. ρ = 0,023 (cận trên 0,026).
+  - **Lỗi phiếu còn lại:** 464 mục "cả hai sai" là chữ OCR chèn ở đầu hoặc cuối dòng, nơi text layer không có chữ. Khung trên ảnh đóng vào chữ bên cạnh, và người duyệt gõ lại chữ đó. Nếu đọc các mục này là "text layer đúng", tổng thành 14.175/345.779 (`scratch/v8/adjudication/sensitivity_v6_edge_insertions_20261111/`, phản thực, không phải GT); kết luận không đổi. Phải sửa khung trước khi phân xử holdout.
 - **Khóa v5 (đã bị thay):** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v5.json`, sha256 `f495a7d24fefc1cad48d988e0899e8e5b20d80d4c73ee347fd7e62fbebe2f37e`. Người duyệt đã chấm 3.006 mục theo thứ tự phiếu, không theo mẫu của v4, và ngày 11/11 chọn seal số này. Khóa v5 cho phép phân xử một phần: mục chưa chấm tính là `UNRESOLVED`, và không có ước lượng cho toàn bộ. Quyết định được chuyển sang phiếu dựng lại bằng `scripts/migrate_adjudication_decisions.py`; công cụ chỉ chuyển khi ảnh cắt, chuỗi A/B và bên A trùng hệt.
-- **Kết quả phân xử dev (11/11).** Seal: `scratch/v8/adjudication/sealed/v8_011_dev_003_v5_partial_20261111/seal.json`.
+- **Kết quả phân xử dev v5 (11/11, đã bị thay bởi v6).** Seal: `scratch/v8/adjudication/sealed/v8_011_dev_003_v5_partial_20261111/seal.json`.
   - Mục đã chấm: AAA 1.734/1.734, AGR 2020 783/783, AGR 2022 489/734. Bốn PDF còn lại chưa chấm.
   - Khi OCR khác text layer: text layer đúng 88,3% [87,1; 89,4], OCR đúng 0,9% [0,6; 1,3], cả hai sai 10,8%.
   - `DSER_strict` đếm bảo thủ: 14.301/345.754. AAA (đủ) 2.509/67.997 = 3,7%; AGR 2020 (đủ) 990/32.304 = 3,1%. ρ = 0,023 (cận trên 0,026).

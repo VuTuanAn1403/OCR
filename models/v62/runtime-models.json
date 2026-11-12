@@ -22,7 +22,7 @@
     "sha256": "eb13b44b25bb36f89528b68720af8a61d9cf381176107f465db1757b65d086e1",
     "scope": "full_page",
     "max_side": 1536,
-    "gpu_mem_limit_mb": 1024,
+    "gpu_mem_limit_mb": 1536,
     "threshold": 0.2,
     "box_threshold": 0.45,
     "rectangle_expansion": 1.4,

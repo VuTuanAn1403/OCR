@@ -44,6 +44,31 @@ Thay đổi không do mã: 69 dòng (57 `REPLACED_BY_TABLE→VISIBLE`, 12 `KEPT_
 - **Chất lượng OCR:** `INCONCLUSIVE`. Chưa có holdout, chưa có GT keyword, bảng hay detection. Dev chỉ dùng để sửa lỗi.
 - Operator đề xuất dùng candidate làm baseline cho các thí nghiệm V8 tiếp theo, thay khóa 003. Quyết định này là của người duyệt. Nó không phải PROMOTE, và không nâng `PIPELINE_VERSION` (V8-160).
 
+## Candidate 2: phóng dòng ×2 trước VietOCR (V8-050, 12/11)
+
+| | Baseline | Candidate |
+| --- | --- | --- |
+| Output | `output/v8_004_nosilentdrop_r2_20261112` | `output/v8_005_upscale2_20261112` |
+| Mã, cấu hình | `7097375`, `recognition_line_upscale` vắng (= 1) | `7097375`, `config/candidates/v8_050_line_upscale2.yaml` (= 2) |
+| Khóa | `BASELINE-V8-20261112-001` | `BASELINE-V8-20261112-002` (LOCKED); identity 8/9 MATCH, AAA thiếu (`scratch/v8/v8_005_identity_20261112.json`) |
+
+Mã `7097375` thêm tùy chọn với mặc định tắt. Ở giá trị 1, mã chạy y như `5d8cbb5` (test `tests/unit/recognition/test_line_upscale.py`). Baseline 004 không được chạy lại dưới `7097375`.
+
+| Thước đo (dev, tham chiếu là text layer, không phải GT) | Kết quả | Hiện vật |
+| --- | --- | --- |
+| DSER theo đơn vị, 6 PDF (AGR ×2, ASM, BCE, BHN, VIC) | 1.208 sửa / 258 sai; lỗi 11.046 → 9.743 trên 273.608 slot; 333 đơn vị không ghép được | `scratch/v8/v8_050_upscale2_e2e_dser_004_vs_005_20261112.json` |
+| Keyword literal, 8 PDF | 3 occurrence đổi, cả 3 khớp text layer (3 sửa / 0 sai) | `scratch/v8/v8_050_upscale2_keyword_changes_20261112.json` |
+| Bất biến (ô số không truy được, số đổi bởi hậu xử lý) | không đổi (2 → 2; 0 → 0) | `scratch/v8/v8_050_upscale2_invariants_004_vs_005_20261112.json` |
+| Vận hành (GPU RTX 2050 4 GB) | AAA lỗi 3/3 lần ở đúng trang 21: ONNX BFC arena của detector hết chỗ. Baseline lỗi ở trang 56 rồi qua khi retry | `scratch/v8_005_upscale2_batch_20261112.log` |
+
+Đề xuất của operator: chất lượng `INCONCLUSIVE` (dev). Theo §5 của hợp đồng, candidate **không chạy được trong giới hạn vận hành** trên AAA, nên ở dạng hiện tại thuộc `REJECT`. Lỗi arena đã có sẵn ở baseline (V8-060). Giới hạn đặt ở `models/v62/runtime-models.json` (`gpu_mem_limit_mb: 1024`), là manifest model đã ghim. Nâng giới hạn này hay đổi cách cấp phát là quyết định của người dùng, cần khóa mới và chạy lại cả baseline lẫn candidate. Người duyệt quyết.
+
+## Candidate 3: VLM Vintern-1B-v3.5 cho trang khó (V8-090, 12/11)
+
+- Mô hình: revision `b98f263e`, sha weights khớp pin; mã tùy biến đã rà. Model đọc 137/137 trang được chọn trên output 004, 0 trang thiếu (`EXP-V8-VLM-20261112-002`). Bản ghi `review_required`, không thay chữ production.
+- 2 trang lặp lại prompt. Trên 90 trang có text layer đã sàng lọc: DSER của VLM 4.647, của production 1.606; VLM tốt hơn ở 33 trang, kém hơn ở 43, ngang ở 14 (`scratch/v8/v8_090_vintern_pages_004_20261112.json`). Thang đo cấp trang chịu ảnh hưởng thứ tự đọc nên chỉ là chẩn đoán.
+- Đề xuất của operator: `KEEP BASELINE` (không cải thiện, có harm). Người duyệt quyết.
+
 ## Còn thiếu cho V8-140
 
 - V8-060, V8-065 và V8-080 (GT bảng, phiếu 72 số) chưa xong.

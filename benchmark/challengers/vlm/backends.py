@@ -124,7 +124,8 @@ class VinternBackend:
 
     def __init__(self, weights_dir: Path, pin: Dict, max_tiles: int = 6, max_new_tokens: int = 2048):
         import torch
-        from transformers import AutoModel, AutoTokenizer
+        from transformers import AutoTokenizer
+        from transformers.dynamic_module_utils import get_class_from_dynamic_module
 
         if not torch.cuda.is_available():
             raise BackendUnavailable("CUDA is required (AGENTS.md: GPU only for model runs)")
@@ -132,8 +133,16 @@ class VinternBackend:
         self.max_tiles = max_tiles
         self.generation = {"max_new_tokens": max_new_tokens, "do_sample": False, "num_beams": 1, "repetition_penalty": 1.0}
         self.model_version = f"{pin['repository']}@{pin['revision']}"
-        self.model = AutoModel.from_pretrained(str(weights_dir), torch_dtype=torch.bfloat16, low_cpu_mem_usage=True,
-                                               trust_remote_code=True, use_flash_attn=False, local_files_only=True).eval().cuda()
+        # config.json maps the custom classes to "<repo id>--<module>", which transformers would
+        # resolve from the Hub. Load them from the pinned, hash-checked local files instead.
+        local = str(weights_dir)
+        config_class = get_class_from_dynamic_module("configuration_internvl_chat.InternVLChatConfig", local,
+                                                     local_files_only=True)
+        model_class = get_class_from_dynamic_module("modeling_internvl_chat.InternVLChatModel", local,
+                                                    local_files_only=True)
+        config = config_class.from_pretrained(local, local_files_only=True)
+        self.model = model_class.from_pretrained(local, config=config, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True,
+                                                 use_flash_attn=False, local_files_only=True).eval().cuda()
         self.tokenizer = AutoTokenizer.from_pretrained(str(weights_dir), trust_remote_code=True, use_fast=False,
                                                        local_files_only=True)
 

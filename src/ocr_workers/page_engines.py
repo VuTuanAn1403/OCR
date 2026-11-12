@@ -53,6 +53,9 @@ def validate_page_config(config: Dict[str, Any]) -> bool:
             validate_scan_image_settings(config["scan_image"])
         except ValueError as exc:
             raise ConfigError(str(exc)) from exc
+    upscale = config.get("recognition_line_upscale", 1)
+    if type(upscale) is not int or not 1 <= upscale <= 4:
+        raise ConfigError("recognition_line_upscale must be an integer from 1 to 4 (1 is off)")
     agreement = config.get("ocr_layer_agreement", {})
     if not isinstance(agreement, dict) or set(agreement) - {"sample_lines"} \
             or type(agreement.get("sample_lines", 5)) is not int or not 3 <= agreement.get("sample_lines", 5) <= 5:
@@ -83,6 +86,7 @@ def build_page_engines(doc, config: Dict[str, Any], *, legacy_furniture: bool,
         engines.ocr_engine = VietnameseSeq2SeqEngine(
             batch_size=config.get("batch_size", 16), device=config.get("device"),
             horizontal_180_retry_threshold=config.get("horizontal_180_retry_threshold"),
+            line_upscale=config.get("recognition_line_upscale", 1),
             **detector_args,
             **({"num_threads": threads} if threads is not None else {}))
     else:

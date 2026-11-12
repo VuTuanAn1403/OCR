@@ -41,10 +41,14 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
         return cls._instance
 
     def __init__(self, batch_size: int = 16, device: Optional[str] = None, num_threads: Optional[int] = None,
-                 detector=None, horizontal_180_retry_threshold=None):
+                 detector=None, horizontal_180_retry_threshold=None, line_upscale: int = 1):
         if type(batch_size) is not int or batch_size < 1:
             raise ValueError("batch_size must be a positive integer")
         self.batch_size = batch_size
+        if type(line_upscale) is not int or not 1 <= line_upscale <= 4:
+            raise ValueError("line_upscale must be an integer from 1 to 4")
+        # V8-050 candidate: cubic upscale of each line crop before VietOCR; 1 is off.
+        self.line_upscale = line_upscale
         if horizontal_180_retry_threshold is not None and (
                 type(horizontal_180_retry_threshold) not in (int, float)
                 or not math.isfinite(horizontal_180_retry_threshold)
@@ -340,6 +344,10 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
 
     def _recognize_crops(self, pil_crops):
         """Bound batches, preserve order, and split only the chunk that OOMs."""
+        factor = getattr(self, "line_upscale", 1)
+        if factor != 1:
+            pil_crops = [Image.fromarray(cv2.resize(np.asarray(crop), None, fx=factor, fy=factor,
+                                                    interpolation=cv2.INTER_CUBIC)) for crop in pil_crops]
         recognition_order = sorted(range(len(pil_crops)), key=lambda i: pil_crops[i].width / pil_crops[i].height)
         recognized_texts, recognized_probs = [""] * len(pil_crops), [0.0] * len(pil_crops)
         pending = [recognition_order[start:start + self.batch_size] for start in range(0, len(pil_crops), self.batch_size)]

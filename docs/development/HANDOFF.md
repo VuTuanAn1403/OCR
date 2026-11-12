@@ -25,7 +25,7 @@ Cập nhật 12/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-chall
 - **Candidate phóng ×2 (V8-050):** `recognition_line_upscale`, mặc định tắt (`7097375`); cấu hình `config/candidates/v8_050_line_upscale2.yaml`; khóa `BASELINE-V8-20261112-002`.
   - So với 004 trên 6 PDF dev: 1.208 đơn vị sửa / 258 làm sai (DSER 11.046 → 9.743); keyword 3 sửa / 0 sai.
   - AAA lỗi arena detector 3/3 ở trang 21 (`gpu_mem_limit_mb: 1024` trong `models/v62/runtime-models.json`), nên ở dạng này là REJECT theo hợp đồng.
-- **Vintern (V8-090):** 137/137 trang, 0 thiếu; 2 trang lặp prompt. Trên 90 trang có text layer: DSER VLM 4.647 so với production 1.606 (33 trang tốt hơn / 43 kém hơn). Đề xuất `KEEP BASELINE`.
+- **Vintern (V8-090, `DONE`: gate đạt, `scripts/check_vlm_run_gate.py`):** 137/137 trang, 0 thiếu; 2 trang lặp prompt. Trên 90 trang có text layer: DSER VLM 4.647 so với production 1.606 (33 trang tốt hơn / 43 kém hơn). Đề xuất `KEEP BASELINE`.
 
 ## Trước đó (10–12/11)
 

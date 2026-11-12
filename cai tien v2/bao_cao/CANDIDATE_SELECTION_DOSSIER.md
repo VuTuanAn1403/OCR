@@ -52,6 +52,8 @@ Thay đổi không do mã: 69 dòng (57 `REPLACED_BY_TABLE→VISIBLE`, 12 `KEPT_
 | Mã, cấu hình | `7097375`, `recognition_line_upscale` vắng (= 1) | `7097375`, `config/candidates/v8_050_line_upscale2.yaml` (= 2) |
 | Khóa | `BASELINE-V8-20261112-001` | `BASELINE-V8-20261112-002` (LOCKED); identity 8/9 MATCH, AAA thiếu (`scratch/v8/v8_005_identity_20261112.json`) |
 
+### Lượt 1 (12/11): giới hạn arena 1024 MB
+
 Mã `7097375` thêm tùy chọn với mặc định tắt. Ở giá trị 1, mã chạy y như `5d8cbb5` (test `tests/unit/recognition/test_line_upscale.py`). Baseline 004 không được chạy lại dưới `7097375`.
 
 | Thước đo (dev, tham chiếu là text layer, không phải GT) | Kết quả | Hiện vật |
@@ -61,7 +63,26 @@ Mã `7097375` thêm tùy chọn với mặc định tắt. Ở giá trị 1, mã
 | Bất biến (ô số không truy được, số đổi bởi hậu xử lý) | không đổi (2 → 2; 0 → 0) | `scratch/v8/v8_050_upscale2_invariants_004_vs_005_20261112.json` |
 | Vận hành (GPU RTX 2050 4 GB) | AAA lỗi 3/3 lần ở đúng trang 21: ONNX BFC arena của detector hết chỗ. Baseline lỗi ở trang 56 rồi qua khi retry | `scratch/v8_005_upscale2_batch_20261112.log` |
 
-Đề xuất của operator: chất lượng `INCONCLUSIVE` (dev). Theo §5 của hợp đồng, candidate **không chạy được trong giới hạn vận hành** trên AAA, nên ở dạng hiện tại thuộc `REJECT`. Lỗi arena đã có sẵn ở baseline (V8-060). Giới hạn đặt ở `models/v62/runtime-models.json` (`gpu_mem_limit_mb: 1024`), là manifest model đã ghim. Nâng giới hạn này hay đổi cách cấp phát là quyết định của người dùng, cần khóa mới và chạy lại cả baseline lẫn candidate. Người duyệt quyết.
+Kết luận lượt 1: ở dạng này candidate là `REJECT` (không chạy được trong giới hạn vận hành). Người dùng chọn nâng giới hạn arena trong manifest (commit `4274a49`, 1024 → 1536 MB). Lượt 2 chạy lại cả hai bên.
+
+### Lượt 2 (13/11): giới hạn arena 1536 MB
+
+| | Baseline | Candidate |
+| --- | --- | --- |
+| Output | `output/v8_006_arena1536_20261112` | `output/v8_007_arena1536_upscale2_20261112` |
+| Khóa | `BASELINE-V8-20261113-001`, 9/9 MATCH | `BASELINE-V8-20261113-002`, 9/9 MATCH |
+| Chạy | 9/9 lần đầu, audit exit 0 | 9/9 lần đầu, audit exit 0 (AAA qua) |
+
+Nâng giới hạn không đổi kết quả của baseline. So 004 với 006: pha A trùng hệt, `result.md` trùng ở 8/9 PDF, keyword không đổi, DSER khóa v7 13.751 = 13.751. Chỉ khác ở các trang Docling crash trong lần chạy 004 (`scratch/v8/v8_050_arena_dispositions_004_vs_006_20261112.json`).
+
+| Thước đo (dev, tham chiếu là text layer, không phải GT) | Kết quả | Hiện vật |
+| --- | --- | --- |
+| DSER khóa v7, 7 PDF đã sàng lọc | 13.751 → 11.647 / 345.300; đơn vị cần phân xử 6.307 → 5.032 | `scratch/v8/v8_011_measurement_dev_00{6,7}_v7_20261113.json` |
+| DSER theo đơn vị, 7 PDF | 1.781 sửa / 306 sai; 403 đơn vị không ghép được (báo riêng) | `scratch/v8/v8_050_upscale2_e2e_dser_006_vs_007_20261113.json` |
+| Keyword literal, 9 PDF | 3 sửa / 0 sai (khớp text layer) | `scratch/v8/v8_050_upscale2_keyword_changes_006_vs_007_20261113.json` |
+| Bất biến | ô số không truy được 2 → 2; dòng bị loại vì confidence thấp 3.005 → 2.939 | `scratch/v8/v8_050_upscale2_invariants_006_vs_007_20261113.json` |
+
+Đề xuất của operator: chất lượng `INCONCLUSIVE`, vì chỉ có dev và chưa có holdout. Candidate cải thiện rõ trên dev và chạy được trong giới hạn vận hành, nên đáng đo trên holdout trước tiên. Chưa phải PROMOTE. Người duyệt quyết.
 
 ## Candidate 3: VLM Vintern-1B-v3.5 cho trang khó (V8-090, 12/11)
 

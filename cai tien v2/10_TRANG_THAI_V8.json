@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
   "pipeline_version": "7.0.0",
-  "verified_head": "883769bee9d77d756582f2b9acc4910b01f82aef",
+  "verified_head": "5d8cbb58a0d6858ee4f89c846fcf94bca070c804",
   "last_verified": "2026-11-12",
-  "verified_scope": "HEAD 883769b; cây 12/11 trên 1aef15c thêm sửa src/ chưa commit (§4.1, bảng heuristic). Hồi quy CPU 2657 passed, 1 skipped. Khóa hiện hành BASELINE-V8-20261112-001 (9/9 MATCH); 003 cho so sánh cũ, 002 cho V8-006. Detector v6 chưa qua GT. Khóa đo v7. Quality = NOT_EVALUATED.",
+  "verified_scope": "HEAD 5d8cbb5: sửa src/ (§4.1, bảng heuristic). Hồi quy CPU 2664 passed, 1 skipped. Khóa hiện hành BASELINE-V8-20261112-001 (9/9 MATCH); 003 cho so sánh cũ, 002 cho V8-006. Detector v6 chưa qua GT. Khóa đo v7. Quality = NOT_EVALUATED.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",

@@ -1,6 +1,6 @@
 # Bàn giao
 
-Cập nhật 12/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1). HEAD `1aef15c`, **cây làm việc có sửa `src/` chưa commit**. Khóa hiện hành `BASELINE-V8-20261112-001`. Trạng thái: `scripts/check_knowledge_map.py --summary`. Nhật ký [12/11](../../scratch/dev_sessions/20261112-v8-no-silent-drop/session.md), [rà soát 12/11](../../scratch/dev_sessions/20261112-v8-progress-audit/session.md).
+Cập nhật 12/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1). HEAD `5d8cbb5` (sửa `src/` đã commit cục bộ, chưa push). Khóa hiện hành `BASELINE-V8-20261112-001`. Trạng thái: `scripts/check_knowledge_map.py --summary`. Nhật ký [12/11](../../scratch/dev_sessions/20261112-v8-no-silent-drop/session.md), [rà soát 12/11](../../scratch/dev_sessions/20261112-v8-progress-audit/session.md).
 
 ## 12/11 — §4.1, V8-080, V8-140
 
@@ -38,7 +38,7 @@ Cập nhật 12/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-chall
 
 ## Bước kế tiếp (cần người dùng)
 
-1. Duyệt diff `src/` và commit. Rồi chuyển `verified_head` và chạy `--check`.
+1. Push nhánh khi muốn (commit `5d8cbb5` đã có cục bộ).
 2. Chấm phiếu v7: nạp `migrated-f2cd97ad29f6fa25.jsonl`, chấm 5.208 mục, rồi `seal`. Chấm 72 mục số trong bảng, rồi `build_table_number_review.py seal`. Kiểm lại mù từ 17/11.
 3. Quyết: chuẩn hóa `ƣ`→`ư`; chính sách dòng confidence thấp; dùng khóa 004 làm baseline.
 4. Holdout: PDF mới và manifest của custodian.

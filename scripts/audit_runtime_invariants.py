@@ -7,7 +7,8 @@ must hold on any run, labelled or not. This tool counts violations; it fixes not
 1. No silent drop: every recognised evidence block of a page (``pages/*.json``) must be
    in ``extraction.json``. A block rejected for low confidence or as a hallucination that
    no extraction item covers is a drop. Text that is only kept in the page evidence is
-   reported as such.
+   reported as such. From the 12/11 fix, a block recorded in the extraction page's
+   ``rejected_ocr_lines`` (same raw text and box) is retained for review, not dropped.
 2. Provenance: every extraction text item carries ``bbox``, ``source_id`` and a
    ``confidence`` (or ``confidence_source`` saying why there is none).
 3. Numeric guard, text: the number tokens (``[-+]?digit[digits , .]*%?``) of
@@ -65,12 +66,18 @@ def audit_page(page_record: Dict, extraction_page: Optional[Dict], document: str
     counts: Counter = Counter()
     items = (extraction_page or {}).get("items", [])
     text_items = [i for i in items if i.get("kind") == "b"]
+    retained = (((extraction_page or {}).get("rejected_ocr_lines") or {}).get("items") or [])
     for block in page_record.get("evidence_blocks", []):
         status = block.get("status", "")
         counts[f"evidence_{status}"] += 1
         if not status.startswith("REJECTED") or not (block.get("text") or "").strip() or not block.get("bbox"):
             continue
         covered = any(item.get("bbox") and iou(block["bbox"], item["bbox"]) >= COVER_IOU for item in text_items)
+        if not covered and any(line.get("text_raw") == (block.get("text_raw") or block.get("text"))
+                               and line.get("bbox") == block["bbox"] and line.get("source_id")
+                               for line in retained):
+            counts[f"retained_for_review_{status}"] += 1
+            continue
         if not covered:
             counts[f"dropped_{status}"] += 1
             counts[f"dropped_{status}_{block.get('content_type') or 'UNKNOWN'}"] += 1

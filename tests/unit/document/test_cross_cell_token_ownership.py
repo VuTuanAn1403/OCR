@@ -163,3 +163,21 @@ def test_export_reconciles_a_cached_v14_document_with_new_token_proof(tmp_path):
     DocumentExporter.execute(doc, tmp_path, assets_mode="none")
     assert next(iter(page.metadata["source_dispositions"].values()))["placement_granularity"] == "TOKEN"
     assert doc.manifest["document_layout"]["algorithm_version"] == ALGORITHM_VERSION
+
+
+@pytest.mark.parametrize("engines,status", [(("heuristic", "docling_tableformer"), "REPLACED_BY_TABLE"),
+                                            (("docling_tableformer", "heuristic"), "REPLACED_BY_TABLE"),
+                                            (("docling_tableformer", "docling_tableformer"), "KEPT_FOR_REVIEW"),
+                                            (("heuristic", "heuristic"), "KEPT_FOR_REVIEW")])
+def test_model_table_owns_a_source_its_overlapping_heuristic_duplicate_also_matches(engines, status):
+    """V8-080: real heuristic cell boxes must not turn a model-table source into body text."""
+    page = cross_cell_page()
+    page.tables[0].engine = engines[0]
+    page.tables.append(page.tables[0].model_copy(deep=True, update={"table_id": "duplicate", "engine": engines[1]}))
+    _reconcile_evidence(page)
+    decision, = page.metadata["source_dispositions"].values()
+    assert decision["status"] == status
+    if status == "REPLACED_BY_TABLE":
+        model = next(t for t in page.tables if t.engine != "heuristic")
+        assert decision["table_id"] == model.table_id
+        assert decision["owner_choice"] == "MODEL_TABLE_OVER_HEURISTIC_OVERLAP" and not page.blocks

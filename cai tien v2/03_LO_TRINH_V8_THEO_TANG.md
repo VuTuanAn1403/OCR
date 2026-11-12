@@ -19,7 +19,7 @@ Căn cứ: Kế hoạch Benchmark-first và So sánh công nghệ (hai DOCX lưu
 | P6 | Bảng và công thức | IN_PROGRESS | TEDS, numeric cell, ownership | V8-080, V8-085 |
 | P7 | VLM fallback và parser đối chứng | IN_PROGRESS | Identity, tài nguyên, GT | V8-090, V8-095 |
 | P8 | Hậu xử lý, dấu, keyword | IN_PROGRESS | Cổng dấu 99,99% và 0 thiếu/thừa occurrence | V8-020, V8-021, V8-022, V8-031, V8-032, V8-100 |
-| P9 | End-to-end và hồ sơ quyết định | TODO | Quyết định thủ công PROMOTE/KEEP/REJECT/INCONCLUSIVE | V8-140, V8-160 |
+| P9 | End-to-end và hồ sơ quyết định | IN_PROGRESS | Quyết định thủ công PROMOTE/KEEP/REJECT/INCONCLUSIVE | V8-140, V8-160 |
 <!-- v8-status:phases:end -->
 
 ## Nguyên tắc chuyển pha

@@ -57,6 +57,47 @@ def assign_source_ids(records: list[dict], pdf_hash: str, logical_page_id: str,
                               for row in identities.values())}
 
 
+REJECTED_LINE_METHOD = "rejected-ocr-line-retention-v1"
+REJECTED_LINE_REVIEW_CODES = {"REJECTED_LOW_CONFIDENCE": "OCR_LINE_LOW_CONFIDENCE",
+                              "REJECTED_HALLUCINATION": "OCR_LINE_SUSPECTED_NOISE"}
+
+
+def lock_rejected_ocr_lines(rejected, pdf_hash, page_num, metadata, regions=()):
+    """Record every recognized line the A1 gate kept out of the text flow (spec 13 §4.1).
+
+    The gate decides what enters the reading text; it never decides what is
+    recorded. Each line keeps its raw text, box, confidence and an identity in
+    its own "r" namespace, with a review code, so that a reviewer can recover it.
+    """
+    logical = metadata.setdefault("logical_page_id", f"p{page_num:04d}")
+    region_types = {r.region_id: getattr(r.content_type, "value", r.content_type) for r in regions}
+    records = [{"ref": str(i), "kind": "r", "bbox": e.bbox,
+                "text_raw": e.text if e.text_raw is None else e.text_raw,
+                "producer_ref": e.block_id or ""} for i, e in enumerate(rejected)]
+    identity = assign_source_ids(records, pdf_hash, logical, metadata.get("evidence_generation", 1))
+    lines = []
+    for i, evidence in enumerate(rejected):
+        data = identity["items"][str(i)]
+        code = REJECTED_LINE_REVIEW_CODES.get(evidence.status, "OCR_LINE_REJECTED")
+        lines.append({
+            "source_id": data["source_id"], "source_id_method": data["source_id_method"],
+            "raw_text_sha8": data["raw_text_sha8"], "evidence_generation": data["evidence_generation"],
+            "evidence_block_id": evidence.block_id, "bbox": list(evidence.bbox),
+            "text_raw": evidence.text if evidence.text_raw is None else evidence.text_raw,
+            "text": evidence.text, "confidence": evidence.confidence,
+            "confidence_source": "recognizer" if evidence.confidence is not None else "unavailable",
+            "gate_status": evidence.status, "region_id": evidence.region_id,
+            "region_content_type": region_types.get(evidence.region_id),
+            **({"recognition_provenance": evidence.recognition_provenance}
+               if evidence.recognition_provenance else {}),
+            "disposition": "RETAINED_FOR_REVIEW", "needs_review": True,
+            "review_reason_codes": sorted({code, *data["review_reason_codes"]}),
+        })
+    metadata["rejected_ocr_lines"] = {"method": REJECTED_LINE_METHOD, "stable": identity["stable"],
+                                      "collisions": identity["collisions"], "items": lines}
+    return metadata["rejected_ocr_lines"]
+
+
 def lock_text_evidence(blocks, pdf_hash, page_num, metadata):
     """Snapshot every text occurrence before Docling/table absorption or order."""
     logical = metadata.setdefault("logical_page_id", f"p{page_num:04d}")

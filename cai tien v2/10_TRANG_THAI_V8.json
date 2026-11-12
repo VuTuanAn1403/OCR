@@ -3,8 +3,8 @@
   "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
   "pipeline_version": "7.0.0",
   "verified_head": "883769bee9d77d756582f2b9acc4910b01f82aef",
-  "last_verified": "2026-11-11",
-  "verified_scope": "HEAD 883769b (chỉ khác 2af5454 ở tài liệu, registry, khóa GT, scripts/, benchmark/ và test; không đổi src/, config, model). Hồi quy CPU tại 883769b: 2648 passed, 1 skipped; cổng dấu đếm DSER_strict; khóa đo v7 LOCKED. Detector production PP-OCRv6 là ngoại lệ chưa qua GT. Khóa hiện hành BASELINE-V8-20261109-003 (fingerprint khớp HEAD); khóa 002 (PP-OCRv4) dùng cho V8-006. Quality = NOT_EVALUATED.",
+  "last_verified": "2026-11-12",
+  "verified_scope": "HEAD 883769b; cây 12/11 trên 1aef15c thêm sửa src/ chưa commit (§4.1, bảng heuristic). Hồi quy CPU 2657 passed, 1 skipped. Khóa hiện hành BASELINE-V8-20261112-001 (9/9 MATCH); 003 cho so sánh cũ, 002 cho V8-006. Detector v6 chưa qua GT. Khóa đo v7. Quality = NOT_EVALUATED.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
@@ -127,6 +127,11 @@
           "path": "src/ocr_recognition/diacritic_retry.py",
           "symbol": "retry_diacritic_blocks",
           "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_document/source_identity.py",
+          "symbol": "lock_rejected_ocr_lines",
+          "label": "VERIFIED"
         }
       ],
       "note": "Retry dấu hỗ trợ extra_phrases từ từ điển keyword hoặc cấu hình (V8-030)."
@@ -200,9 +205,14 @@
           "path": "src/ocr_document/auto_table_stitch.py",
           "symbol": "build_auto_stitches",
           "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_structure/document_layout_engine.py",
+          "symbol": "_detect_table_from_ocr_blocks",
+          "label": "VERIFIED"
         }
       ],
-      "note": "Ownership bảng còn mở (DC-01, TAB_05); nối bảng tự động vẫn cần review."
+      "note": "Ownership bảng còn mở (DC-01, TAB_05); nối bảng vẫn cần review."
     },
     {
       "id": "L7",
@@ -661,7 +671,7 @@
   "diacritic_gate": {
     "target": "99,99%",
     "status": "NOT_EVALUATED",
-    "blocker": "Chưa có GT độc lập: cần N_eff >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788. Nguồn (b): quy trình LOCKED v1 (GROUND_TRUTH_PROTOCOL §7); 9 PDF inputs là development, 345.647 slot chưa xác minh. Công cụ sàng lọc, đo ghép bbox, phân xử và rho_U đã có (protocol §7.5). 7 PDF dev sàng lọc ACCEPTED 10/11 (kiểm lại mù từ 17/11); dev theo khóa v6 (v7 sửa khung phiếu), phân xử 5.021/9.733: 14.274/346.402 bảo thủ, AAA đủ 3,7%, rho_U 0,026, OCR còn xa 99,99%; holdout PDF mới.",
+    "blocker": "Chưa có GT độc lập: cần N_eff >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788. Nguồn (b): quy trình LOCKED v1 (GROUND_TRUTH_PROTOCOL §7); 9 PDF inputs là development, 345.647 slot chưa xác minh. Công cụ sàng lọc, đo ghép bbox, phân xử và rho_U đã có (protocol §7.5). 7 PDF dev sàng lọc ACCEPTED 10/11 (kiểm lại mù từ 17/11); dev theo khóa v6, phân xử 5.021/9.733; phiếu v7 nhận 4.525 quyết định, còn 5.208 mục: 14.274/346.402 bảo thủ, AAA đủ 3,7%, rho_U 0,026, OCR còn xa 99,99%; holdout PDF mới.",
     "candidate_text_layer_slots": {
       "value": 345687,
       "scope": "scripts/inventory_text_layers.py trên 9 PDF inputs/ ngày 2026-11-09 tại 2af5454: 720/938 trang CANDIDATE; ứng viên chưa xác minh, không phải GT"
@@ -819,7 +829,7 @@
     {
       "id": "P9",
       "title": "End-to-end và hồ sơ quyết định",
-      "status": "TODO",
+      "status": "IN_PROGRESS",
       "exit_gate": "Quyết định thủ công PROMOTE/KEEP/REJECT/INCONCLUSIVE",
       "backlog": [
         "V8-140",
@@ -830,7 +840,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "a6ff6229b649250cdc60966317809af35ce72770488cc7286cece7b01ce074f1",
+      "sha256": "ad6aa47859f81f61fa86343f37c4308293783822aae0688aa4f07de44a96cf6e",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -846,7 +856,7 @@
         },
         {
           "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
-          "sha256": "499680575557c8c5ed4b223307c2dc0ae23af40bedc6cf2dbfcc5bc83b9e11cd"
+          "sha256": "a805bf94cb2dbe79c0d6214ec6434301dab44afa76b90f7df5ea8a9e803e4ca5"
         },
         {
           "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
@@ -882,7 +892,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "c16ebe8d2c63a526fcfe90402398e27f4dcba79511044917a7d7070aa2d90fd5"
+          "sha256": "ea8ba69f0eed22fe82df5617a5299fbafb47606233df36659cab43f5652413d9"
         }
       ]
     }

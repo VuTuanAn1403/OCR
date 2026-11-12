@@ -5,7 +5,8 @@ A sheet is rebuilt when its measurement lock changes but the measured units do n
 example lock v4 -> v5 on 11/11/2026). A decision moves only when the item exists on both sheets
 with the same crop sha256, the same strings A and B and the same side for A in both keys,
 so the reviewer's choice means the same thing on the new sheet. Anything else stops the run;
-nothing is guessed. The choice, corrected text, reviewer and time are kept; the record gets the
+nothing is guessed. With ``--leave-changed`` (lock v6 -> v7, where only the crop of some items
+changed) an item whose crop or strings differ is listed and left undecided instead. The choice, corrected text, reviewer and time are kept; the record gets the
 new ``sheet_id`` and ``migrated_from_sheet`` / ``migrated_decision_id`` for provenance.
 
   python scripts/migrate_adjudication_decisions.py --from-sheet <old dir> --to-sheet <new dir> \
@@ -33,11 +34,12 @@ def load_sheet(folder: Path):
     return sheet, {item["item_id"]: item for item in sheet["items"]}, key
 
 
-def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path], skip_kinds=()) -> Dict:
+def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path], skip_kinds=(),
+            leave_changed: bool = False) -> Dict:
     old_sheet, old_items, old_key = load_sheet(from_sheet)
     new_sheet, new_items, new_key = load_sheet(to_sheet)
     records = read_jsonl(decision_paths)
-    problems, moved, skipped = [], [], 0
+    problems, moved, skipped, changed = [], [], 0, []
     for record in sorted(records, key=lambda r: r["item_id"]):
         item_id = record["item_id"]
         where = f"{item_id}"
@@ -49,6 +51,11 @@ def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path], skip_k
             problems.append(f"{where}: item missing on the {'old' if old is None else 'new'} sheet")
             continue
         if (old["crop_sha256"], old["a"], old["b"]) != (new["crop_sha256"], new["a"], new["b"]):
+            if leave_changed:  # the reviewer decided on another image or strings: re-decide, never carry
+                changed.append({"item_id": item_id, "kind": new.get("kind"),
+                                "crop_changed": old["crop_sha256"] != new["crop_sha256"],
+                                "strings_changed": (old["a"], old["b"]) != (new["a"], new["b"])})
+                continue
             problems.append(f"{where}: crop or strings differ between the sheets")
             continue
         if new.get("kind") in skip_kinds:  # decided under a display the new sheet replaces; to be re-decided
@@ -65,7 +72,7 @@ def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path], skip_k
     if problems:
         raise ValueError(f"{len(problems)} decisions cannot move:\n  " + "\n  ".join(problems[:40]))
     return {"from_sheet": old_sheet["sheet_id"], "to_sheet": new_sheet["sheet_id"], "records": moved,
-            "skipped_by_kind": skipped, "skip_kinds": list(skip_kinds)}
+            "skipped_by_kind": skipped, "skip_kinds": list(skip_kinds), "left_changed": changed}
 
 
 def main(argv=None) -> int:
@@ -76,11 +83,18 @@ def main(argv=None) -> int:
     parser.add_argument("--out", type=Path, required=True, help="New JSONL (never overwritten)")
     parser.add_argument("--skip-kind", action="append", default=[],
                         help="Leave items of this kind on the new sheet undecided, e.g. ONE_SIDE_EMPTY")
+    parser.add_argument("--leave-changed", action="store_true",
+                        help="Leave items whose crop or strings changed undecided (listed in <out>.changed.json)"
+                             " instead of stopping")
     args = parser.parse_args(argv)
-    result = migrate(args.from_sheet, args.to_sheet, args.decisions, tuple(args.skip_kind))
+    result = migrate(args.from_sheet, args.to_sheet, args.decisions, tuple(args.skip_kind), args.leave_changed)
     data = "".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in result["records"]).encode("utf-8")
     write_new(args.out, data)
-    print(f"{len(result['records'])} decisions moved, {result['skipped_by_kind']} left to re-decide "
+    if args.leave_changed:
+        write_new(args.out.with_suffix(".changed.json"),
+                  (json.dumps(result["left_changed"], ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
+    print(f"{len(result['records'])} decisions moved, {result['skipped_by_kind']} left to re-decide by kind, "
+          f"{len(result['left_changed'])} left to re-decide because the crop or strings changed, "
           f"{result['from_sheet']} -> {result['to_sheet']}: "
           f"{args.out} sha256 {sha256_bytes(data)}")
     return 0

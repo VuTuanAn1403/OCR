@@ -113,6 +113,12 @@ def page_candidates(document_id, pdf_hash, page, keywords):
             candidate = _candidate(document_id, pdf_hash, page, value, {"frozen_source_id": source_id}, original, keywords)
             if candidate is not None:
                 yield candidate
+    # Spec 13 §4.1: lines the A1 gate kept out of the text are reviewed, not lost.
+    for line in (page.get("rejected_ocr_lines") or {}).get("items", []):
+        candidate = _candidate(document_id, pdf_hash, page, line, {"rejected_source_id": line["source_id"]},
+                               {}, keywords)
+        if candidate is not None:
+            yield candidate
 
 
 def _crop(document, row, output, dpi=200):

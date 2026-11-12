@@ -73,6 +73,7 @@ def _validate_document_artifacts(
         "evidence_blocks": 0,
         "review_required_lines": 0,
         "large_unread_image_regions": 0,
+        "rejected_ocr_lines_retained": 0,
         "ground_truth_cases": 0,
     }
     root = doc_dir.resolve()
@@ -158,6 +159,11 @@ def _validate_document_artifacts(
         for block in page_data.get("blocks", []):
             for code in block.get("review_reason_codes", []):
                 warnings.append(f"Page {page_num}: source {block.get('source_id')} {code} requires review")
+        retained = ((page_data.get("metadata", {}).get("rejected_ocr_lines") or {}).get("items") or [])
+        if retained:
+            counts["rejected_ocr_lines_retained"] += len(retained)
+            warnings.append(f"Page {page_num}: {len(retained)} OCR lines kept out of the text by the A1 gate "
+                            "are retained for review")
         separator_count = sum(bool(_PIPE_SEPARATOR.fullmatch(line)) for line in markdown.splitlines())
         counts["pipe_tables_markdown"] += separator_count
         if "```mermaid" in markdown:

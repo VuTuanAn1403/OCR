@@ -187,3 +187,25 @@ def test_an_insertion_is_boxed_at_the_empty_place_not_on_a_neighbouring_word():
     for at in range(4):  # never overlaps a word box
         x0, y0, x1, y1 = adjudicate.gap_box(words, at, (0, 0, 1, 1))
         assert not any(x0 < w[2] and w[0] < x1 and y0 < w[3] and w[1] < y1 for w in words)
+
+
+def test_migration_can_leave_items_whose_crop_changed_to_be_decided_again(tmp_path):
+    from scripts import migrate_adjudication_decisions as migrate
+    measured = _measured(tmp_path, partial=True)
+    adjudicate.build_sheet(measured, tmp_path / "pdfs", tmp_path / "old", "reviewer")
+    adjudicate.build_sheet(measured, tmp_path / "pdfs", tmp_path / "new", "reviewer")
+    sheet = json.loads((tmp_path / "old" / "sheet.json").read_text(encoding="utf-8"))
+    key = json.loads((tmp_path / "old" / "ab_key.json").read_text(encoding="utf-8"))["items"]
+    path = tmp_path / "all.jsonl"
+    path.write_text("".join(json.dumps(_answer(sheet, key, item, "TEXT_LAYER_CORRECT"), ensure_ascii=False) + "\n"
+                            for item in sheet["items"]), encoding="utf-8")
+    new_path = tmp_path / "new" / "sheet.json"
+    new_sheet = json.loads(new_path.read_text(encoding="utf-8"))
+    new_sheet["items"][0]["crop_sha256"] = "0" * 64  # the v7 gap box redrew this crop
+    new_path.write_text(json.dumps(new_sheet, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(ValueError, match="crop or strings differ"):
+        migrate.migrate(tmp_path / "old", tmp_path / "new", [path])
+    result = migrate.migrate(tmp_path / "old", tmp_path / "new", [path], leave_changed=True)
+    assert len(result["records"]) == 1
+    assert result["left_changed"] == [{"item_id": new_sheet["items"][0]["item_id"], "kind": new_sheet["items"][0]["kind"],
+                                       "crop_changed": True, "strings_changed": False}]

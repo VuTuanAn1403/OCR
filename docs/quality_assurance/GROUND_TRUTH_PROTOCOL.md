@@ -190,6 +190,12 @@ Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trư�
 Các lựa chọn dưới đây nằm trong công cụ nhưng chưa có trong khóa v1. Người dùng (VuTuanAn1403) duyệt nguyên bản nháp r2 và khóa chúng trong v2 ngày 10/11/2026, trước mọi kết quả đo. Luồng đo là `text_corrected`.
 
 - **Khóa hiện hành v7:** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v7.json`, sha256 `e7e875ce9b0ecf470c8e2364703e9031f284ba2cd00cdb5b9d219467e98a0e71`. Người dùng duyệt bản nháp ngày 11/11. Khóa không đổi lựa chọn nào; lựa chọn và 7 seal trùng hệt v6. Với mục chỉ OCR có chữ, khung trên ảnh giờ đánh dấu chỗ trống (`adjudicate_text_layer_diacritics.gap_box`): khoảng giữa hai chữ cùng dòng, hoặc đoạn dài hai lần chiều cao dòng sau chữ cuối (trước chữ đầu). Trước đó khung đóng vào chữ bên cạnh, và 464 quyết định dưới v6 gõ lại chữ đó.
+- **Phiếu dev dưới v7 (12/11):**
+  - Đo lại dev dưới khóa v7 (`scratch/v8/v8_011_measurement_dev_003_v7_20261112.json`): 13.751/345.300, 6.307 đơn vị phân xử, ρ_U 0,0248. Kết quả trùng v6, đúng như khóa đã nêu.
+  - Phiếu: `scratch/v8/adjudication/v8_011_dev_003_v7_20261112/`, sheet `d613bd47…`, 9.733 mục.
+  - `migrate_adjudication_decisions.py --leave-changed` chuyển 4.525/5.021 quyết định v6, chỉ những mục có ảnh cắt, A/B và bên A trùng hệt (`migrated-f2cd97ad29f6fa25.jsonl`, sha256 `5592b2b8…`). 496 mục `ONE_SIDE_EMPTY` có khung vẽ lại được để chấm lại (`migrated-f2cd97ad29f6fa25.changed.json`).
+  - Còn 5.208 mục: VIC 3.763, BHN 960, AAA 147, AGR 2020 138, AGR 2022 77, ASM 76, BCE 47.
+  - Operator không điền sẵn quyết định. Người duyệt nạp file chuyển bằng nút "Nạp JSONL", hoặc truyền nó cùng file xuất cho `seal`.
 - **Khóa v6 (đã bị thay):** `docs/quality_assurance/locks/v8_011_text_layer_measurement_lock_v6.json`, sha256 `5fc27a6f7f43a4e969b95c9b9ea7eba6a6a4ffa97431146ce2e944eee4e9b001`. Khóa không đổi lựa chọn nào. Phiếu phân xử ghi loại mục: `ONE_SIDE_EMPTY` khi một bên trống, kèm hướng dẫn "chữ có in ở chỗ [ ? ] không". Phiếu cũng hiện ngữ cảnh, chỉ gồm chữ giống nhau ở cả hai bên. Quyết định cũ cho mục `ONE_SIDE_EMPTY` không được chuyển sang, vì chúng được đưa ra khi phiếu còn hiển thị sai.
 - **Kết quả phân xử dev v6 (11/11).** Người duyệt chấm 5.021/9.733 mục và chọn seal số này: `scratch/v8/adjudication/sealed/v8_011_dev_003_v6_partial_20261111/seal.json` (sha256 bản ghi `bbc31ca6…`). 2.289 quyết định đến từ phiếu v5.
   - Mục đã chấm: AAA, AGR 2022, ASM, BCE đủ; AGR 2020 782/783; BHN 122/1.070; VIC 0/3.763.

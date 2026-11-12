@@ -1,47 +1,46 @@
 # Bàn giao
 
-Cập nhật 10/11/2026 tối, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1); đã push tới `e422ced`. Không phiên nào sửa `src/`, nên OCR identity vẫn khớp khóa `BASELINE-V8-20261109-003`. Trạng thái: skill `ocr-pdf-knowledge-map` hoặc `scripts/check_knowledge_map.py --summary`. Nhật ký: [10/11](../../scratch/dev_sessions/20261110-v8-goal-tools/session.md), [P1](../../scratch/dev_sessions/20261109-v8-p1-gt-lock/session.md).
+Cập nhật 12/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1). HEAD `1aef15c`, **cây làm việc có sửa `src/` chưa commit**. Khóa hiện hành `BASELINE-V8-20261112-001`. Trạng thái: `scripts/check_knowledge_map.py --summary`. Nhật ký [12/11](../../scratch/dev_sessions/20261112-v8-no-silent-drop/session.md), [rà soát 12/11](../../scratch/dev_sessions/20261112-v8-progress-audit/session.md).
 
-## 10/11: P1 (V8-011/012)
+## 12/11 — §4.1, V8-080, V8-140
 
-Mục tiêu: đưa 38 mục backlog lên `DONE`. Không có bằng chứng thì không đánh `DONE`.
+- **Sửa `src/` (đổi identity):**
+  - Dòng bị cổng A1 loại được ghi vào `extraction.json` (`rejected_ocr_lines`, có `source_id`, bbox, `text_raw`, mã review) và vào review packet; không vào `result.md`.
+  - Ô bảng heuristic mang bbox dòng nguồn; chữ không bị viết lại; token bị bỏ được ghi lại.
+  - Dòng khớp cả bảng heuristic chồng lẫn một bảng model thì bảng model nhận.
+- **Kiểm:** hồi quy 2.657 passed, 1 skipped; smoke + audit exit 0. Batch `output/v8_004_nosilentdrop_r2_20261112` 9/9 (AAA cần retry vì ONNX arena), identity 9/9 MATCH.
+- **So với 003:**
+  - Dòng mất 3.652 → 0; ô số không truy được nguồn 292 → 2; 333 bản trùng bỏ; 0 dòng nguồn mất.
+  - DSER dev và keyword không đổi.
+  - 69 thay đổi khác do worker Docling crash `0xC0000005` không tất định.
+  - Hồ sơ: [`CANDIDATE_SELECTION_DOSSIER.md`](../../cai%20tien%20v2/bao_cao/CANDIDATE_SELECTION_DOSSIER.md).
+- **V8-011:** đo dev khóa v7 trùng v6. Phiếu v7 `scratch/v8/adjudication/v8_011_dev_003_v7_20261112/` nhận 4.525 quyết định v6 (ảnh cắt và A/B khớp, `migrate_adjudication_decisions.py --leave-changed`); còn 5.208 mục.
+- **V8-012:** holdout cần khoảng 680.000 slot (`scratch/v8/holdout/HOLDOUT_PREP_20261112.md`).
+- **V8-095:** protocol ở `benchmark/challengers/parsers/README.md`.
+- **Crop cố định (V8-065/050/030):** 3.000 dòng dev (`scratch/v8/recognition_crops/v8_065_dev_004_3000_20261112/`, tham chiếu là text layer, không phải GT).
+  - VietOCR đọc crop gốc so với từng biến: `upscale2` 132 sửa / 13 sai (DSER 1.223 → 1.043); `clahe` 38/72; `denoise` 4/34; `otsu` 26/1.350.
+  - V8-030 trên cùng crop: 16 sửa / 0 sai.
+- **GT có cấu trúc (V8-060/070/071/080):** 44 trang chọn theo giả thuyết; phiếu rỗng có autosave ở `scratch/gt/structured_dev_004_20261112/` (cấu hình `structured-gt-sheets`).
+- **V8-085:** 9 PDF dev không có công thức; cần bộ PDF có công thức.
 
-- **Sàng lọc:** người dùng sàng lọc 7 PDF development; cả 7 `ACCEPTED` (24.172 slot `MATCH`, 0 `MISMATCH`), seal ở `scratch/v8/screening/sealed/`. Kiểm lại mù 1.552 chữ làm từ 17/11 (`scratch/v8/screening/recheck/`).
-- **Khóa đo (§7.6):**
-  - v2→v5: bỏ ghép chỉ item `b` (tính bảng là xóa), ghép dòng pha A và ghi 7 seal, phân xử một phần (mục chưa chấm là lỗi). Chi tiết ở protocol §7.6.
-  - v6 (`5fc27a6f…`): phiếu ghi loại mục ("một bên trống") và ngữ cảnh trung lập.
-  - v7 (hiện hành, `e7e875ce…`): khung đóng vào chỗ trống, không vào chữ bên cạnh (`gap_box`). Cả hai không thêm lựa chọn.
-- **Đo dev** (`..._dev_003_v6_20261111.json`), trước phân xử: 13.751/345.300 (thanh 4.421, đ 601, xóa 7.933; 3.195 slot xóa do lỗi §4.1).
-- **Phân xử v6 (seal `scratch/v8/adjudication/sealed/v8_011_dev_003_v6_partial_20261111/`):** 5.021/9.733 mục; AAA, AGR 2022, ASM, BCE đủ, AGR 2020 782/783; VIC chưa chấm.
-  - Khi khác OCR: text layer đúng 82,2%, OCR đúng 6,1%, cả hai sai 11,6%. ASM: text layer dùng `ƣ` thay `ư` (352 mục).
-  - Đếm bảo thủ 14.274/346.402 (4,1%); AAA 3,7%, ASM 3,6%; ρ_U 0,026. OCR còn rất xa 99,99%.
-  - 464 mục "cả hai sai" là chữ OCR chèn ở đầu/cuối dòng; khung đóng vào chữ bên cạnh nên người duyệt gõ lại chữ đó. Độ nhạy: 14.175/345.779. Khóa v7 đã sửa khung.
-  - Loại lỗi, 4 PDF đủ (`..._v8_012_diacritic_confusions_v6_4pdf_20261112.json`): mất gạch đ 557 (Đ hoa 544), mất nặng 399, hỏi→huyền/sắc 355.
-  - Challenger `acronym_diacritics.py` (V8-030, `..._v8_030_acronym_challenger_v6_by_pdf_20261112.json`): 5.307→4.960, 277 sửa, 4 làm sai (PDF in sẵn "HDQT"). AGR 2022, ASM, BCE chưa dùng khi thiết kế: 2.797→2.720, 51 sửa, 2 sai. Vẫn dev nên `INCONCLUSIVE`; cần holdout.
-- **Cổng dấu:** `diacritic_acceptance.py` và `release_gate.py` đếm theo `DSER_strict`.
-- **V8-080:** audit v2 (`..._003_r2_20261110.json`) và phiếu 72 số trong bảng.
-- **`DONE` mới:** V8-150, V8-120, V8-170.
-- **Hồi quy CPU sau khóa v7:** 2.648 passed, 1 skipped (`scratch/runs/20261111-232032-ae46506f`).
+## Trước đó (10–12/11)
+
+- 7 PDF dev sàng lọc `ACCEPTED`; kiểm lại mù từ 17/11 (`scratch/v8/screening/recheck/`).
+- Phân xử v6: 5.021/9.733 mục; bảo thủ 14.274/346.402 (4,1%); ρ_U 0,026. Chi tiết ở protocol §7.6.
+- V8-030 challenger: 277 sửa, 4 làm sai (dev, `INCONCLUSIVE`).
 
 ## Phát hiện còn mở
 
-- **Phiếu mất dữ liệu:** khung trình duyệt của app giữ localStorage trong RAM, nên đã mất 71 quyết định bảng và khoảng nửa phiếu phân xử đầy đủ. Từ nay chỉ mở phiếu qua `scripts/serve_review_sheets.py` (cấu hình `screening-sheets`, `table-review`, `adjudication-sheets`); mọi quyết định được ghi ra `<phiếu>/autosave/`.
-- **Đặc tả 13 §4.1:** 3.652 khối chữ trong ảnh vắng khỏi `extraction.json`.
-- **Bảng heuristic:** `src/ocr_structure/document_layout_engine.py:661` gán `bbox=r[0].bbox` cho cả hàng (315/513 ô có số). Cùng hàm sửa "12…HDPE" thành "D…" (646–647) và bỏ ô đầu "0"/"-" (651–652).
-- **Lỗi nhỏ:** `validation.py` import lười `benchmark.accuracy_first`; `runtime-models.json` ghi nhầm `V8-065` (manifest model: để nguyên).
-- Sửa các lỗi `src/` ở trên là đổi identity, cần khóa baseline mới.
+- **Chỉ mở phiếu qua `scripts/serve_review_sheets.py`.** Khung trình duyệt của app làm mất localStorage. Mở phiếu để kiểm đã ghi file trạng thái rỗng (0 quyết định) vào `autosave/` của phiếu 72 số và phiếu v7.
+- **Chính sách dòng confidence thấp có chữ thật** (cần người dùng): VIC tr.95 "số hóa tài liệu đào tạo…" (0,535) nằm ngoài `result.md`, nên keyword "Số hóa" không được đếm (`scratch/v8/v8_100_retained_line_keywords_004_20261112.json`).
+- Ô rỗng của bảng ảnh mang bbox cấp bảng (`table_fallback`), làm audit báo 45 số "vắng khỏi bảng". Không mất chữ.
+- `validation.py` import lười `benchmark.accuracy_first` (chỉ chạy khi truyền GT manifest).
 
 ## Bước kế tiếp (cần người dùng)
 
-1. Kiểm lại mù sàng lọc từ 17/11. Quyết định có chuẩn hóa `ƣ`→`ư` cho text layer không (đổi quy trình, cần khóa mới).
-2. Chấm 72 mục phiếu số trong bảng, rồi `build_table_number_review.py seal`.
-3. Gán nhãn GT bằng `label_structured_gt.py` (V8-060/070/071/080); chạy Vintern theo [`vlm/README.md`](../../benchmark/challengers/vlm/README.md).
-4. Quyết định thời điểm sửa lỗi `src/`, và push.
-
-## 11/11 tối — kiểm tra phiên Claude Code
-
-- HEAD `ce4c58a`, hơn ref `origin` cục bộ 9 commit. Claude đang dựng phiếu V8-011 v6 và chuẩn bị chuyển quyết định cũ. Khóa v6 tái lập được. Đo 7 PDF dev trước phân xử cho `DSER_strict` 13.751/345.300. Cổng dấu 99,99% vẫn `NOT_EVALUATED`.
-- Hồi quy của Claude có 2.646 đạt, 1 bỏ qua. Sau sửa chuyển quyết định, nhóm test phân xử có 10 đạt. Bản đồ v8 và diff check qua.
-- Tái hiện `context()` có thể chứa từ đang khác giữa OCR và text layer ở mục bên cạnh. Kiểm tra tính trung lập trước khi dùng phiếu cho holdout.
-  - Đã sửa trước khi khóa v6 lần cuối: ngữ cảnh chỉ lấy chữ nằm trong khối giống nhau và dừng ở chữ lệch đầu tiên (test `test_items_say_when_one_side_is_empty_and_show_neutral_context`).
-- [Nhật ký và bằng chứng](../../scratch/dev_sessions/20261111-project-claude-status/session.md).
+1. Duyệt diff `src/` và commit. Rồi chuyển `verified_head` và chạy `--check`.
+2. Chấm phiếu v7: nạp `migrated-f2cd97ad29f6fa25.jsonl`, chấm 5.208 mục, rồi `seal`. Chấm 72 mục số trong bảng, rồi `build_table_number_review.py seal`. Kiểm lại mù từ 17/11.
+3. Quyết: chuẩn hóa `ƣ`→`ư`; chính sách dòng confidence thấp; dùng khóa 004 làm baseline.
+4. Holdout: PDF mới và manifest của custodian.
+5. Ghim và tải ứng viên (Vintern theo [`vlm/README.md`](../../benchmark/challengers/vlm/README.md); ứng viên REC, LAYOUT, công thức, parser). Gán nhãn 44 trang GT, rồi `label_structured_gt.py export`.
+6. Quyết có thử `upscale2` thành candidate end-to-end không. Việc này đổi identity và cần chạy batch mới.

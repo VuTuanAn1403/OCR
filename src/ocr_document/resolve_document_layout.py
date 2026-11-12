@@ -182,6 +182,14 @@ def _reconcile_evidence(page):
             owners.extend((index, keys, mapping, True) for index, table in enumerate(page.tables)
                           for keys, mapping in _table_occurrences(current, table, table_rows[index], consumed[index],
                                                                  placement_tokens=tokens))
+        # V8-080: a heuristic table that duplicates a model table now matches
+        # the same source lines once its cells carry real boxes. The model
+        # table keeps ownership; any other ambiguity still abstains.
+        preferred = False
+        if len(owners) > 1:
+            model_owners = [owner for owner in owners if page.tables[owner[0]].engine != "heuristic"]
+            if len(model_owners) == 1:
+                owners, preferred = model_owners, True
         formula_owners = [formula for formula in page.formulas
                           if not vertical and sid in formula.provenance.get("derived_from_source_ids", [])
                           and block_is_covered(source["bbox"], [formula])]
@@ -200,6 +208,8 @@ def _reconcile_evidence(page):
                                  "reason": "GEOMETRY_AND_EXACT_TEXT_OCCURRENCE",
                                  "excluded_presentation_tokens": _exact_tokens(current["text"])[:
                                      len(_exact_tokens(current["text"])) - len(_source_tokens(current))]}
+            if preferred:
+                dispositions[sid]["owner_choice"] = "MODEL_TABLE_OVER_HEURISTIC_OVERLAP"
             if geometry is not None:
                 dispositions[sid].update(reason="PLACED_GLYPHS_AND_EXACT_TEXT_OCCURRENCE",
                                          placement_geometry=dict(records[0]), occurrence_mapping=mapping)

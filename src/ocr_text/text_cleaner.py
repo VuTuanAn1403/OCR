@@ -10,9 +10,8 @@ class TextCleaner:
         if not text:
             return ""
         norm = UnicodeNormalizer.normalize(text)
-        # Fix pipe diameter OCR misrecognitions: P180 HDPE / 12225 HDPE -> D180 HDPE / D225 HDPE
-        norm = re.sub(r"\b[Pp](\d{2,4}\s*HDPE)\b", r"D\1", norm)
-        norm = re.sub(r"\b12(\d{2,3}\s*HDPE)\b", r"D\1", norm)
+        # V8-080: no domain rewrite here. The former "12225 HDPE -> D225 HDPE"
+        # rule deleted digits, which the numeric guard forbids.
         # Collapse multiple horizontal whitespace characters to a single space
         return re.sub(r"[ \t]+", " ", norm).strip()
 

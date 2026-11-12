@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import re
 import unicodedata
 import pymupdf
@@ -631,40 +631,68 @@ class DocumentLayoutEngine:
                     return [s.strip()]
                 return [desc] + cols if desc else cols
 
+            def _cell_pieces(text: str, box: List[float]) -> List[Tuple[str, List[float], str]]:
+                """Split one OCR line into cell texts, each with a box inside the line's box.
+
+                One piece keeps the line box. Several pieces get the horizontal
+                share of their characters in the line: an estimate, so named.
+                """
+                pieces = _split_trailing_numbers(text)
+                line_box = list(box) if box and len(box) >= 4 else []
+                if len(pieces) == 1 or not line_box:
+                    return [(piece, line_box, "SOURCE_LINE") for piece in pieces]
+                spans = [m.span() for m in re.finditer(r"\S+", text)]
+                width, length = line_box[2] - line_box[0], max(1, len(text))
+                out, cursor = [], 0
+                for piece in pieces:
+                    count = len(piece.split())
+                    start, end = spans[cursor][0], spans[cursor + count - 1][1]
+                    cursor += count
+                    out.append((piece, [round(line_box[0] + width * start / length, 2), line_box[1],
+                                        round(line_box[0] + width * end / length, 2), line_box[3]],
+                                "CHAR_SPAN_ESTIMATE"))
+                return out
+
             # 4. Extract logical cells row by row
             cells: List[TableCell] = []
+            bbox_methods: Dict[int, str] = {}
             max_col_found = 0
 
+            # V8-080: a cell keeps the geometry of the OCR line it came from,
+            # cell text is never rewritten, and a token left out of the grid
+            # is recorded rather than dropped silently.
+            stripped_tokens: List[Dict[str, Any]] = []
             for r_idx, r in enumerate(table_rows):
                 r_sorted = sorted(r, key=lambda b: (b.bbox[0] if b.bbox else 0, b.bbox[1] if b.bbox else 0))
-                row_items: List[str] = []
+                row_items: List[Tuple[str, List[float], str]] = []
                 for b in r_sorted:
                     txt = b.text.strip()
                     if not txt:
                         continue
-                    # Clean pipe diameter OCR artifacts
-                    txt = re.sub(r"\b[Pp](\d{2,4}\s*HDPE)\b", r"D\1", txt)
-                    txt = re.sub(r"\b12(\d{2,3}\s*HDPE)\b", r"D\1", txt)
-                    items = _split_trailing_numbers(txt)
-                    row_items.extend(items)
+                    row_items.extend(_cell_pieces(txt, b.bbox))
 
-                # Strip leading OCR bullet artifacts
-                while row_items and row_items[0] in ("O", "0", "e", "•", "-"):
-                    row_items.pop(0)
+                # Leading OCR bullet artifacts stay out of the grid but on record.
+                while row_items and row_items[0][0] in ("O", "0", "e", "•", "-"):
+                    text, box, _ = row_items.pop(0)
+                    stripped_tokens.append({"row_idx": r_idx, "text": text, "bbox": box,
+                                            "reason": "LEADING_BULLET_ARTIFACT",
+                                            "numeric_like": text in ("0", "-")})
 
-                for c_idx, cell_text in enumerate(row_items):
+                for c_idx, (cell_text, cell_box, method) in enumerate(row_items):
                     if cell_text:
                         cells.append(TableCell(
                             row_idx=r_idx,
                             col_idx=c_idx,
                             text=cell_text,
-                            bbox=r[0].bbox if r and r[0].bbox else [],
+                            bbox=cell_box,
                             confidence=0.95,
                             confidence_source="heuristic",
                         ))
+                        bbox_methods[id(cells[-1])] = method
                         if c_idx > max_col_found:
                             max_col_found = c_idx
 
+            texts_before_merge = {id(cell): cell.text for cell in cells}
             cells = self._merge_wrapped_numeric_rows(cells)
             if self._looks_like_signature_block(cells):
                 continue
@@ -716,6 +744,10 @@ class DocumentLayoutEngine:
                         pass
 
             tid = table_id or f"page_{page_num}_scanned_table"
+            cell_geometry = [{"row_idx": cell.row_idx, "col_idx": cell.col_idx,
+                              "bbox_method": ("MERGED_WRAPPED_LABEL" if cell.text != texts_before_merge[id(cell)]
+                                              else bbox_methods[id(cell)])} for cell in cells]
+            numeric_stripped = any(token["numeric_like"] for token in stripped_tokens)
             return TableStructure(
                 table_id=tid,
                 page=page_num,
@@ -724,7 +756,16 @@ class DocumentLayoutEngine:
                 num_cols=num_cols,
                 cells=cells,
                 confidence=0.92,
-                            confidence_source="heuristic",
+                confidence_source="heuristic",
+                # A "0" or "-" left out of the grid may be a value, not a bullet.
+                needs_review=numeric_stripped,
+                provenance={"heuristic_cells": {
+                    "method": "heuristic-source-line-cells-v1",
+                    "cell_geometry": cell_geometry,
+                    "stripped_tokens": stripped_tokens,
+                    "stripped_tokens_row_space": "before_wrapped_row_merge",
+                    **({"review_reason": "NUMERIC_LIKE_TOKEN_STRIPPED"} if numeric_stripped else {}),
+                }},
             )
 
         return None

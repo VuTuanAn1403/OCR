@@ -172,6 +172,9 @@ def build_extraction_json(doc: ExtractedDocument, items_by_page: Sequence[Sequen
                       **{key: page.metadata.get(key) for key in (
                           "logical_page_id", "physical_page_id", "ordered_item_ids", "layout_family",
                           "layout_tree", "article_groups", "order_edges", "layout_review", "text_evidence", "source_dispositions")},
+                      # Spec 13 §4.1; absent on outputs written before 12/11/2026.
+                      **({"rejected_ocr_lines": page.metadata["rejected_ocr_lines"]}
+                         if "rejected_ocr_lines" in page.metadata else {}),
                       **({"ocr_structure_bridge": bridge} if bridge.get("orientation_placements") else {}),
                       **({"source_reconciliation_method": page.metadata["source_reconciliation_method"]}
                          if "source_reconciliation_method" in page.metadata else {}),

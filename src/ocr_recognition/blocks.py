@@ -59,7 +59,9 @@ def ocr_results_to_blocks(ocr_results, *, regions, page_num, scale_x, scale_y, u
                 text=text,
                 text_raw=raw_text,
                 recognition_provenance=provenance,
-                content_type=ContentType.IMAGE,
+                # The containing region's type; previously every rejected line
+                # was labelled IMAGE whatever region it lay in.
+                content_type=matching_region.content_type,
                 source="ocr",
                 confidence=conf,
                 orientation=0.0,

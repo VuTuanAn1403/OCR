@@ -19,6 +19,16 @@ def test_rejected_blocks_without_an_extraction_item_are_drops():
     assert examples["dropped"][0]["text"] == "Logo"
 
 
+def test_rejected_blocks_recorded_for_review_are_not_drops():
+    block = {"status": "REJECTED_LOW_CONFIDENCE", "content_type": "TEXT", "text": "Logo", "text_raw": "Logo",
+             "bbox": [0, 0, 50, 10]}
+    extraction = {"items": [], "rejected_ocr_lines": {"items": [
+        {"source_id": "x:p0001:r000001", "text_raw": "Logo", "bbox": [0, 0, 50, 10]}]}}
+    counts = audit.audit_page({"page_num": 1, "evidence_blocks": [block]}, extraction, "DOC", _examples())
+    assert counts["retained_for_review_REJECTED_LOW_CONFIDENCE"] == 1
+    assert not counts.get("dropped_REJECTED_LOW_CONFIDENCE")
+
+
 def test_numeric_guard_counts_changed_numbers_but_not_restored_dashes():
     items = [{"kind": "b", "bbox": [0, 0, 9, 9], "source_id": "a", "confidence": 0.9,
               "text_raw": "Sản phẩm ? dịch vụ", "text_corrected": "Sản phẩm - dịch vụ"},

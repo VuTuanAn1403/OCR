@@ -20,7 +20,7 @@ from ocr_document.document_furniture import protect_table_continuation_lines
 from ocr_document.markdown_exporter import MarkdownExporter
 from ocr_document.page_assembly import assign_region_statuses, build_evidence_blocks, build_page_quality
 from ocr_document.reading_order import ReadingOrderSorter
-from ocr_document.source_identity import lock_text_evidence
+from ocr_document.source_identity import lock_rejected_ocr_lines, lock_text_evidence
 from ocr_document.xy_cut import METHOD as XY_CUT_METHOD
 from ocr_layout.steps import apply_layout_model, link_blocks_to_regions
 from ocr_pdf_io.coordinate_transform import page_display_chain
@@ -175,6 +175,8 @@ class TextPageExtractor:
         if self.document_layout["method"] != "legacy":
             protect_table_continuation_lines([SimpleNamespace(page_num=page_num, blocks=blocks)])
             lock_text_evidence(blocks, self.doc_hash, page_num, meta)
+        # Spec 13 §4.1: no recognized line leaves the record silently.
+        lock_rejected_ocr_lines(rejected_evidence, self.doc_hash, page_num, meta, regions)
         if self.config.get("retain_table_ocr_lines", False):
             meta["table_ocr_evidence"] = {
                 "method": "post-fallback-pre-table-v1",

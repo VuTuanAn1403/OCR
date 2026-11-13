@@ -42,6 +42,7 @@ DOC_BUDGETS = {
     "cai tien v2/13_DAC_TA_CHU_THIEU_THUA_SAI.md": 12000,
     "cai tien v2/bao_cao/BASELINE_LOCK_REPORT.md": 10000,
     "cai tien v2/bao_cao/CANDIDATE_SELECTION_DOSSIER.md": 12000,
+    "cai tien v2/bao_cao/GOI_DUYET_V8_20261113.md": 12000,
     ".claude/skills/ocr-pdf-knowledge-map/SKILL.md": 5000,
     ".claude/skills/ocr-pdf-knowledge-map/references/layers.md": 8000,
     ".claude/skills/ocr-pdf-knowledge-map/references/evidence.md": 5000,

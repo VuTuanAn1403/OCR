@@ -1,0 +1,71 @@
+{
+ "schema_version": "ocr-v8-rec-pin-v1",
+ "candidate": "asternet-vietnamese-ocr",
+ "decision": "reviewer Q9 option 2, 13/11/2026",
+ "code": {
+  "repository": "https://huggingface.co/asterxlabs/asternet-vietnamese-ocr",
+  "revision": "aec29ab0aaf26061e861cb4b3a301988744c5fa3",
+  "licence": "MIT (Hugging Face API cardData.license and config.json license, 13/11/2026)",
+  "inference_reference": "PyPI asterocr 1.0.2 wheel sha256 e9ac8bfdc4eaa5a7e78404f365a2c491d60186751c94f0ab473c7e42d68257c3 (MIT), read only, not installed"
+ },
+ "weights": {
+  "url": "https://huggingface.co/asterxlabs/asternet-vietnamese-ocr/resolve/aec29ab0aaf26061e861cb4b3a301988744c5fa3/asternet.onnx",
+  "lfs_sha256": "10c96b533e1f64031d73edfddafd7d4b13595544f11891f0531bcd72cb29be80",
+  "licence": "MIT",
+  "pytorch_url": "https://huggingface.co/asterxlabs/asternet-vietnamese-ocr/resolve/aec29ab0aaf26061e861cb4b3a301988744c5fa3/asternet_best.pth",
+  "pytorch_lfs_sha256": "ae1e151b746e9da4068b307643451303da5123a38c916aa8597364201aec7380"
+ },
+ "local_dir": "models/v8/asternet-vietnamese-ocr",
+ "retrieved_on": "2026-11-13",
+ "files": {
+  "asternet_best.pth": {
+   "size": 42761405,
+   "sha256": "ae1e151b746e9da4068b307643451303da5123a38c916aa8597364201aec7380"
+  },
+  "asternet.onnx": {
+   "size": 42742163,
+   "sha256": "10c96b533e1f64031d73edfddafd7d4b13595544f11891f0531bcd72cb29be80"
+  },
+  "vocab.json": {
+   "size": 2541,
+   "sha256": "82c6df018ceca8c10876947e0f7df798ed321825276ed7f3bb12ae3ed6dc647b"
+  },
+  "config.json": {
+   "size": 1069,
+   "sha256": "547b2db0b7c84cd8ba0e793ef91132ffb535133281bf0cca0cdbe845be274580"
+  },
+  "README.md": {
+   "size": 9185,
+   "sha256": "66c22092ac677a54581e7f99bfe7ae045d36024f1cec739f728b89b4487a5684"
+  },
+  "vendor/asterocr/models/backbone.py": {
+   "size": 4584,
+   "sha256": "6c2f46ee08e59ca343b8ceb85b24da632697d84ecc4bcbf919790ffcf316e322"
+  },
+  "vendor/asterocr/models/sequence.py": {
+   "size": 1125,
+   "sha256": "00159446f0d8fc843163322c87e664d819b86965a2ab79a240d1208ec303035a"
+  },
+  "vendor/asterocr/models/language.py": {
+   "size": 4446,
+   "sha256": "687d2ed7b3ae43cec4b777d310725b5758a931b87d1b52ffa7cee66f040c2cb3"
+  },
+  "vendor/asterocr/models/model.py": {
+   "size": 5547,
+   "sha256": "0e4184cde19aeed40c380f94d5588ce5c31f267f72da2846dbc7496a2175e628"
+  },
+  "vendor/asterocr/vocab.py": {
+   "size": 8401,
+   "sha256": "cf9f825fb18cae0dafdf996702dbb2b6f0a6a26957ca5a71d668f1a298dff8e2"
+  },
+  "vendor/asterocr/__init__.py": {
+   "size": 91,
+   "sha256": "8560a081e83937c5ec7d531e309d2f050b02966b31749d49e72f1fb5a2cfe473"
+  },
+  "vendor/asterocr/models/__init__.py": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ },
+ "runtime": "PyTorch reference model (vendored asterocr 1.0.2 model modules, copied unchanged from the MIT wheel; __init__.py files are local stubs). The ONNX export fails on lines over 256 CTC steps; on 34 short crops ONNX and PyTorch argmax were identical (max abs log-prob diff 0.0077). Vendor linguistic post-processing off."
+}

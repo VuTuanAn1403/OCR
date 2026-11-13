@@ -1,0 +1,32 @@
+{
+ "schema_version": "ocr-v8-rec-pin-v1",
+ "candidate": "vietocr-vgg-transformer",
+ "decision": "reviewer Q9 option 1, 13/11/2026",
+ "code": {
+  "repository": "https://github.com/pbcquoc/vietocr",
+  "commit": "fe8c3a7fc714aec57ab81cec844eb3adf0c1636c",
+  "licence": "Apache-2.0 (GitHub API repos/pbcquoc/vietocr license.spdx_id, 13/11/2026)"
+ },
+ "weights": {
+  "url": "https://vocr.vn/data/vietocr/vgg_transformer.pth",
+  "http_etag": "638aa7bf-90c84cd",
+  "http_last_modified": "Sat, 03 Dec 2022 01:34:55 GMT",
+  "licence": "Apache-2.0 assumed from the repository: same author and host as the production vgg_seq2seq.pth (models/v62/runtime-models.json); the host states no separate terms"
+ },
+ "local_dir": "models/v8/vietocr-vgg-transformer",
+ "retrieved_on": "2026-11-13",
+ "files": {
+  "base.yml": {
+   "size": 1809,
+   "sha256": "9c8283fadb950f06f5d3400475f80d5355700ff315c9c48b7875e6ea66647d1c"
+  },
+  "vgg-transformer.yml": {
+   "size": 505,
+   "sha256": "0df9feee197754c7381871e5dfd07c6f3e292a4853eece6f1af240923e57c907"
+  },
+  "vgg_transformer.pth": {
+   "size": 151815373,
+   "sha256": "380512193a8b6cbf6fad80deacdc9b6939d10d473d199892fc6408d13775ea59"
+  }
+ }
+}

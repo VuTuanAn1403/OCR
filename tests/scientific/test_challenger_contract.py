@@ -134,8 +134,10 @@ def test_model_catalog_is_well_formed_and_only_the_pinned_candidate_is_downloada
     status = catalog.catalog_status(data)
     # 10/11/2026: the user asked to pin Vintern-1B-v3.5 (revision and weights sha256 from the Hub).
     # 12/11/2026: the user approved pinning Apache-2.0 candidates; PP-DocLayout_plus-L ONNX qualified.
+    # 13/11/2026: reviewer Q9 options 1-3 pinned VietOCR vgg_transformer, AsterNet and Tesseract vie (rec_pins/).
     assert sorted(name for name, row in status.items() if row["download_allowed"]) == [
-        "pp-doclayout-plus-l-onnx", "vintern-1b-v3.5"]
+        "asternet-vietnamese-ocr", "pp-doclayout-plus-l-onnx", "tesseract-vie-best", "vietocr-vgg-transformer",
+        "vintern-1b-v3.5"]
     assert "restrictive or conditional licence needs licence_review" in status["doclayout-yolo"]["blockers"]
 
 

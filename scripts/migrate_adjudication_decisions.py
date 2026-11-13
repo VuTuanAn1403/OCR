@@ -35,11 +35,11 @@ def load_sheet(folder: Path):
 
 
 def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path], skip_kinds=(),
-            leave_changed: bool = False) -> Dict:
+            leave_changed: bool = False, leave_missing: bool = False) -> Dict:
     old_sheet, old_items, old_key = load_sheet(from_sheet)
     new_sheet, new_items, new_key = load_sheet(to_sheet)
     records = read_jsonl(decision_paths)
-    problems, moved, skipped, changed = [], [], 0, []
+    problems, moved, skipped, changed, missing = [], [], 0, [], []
     for record in sorted(records, key=lambda r: r["item_id"]):
         item_id = record["item_id"]
         where = f"{item_id}"
@@ -47,6 +47,9 @@ def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path], skip_k
             problems.append(f"{where}: decision belongs to sheet {record.get('sheet_id')}, not {old_sheet['sheet_id']}")
             continue
         old, new = old_items.get(item_id), new_items.get(item_id)
+        if old is not None and new is None and leave_missing:
+            missing.append(item_id)  # the new lock removed the difference: nothing left to decide
+            continue
         if old is None or new is None:
             problems.append(f"{where}: item missing on the {'old' if old is None else 'new'} sheet")
             continue
@@ -72,7 +75,8 @@ def migrate(from_sheet: Path, to_sheet: Path, decision_paths: List[Path], skip_k
     if problems:
         raise ValueError(f"{len(problems)} decisions cannot move:\n  " + "\n  ".join(problems[:40]))
     return {"from_sheet": old_sheet["sheet_id"], "to_sheet": new_sheet["sheet_id"], "records": moved,
-            "skipped_by_kind": skipped, "skip_kinds": list(skip_kinds), "left_changed": changed}
+            "skipped_by_kind": skipped, "skip_kinds": list(skip_kinds), "left_changed": changed,
+            "left_missing": sorted(set(missing))}
 
 
 def main(argv=None) -> int:
@@ -86,15 +90,20 @@ def main(argv=None) -> int:
     parser.add_argument("--leave-changed", action="store_true",
                         help="Leave items whose crop or strings changed undecided (listed in <out>.changed.json)"
                              " instead of stopping")
+    parser.add_argument("--leave-missing", action="store_true",
+                        help="List decided items absent from the new sheet (the new lock removed the difference)")
     args = parser.parse_args(argv)
-    result = migrate(args.from_sheet, args.to_sheet, args.decisions, tuple(args.skip_kind), args.leave_changed)
+    result = migrate(args.from_sheet, args.to_sheet, args.decisions, tuple(args.skip_kind), args.leave_changed,
+                     args.leave_missing)
     data = "".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in result["records"]).encode("utf-8")
     write_new(args.out, data)
-    if args.leave_changed:
+    if args.leave_changed or args.leave_missing:
         write_new(args.out.with_suffix(".changed.json"),
-                  (json.dumps(result["left_changed"], ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
+                  (json.dumps({"changed": result["left_changed"], "missing": result["left_missing"]},
+                              ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
     print(f"{len(result['records'])} decisions moved, {result['skipped_by_kind']} left to re-decide by kind, "
           f"{len(result['left_changed'])} left to re-decide because the crop or strings changed, "
+          f"{len(result['left_missing'])} no longer on the new sheet, "
           f"{result['from_sheet']} -> {result['to_sheet']}: "
           f"{args.out} sha256 {sha256_bytes(data)}")
     return 0

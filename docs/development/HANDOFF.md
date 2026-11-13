@@ -15,7 +15,7 @@ Cập nhật 13/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-chall
   - V8-030 trên cùng crop: 16 sửa / 0 sai.
 - **GT có cấu trúc (V8-060/070/071/080):** 44 trang chọn theo giả thuyết; phiếu rỗng có autosave ở `scratch/gt/structured_dev_004_20261112/` (cấu hình `structured-gt-sheets`).
 - **V8-085:** chờ duyệt bộ ngoài (`scratch/v8/V8_085_FORMULA_DATASET_PROPOSAL_20261113.md`).
-- **V8-095 (`DONE`):** PP-StructureV3 trên 35 trang giả thuyết: đồng thuận thứ tự đọc 0,89 (bảng heuristic 0,80). Pagefile giãn; ổ C còn ~4 GB.
+- **V8-095 (`DONE`):** PP-StructureV3 chạy chỉ trên 35 trang giả thuyết (35/35): đồng thuận thứ tự đọc 0,89 (bảng heuristic 0,80). Pagefile giãn; ổ C còn ~4 GB.
 - **Candidate phóng ×2 (V8-050):** `recognition_line_upscale` mặc định tắt. Arena 1024 MB: AAA lỗi 3/3; nâng lên 1536 MB (`4274a49`), lượt 2 hoàn tất. Dev DSER 13.751 → 11.647 / 345.300; 1.781 sửa / 306 sai; keyword 3/0; phiếu 72 số không đổi. `INCONCLUSIVE`, chờ holdout.
 - **Vintern (V8-090, `DONE`):** 137/137 trang; DSER VLM 4.647 so với 1.606 trên 90 trang. Đề xuất `KEEP BASELINE`.
 

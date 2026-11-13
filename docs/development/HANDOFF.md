@@ -1,6 +1,13 @@
 # Bàn giao
 
-Cập nhật 13/11/2026 17:20, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1), chưa push. Khóa hiện hành `BASELINE-V8-20261113-001` (output `v8_006_arena1536_20261112`). Trạng thái: `scripts/check_knowledge_map.py --summary`. **Quyết định chờ người dùng:** [gói duyệt Q1–Q10](../../cai%20tien%20v2/bao_cao/GOI_DUYET_V8_20261113.md).
+Cập nhật 13/11/2026 23:30, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1), chưa push. Khóa hiện hành `BASELINE-V8-20261113-001` (output `v8_006_arena1536_20261112`). Trạng thái: `scripts/check_knowledge_map.py --summary`. [Gói duyệt Q1–Q10](../../cai%20tien%20v2/bao_cao/GOI_DUYET_V8_20261113.md).
+
+## 13/11 tối — người duyệt trả lời Q1–Q10
+
+- Quyết định: baseline 006; chưa PROMOTE, chưa nâng 8.0.0 (Q2 B); ×2 đo holdout; Vintern giữ baseline; tải OmniDocBench (đo nội bộ) và 3 ứng viên REC; holdout so cặp trên 6 PDF kèm ghi độ lệch §7.3 mục 5, và bổ sung PDF.
+- **Q6 B, Q7 A** (đổi `src/`, worktree `C:\kk_2\OCR_pdf_wt_v8int`, nhánh `v8-integration-keyword-pending`, chưa merge): `src/ocr_keywords/review_evidence.py` thêm vào `keyword_two_tier.json` ứng viên `020`↔`O2O` và keyword trong dòng bị A1 loại. Excel thêm sheet `Cho_duyet_dong_bi_loai`, `Ung_vien_chu_so`; không cộng vào `Tong_sau_duyet`. Trên 006: VIC 6 ứng viên, 1 keyword (`Số hóa` tr.95); mọi khóa cũ không đổi. Merge sau khi batch GPU holdout xong (identity).
+- **Tự động hóa:** `scripts/run_v8_evidence_chain.py` báo tiến độ các phiếu. Với `--run`, nó seal phiếu sàng lọc/phân xử đã có quyết định và chấm GT đã export. Bước cần người duyệt (ngưỡng export, khóa đo holdout) chỉ in lệnh.
+- Phiên "OCR PDF v8 exit gates": OCR holdout, Q9 (`5de92d0`), Q8.
 
 ## 13/11 — ƣ→ư, holdout, gói duyệt
 

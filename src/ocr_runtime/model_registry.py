@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ocr_contracts.processing import IdentityMismatch
-from ocr_runtime.paths import VIETOCR_FILES, registry_model_path
+from ocr_runtime.paths import registry_model_path, vietocr_registry_files
 
 
 # Selection made by the locked Docling 2.137.0 default pipeline. These are
@@ -21,7 +21,7 @@ def model_selection(registry):
     return {name: str(registry_model_path(name).resolve()) for name in registry["files"]}
 
 
-def validate_registry(registry):
+def validate_registry(registry, *, vietocr_variant=None):
     """Reject incomplete locks, including extra files in selected HF snapshots.
 
     A model loader reads configs/tokenizers as well as weights. A file omitted
@@ -32,7 +32,16 @@ def validate_registry(registry):
     files = registry.get("files")
     if not isinstance(files, dict) or not files:
         raise IdentityMismatch("MODEL_REGISTRY_INCOMPLETE: files must be a nonempty mapping")
-    required = {f"models/vietocr/{name}" for name in VIETOCR_FILES}
+    declared_variant = registry.get("vietocr_variant", "vgg_seq2seq")
+    try:
+        required = set(vietocr_registry_files(declared_variant))
+    except ValueError as exc:
+        raise IdentityMismatch(f"MODEL_REGISTRY_INCOMPLETE: {exc}") from exc
+    if vietocr_variant is not None and declared_variant != vietocr_variant:
+        raise IdentityMismatch(
+            f"MODEL_SELECTION_CHANGED: profile selects VietOCR {vietocr_variant!r}, "
+            f"but the registry pins {declared_variant!r}"
+        )
     try:
         detector = registry["text_detector"]["model_path"]
         layout = registry["layout_model"]["model_path"]

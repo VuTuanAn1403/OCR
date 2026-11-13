@@ -9,7 +9,7 @@ from vietocr.tool.config import Cfg
 from vietocr.tool.predictor import Predictor
 from ocr_contracts.geometry import LINE_ORIENTATION_METHOD, VERTICAL_LINE_ORIENTATION_METHOD
 from ocr_recognition.primary_engine import BaseOCREngine
-from ocr_runtime.paths import VIETOCR_FILES, vietocr_model_dir
+from ocr_runtime.paths import VIETOCR_FILES, registry_model_path, vietocr_model_dir, vietocr_registry_files
 from ocr_runtime.models import model_file_sha256
 from ocr_text.numeric_guard import preserves_numeric_evidence
 
@@ -23,7 +23,7 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
     """
     High-accuracy, fast Vietnamese OCR engine:
     - Text box detection using RapidOCR ONNXRuntime detector (~0.5s)
-    - Batch text recognition using VietOCR vgg_seq2seq (~0.09s/line) on CPU
+    - Batch text recognition using VietOCR, with vgg_seq2seq as the default
     - Returns VietOCR's own recognition probability for each recognized line
     - Singleton pattern to prevent repeated weight reloads
     """
@@ -41,7 +41,8 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
         return cls._instance
 
     def __init__(self, batch_size: int = 16, device: Optional[str] = None, num_threads: Optional[int] = None,
-                 detector=None, horizontal_180_retry_threshold=None, line_upscale: int = 1):
+                 detector=None, horizontal_180_retry_threshold=None, line_upscale: int = 1,
+                 variant: str = "vgg_seq2seq"):
         if type(batch_size) is not int or batch_size < 1:
             raise ValueError("batch_size must be a positive integer")
         self.batch_size = batch_size
@@ -64,21 +65,33 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             self._detector_threads = num_threads
 
         # The resolver V6.3 pins model hashes with (ocr_runtime.paths, F06).
-        model_dir = vietocr_model_dir().resolve()
-        base_config, seq2seq_config, weights = (model_dir / name for name in VIETOCR_FILES)
-        signature = (str(model_dir), *(model_file_sha256(path) for path in (base_config, seq2seq_config, weights)))
+        if variant == "vgg_seq2seq":
+            model_files = tuple((vietocr_model_dir() / name).resolve() for name in VIETOCR_FILES)
+        else:
+            model_files = tuple(registry_model_path(name).resolve() for name in vietocr_registry_files(variant))
+        base_config, variant_config, weights = model_files
+        hashes = tuple(model_file_sha256(path) for path in model_files)
+        if variant != "vgg_seq2seq" and any(digest is None for digest in hashes):
+            raise FileNotFoundError(f"Missing pinned files for VietOCR {variant}: {model_files}")
+        signature = (variant, *zip(model_files, hashes))
         # Device=None preserves the loaded device. Replacing persistent model
         # files or changing the model directory must reload the singleton too,
         # otherwise cache provenance would identify weights we never used.
         requested_device = device or self._device or "cpu"
         if (self._recognizer is None or requested_device != self._device
                 or signature != self._model_signature):
-            if base_config.is_file() and seq2seq_config.is_file() and weights.is_file():
+            if all(digest is not None for digest in hashes):
                 with base_config.open(encoding="utf-8") as stream:
                     local_config = yaml.safe_load(stream)
-                with seq2seq_config.open(encoding="utf-8") as stream:
+                with variant_config.open(encoding="utf-8") as stream:
                     local_config.update(yaml.safe_load(stream))
                 local_config["weights"] = str(weights)
+                if variant == "vgg_transformer":
+                    if local_config.get("seq_modeling") != "transformer":
+                        raise ValueError("Pinned VietOCR vgg_transformer config does not select the transformer decoder")
+                    # The pinned full checkpoint includes the CNN. Do not load
+                    # torchvision's separate pretrained weights or access the network.
+                    local_config["cnn"]["pretrained"] = False
                 cfg = Cfg(local_config)
             else:
                 cfg = Cfg.load_config_from_name("vgg_seq2seq")

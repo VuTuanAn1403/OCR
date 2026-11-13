@@ -87,6 +87,7 @@ def build_page_engines(doc, config: Dict[str, Any], *, legacy_furniture: bool,
             batch_size=config.get("batch_size", 16), device=config.get("device"),
             horizontal_180_retry_threshold=config.get("horizontal_180_retry_threshold"),
             line_upscale=config.get("recognition_line_upscale", 1),
+            variant=config.get("vietocr_variant", "vgg_seq2seq"),
             **detector_args,
             **({"num_threads": threads} if threads is not None else {}))
     else:

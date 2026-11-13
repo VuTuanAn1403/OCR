@@ -8,7 +8,7 @@ Cập nhật 13/11/2026 17:20, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword
 - **Holdout:** 13 PDF khóa; BCE, BHN 2022 trùng byte `inputs/` nên bị loại. 6 PDF cần sàng lọc (`scratch/v8/holdout/screening/`, cấu hình `holdout-screening-sheets`), 163.662 slot. Cổng cần ρ_U ≤ 0,0046, dev đo khoảng 0,025: thiếu slot. Chưa chạy OCR (protocol §7.3 mục 5).
 - **V8-100:** challenger `benchmark/challengers/keyword_confusables.py` (`O2O` đọc thành `020`). Trên 718 trang dev, tham chiếu text layer: thiếu 28 → 14 nếu nhận mọi ứng viên chờ duyệt, 0 ứng viên confusable sai.
 - **V8-065:** 6 ứng viên đọc tiếng Việt vào `model_catalog.json`, cổng tải đóng. **V8-085:** OmniDocBench đủ tiêu chí nhưng licence chỉ nghiên cứu (Q8).
-- Hai phiên chạy song song. Phiên "OCR PDF v8 exit gates" chạy thử lệnh chấm GT cấu trúc bằng GT tổng hợp (`scratch/v8/review_packages/`). [Nhật ký phiên](../../scratch/dev_sessions/20261113-v8-review-package/session.md).
+- Hai phiên chạy song song. Phiên "OCR PDF v8 exit gates" chạy thử chấm 4 lô bằng nhãn tổng hợp, không phải GT: export 4/4, chấm 10/10, delta 7/7 (`scratch/v8/review_packages/scoring_dryrun_20261113/README.md`). Nhật ký: [gói duyệt](../../scratch/dev_sessions/20261113-v8-review-package/session.md), [exit gates và báo cáo CHỜ](../../scratch/dev_sessions/20261113-v8-exit-gates-cho/session.md).
 
 ## 12/11 (tóm tắt)
 

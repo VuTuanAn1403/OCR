@@ -59,8 +59,8 @@ for entry in (ROOT / "src", ROOT):
     if str(entry) not in sys.path:
         sys.path.insert(0, str(entry))
 
-SCHEMA = "ocr-v8-text-layer-measurement-lock-v7"
-PROCEDURE_VERSION = 7
+SCHEMA = "ocr-v8-text-layer-measurement-lock-v8"
+PROCEDURE_VERSION = 8
 BASE_SCHEMA = "ocr-v8-text-layer-procedure-lock-v1"
 PROTOCOL = "docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md#7.6"
 LOCKED, DRAFT = "LOCKED_PROCEDURE", "DRAFT_NOT_LOCKED"
@@ -128,6 +128,11 @@ def current_choices(base_parameters: Dict, stream: Optional[str], matching: Opti
             "zero_width_part": "takes the verdict of the preceding base character",
             "partially_visible_word": "left out of the sample and reported apart",
             "implemented_by": "benchmark/ground_truth_tools/text_layer_reference.py::mark_visibility"},
+        "text_layer_lookalikes": {
+            "method": tlr.LOOKALIKE_METHOD, "map": dict(tlr.LOOKALIKES),
+            "scope": "reference line and word text before NFC; raw characters and offsets unchanged",
+            "decided": "user, 13/11/2026 (V8-011)",
+            "implemented_by": "benchmark/ground_truth_tools/text_layer_reference.py::reference_text"},
         "screening_unit": {
             "unit": "one text-layer word with at least one diacritic slot",
             "bulk_match": "the undecided words of one line in one action, recorded as bulk: line",

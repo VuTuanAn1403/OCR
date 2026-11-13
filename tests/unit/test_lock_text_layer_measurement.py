@@ -158,3 +158,14 @@ def test_partial_adjudication_is_locked_and_excludes_a_sample(tmp_path):
     rule = lock["choices"]["adjudication"]
     assert rule["partial"] is True and rule["sample_size"] is None and "no population estimate" in rule["undecided_items"]
     assert lock_v3.verify(_write(tmp_path, "partial.json", lock)) == []
+
+
+def test_lock_v8_records_the_lookalike_map_and_the_reference_applies_it():
+    """V8-011 lock v8 (user decision 13/11/2026): Latin oi/OI in a text layer read as u/U with horn."""
+    from benchmark.ground_truth_tools import text_layer_reference as tlr
+
+    choices = lock_v3.current_choices({"metric": "DSER_strict", "confidence": 0.95}, "text_corrected", PHASE_A)
+    assert choices["text_layer_lookalikes"]["map"] == {"ƣ": "ư", "Ƣ": "Ư"}
+    assert lock_v3.PROCEDURE_VERSION == 8
+    assert tlr.reference_text("Trƣờ ng Ƣu") == "Trườ ng Ưu"
+    assert tlr.diacritic_slots(tlr.reference_text("ƣ")) == tlr.diacritic_slots("ư") == 1

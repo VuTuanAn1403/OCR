@@ -29,6 +29,17 @@ SCHEMA = "ocr-v8-text-layer-units-v1"
 VISIBILITY_METHOD = "render-diff-redact-text-v1"
 VISIBILITY_ZOOM = 2.0  # 144 DPI
 MIN_CHANGED_PIXELS = 2  # per base character box
+# Measurement lock v8 (user decision, 13/11/2026): some Vietnamese PDFs set ư/Ư with the
+# look-alike letters U+01A3/U+01A2 (Latin "oi"), which carry no horn slot. The reference reads
+# them as ư/Ư; the raw characters and their offsets in the canonical page string are unchanged.
+LOOKALIKE_METHOD = "text-layer-lookalike-map-v1"
+LOOKALIKES = {"\u01a3": "\u01b0", "\u01a2": "\u01af"}  # Latin oi/OI -> u with horn
+_LOOKALIKE_TABLE = str.maketrans(LOOKALIKES)
+
+
+def reference_text(text: str) -> str:
+    """NFC text of the reference, with the look-alike letters of LOOKALIKES replaced."""
+    return unicodedata.normalize("NFC", text.translate(_LOOKALIKE_TABLE))
 
 
 def diacritic_slots(text: str) -> int:
@@ -113,7 +124,7 @@ def extract_lines(page) -> Tuple[List[Line], str]:
             pieces.append("".join(char.text for char in chars))
             line_id = f"b{block_index:03d}l{line_index:03d}"
             words = _split_words(line_id, chars)
-            lines.append(Line(line_id, block_index, line_index, unicodedata.normalize("NFC", "".join(c.text for c in chars)),
+            lines.append(Line(line_id, block_index, line_index, reference_text("".join(c.text for c in chars)),
                               _union(c.bbox for c in chars), words))
     return lines, "".join(pieces)
 
@@ -125,7 +136,7 @@ def _split_words(line_id: str, chars: List[Char]) -> List[Word]:
     def flush():
         if not current:
             return
-        text = unicodedata.normalize("NFC", "".join(c.text for c in current))
+        text = reference_text("".join(c.text for c in current))
         words.append(Word(f"{line_id}w{len(words):03d}", line_id, text, _union(c.bbox for c in current),
                           current[0].offset, current[-1].offset + len(current[-1].text), diacritic_slots(text),
                           list(current)))

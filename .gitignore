@@ -142,3 +142,6 @@ Test case/
 
 # v8 challenger weights (downloaded by the user, verified against benchmark/challengers/vlm/pins/)
 models/v8/
+
+# V8-012 holdout PDFs (custodian copy; never committed)
+/ocr_holdout/

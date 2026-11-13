@@ -1,5 +1,5 @@
 """compare_text_layer_runs.paired_units: per-unit DSER fix/harm between two runs."""
-from scripts.compare_text_layer_runs import paired_units
+from scripts.compare_text_layer_runs import paired_cer_counts, paired_units
 
 
 def _unit(uid, reference, prediction, errors, slots=2):
@@ -17,3 +17,11 @@ def test_units_pair_by_id_and_reference_and_nothing_is_dropped():
                        "only_baseline": 1, "only_candidate": 1}
     assert totals == {"baseline_errors": 1, "candidate_errors": 2, "slots": 6, "units": 3}
     assert {row["unit_id"] for row in changed} == {"u1", "u2"}
+
+
+def test_paired_cer_uses_character_counts_for_the_common_reference_only():
+    baseline = [_unit("same", "Hội đồng", "Hội dồng", 1), _unit("old", "Đầu tư", "Dầu tu", 2)]
+    candidate = [_unit("same", "Hội đồng", "Hội đồng", 0), _unit("new", "Đầu tư", "Đầu tư", 0)]
+    assert paired_cer_counts(baseline, candidate) == {
+        "reference_characters": 8, "baseline_edits": 1, "candidate_edits": 0,
+    }

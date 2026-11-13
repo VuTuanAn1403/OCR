@@ -51,11 +51,11 @@ def _find(text: str, keyword_ids: dict[str, str]) -> set[tuple[str, int, int]]:
             for phrase, start, end in KeywordCounter.iter_occurrences(text, list(keyword_ids))}
 
 
-def inventory(document: Path, snapshot: dict) -> dict:
+def inventory(document: Path, snapshot: dict, *, citation_source_dir=None) -> dict:
     """Bind observed offsets to the published Markdown and its keyword report."""
     markdown = document / "result.md"
     report = _read_json(document / "keyword_counts.json")
-    validate_report(report, snapshot, markdown, document.name)
+    validate_report(report, snapshot, markdown, document.name, citation_source_dir=citation_source_dir)
     pdf_hash = _text(report.get("pdf_sha256"), "pdf_sha256")
     if len(pdf_hash) != 64 or any(char not in "0123456789abcdef" for char in pdf_hash):
         raise ValueError("Expected a full PDF SHA-256 in the keyword report")

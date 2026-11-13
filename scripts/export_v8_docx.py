@@ -98,7 +98,11 @@ class Writer:
         columns = max(len(row) for row in rows)
         rows = [row + [""] * (columns - len(row)) for row in rows]
         weights = [max(4, min(40, max(len(row[i]) for row in rows))) for i in range(columns)]
-        widths = [TEXT_WIDTH * weight // sum(weights) for weight in weights]
+        if rows[0][0] == "Pha" and columns == 5:
+            # Keep the phase ID and status together in the roadmap tables.
+            weights = [6, 25, 16, 29, 24] if rows[0][2] == "Trạng thái" else [6, 29, 23, 32, 10]
+        total_weight = sum(weights)
+        widths = [TEXT_WIDTH * weight // total_weight for weight in weights]
         widths[-1] += TEXT_WIDTH - sum(widths)
         border = "".join(f'<w:{side} w:val="single" w:sz="4" w:space="0" w:color="A6A6A6"/>'
                          for side in ("top", "left", "bottom", "right", "insideH", "insideV"))

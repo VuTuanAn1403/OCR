@@ -232,6 +232,21 @@ def _tokenizer_error(directory, process):
     return "TOKENIZER_UNSUPPORTED_OR_FAILED"
 
 
+def _render_expression(raw):
+    """Convert a simple trailing equation tag to visible tokens for coloring."""
+    value = raw.rstrip()
+    delimiters = (("$$", "$$"), (r"\[", r"\]"), ("$", "$"), (r"\(", r"\)"))
+    closing = next((right for left, right in delimiters if value.lstrip().startswith(left) and value.endswith(right)), "")
+    body = value[:-len(closing)].rstrip() if closing else value
+    tag = re.search(r"\\tag(\*)?\s*\{([0-9A-Za-z.() -]+)\}\s*$", body)
+    if tag is None:
+        return raw, None
+    label = tag[2] if tag[1] else f"({tag[2]})"
+    # The original is written to source.txt. Render the label as visible
+    # math tokens so it participates in CDM and cannot disappear from scoring.
+    return body[:tag.start()].rstrip() + r"\quad " + label + closing, label
+
+
 def _colored(value):
     from ._vendor.unimernet_cdm.latex_processor import normalize_latex, token_add_color_RGB
 
@@ -354,6 +369,11 @@ def render_formula(raw, directory, runtime, *, content_format="LATEX", tex_cache
         _require("tabular" not in raw and not re.search(r"\\(?:begin|end)\s*{document}", raw),
                  "Expected a mathematical expression, not a document or table")
         failure_kind = "EVALUATOR_ERROR"
+        equation_label = None
+        if engine == "lualatex":
+            render_source, equation_label = _render_expression(render_source)
+        if equation_label is not None:
+            report["rendered_equation_label"] = equation_label
         value, process = _tokenize(render_source, runtime["tools"]["node"]["path"], directory)
         report["processes"].append(process)
         _require(process["returncode"] == 0 and not process["timed_out"] and not process["output_limit_exceeded"],

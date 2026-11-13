@@ -12,7 +12,7 @@ HTML page it sends (the sheet files on disk, and the templates pinned by the mea
 lock, are not changed). The script
 
 * sends each state the sheet writes under a known key (``screening:``, ``adjudication:``,
-  ``table-number-review:``, ``structured-gt:``) to ``POST /__autosave``, at most every 1.5 s;
+  ``table-number-review:``, ``structured-gt:``, ``keyword-occurrence:``) to ``POST /__autosave``;
 * on load, hands the sheet the saved state when it holds more decisions than localStorage
   (``GET /__autosave?page=``), so a wiped or capped browser store no longer loses work.
 
@@ -40,7 +40,7 @@ from pathlib import Path
 from typing import Dict, Optional
 from urllib.parse import parse_qs, unquote, urlparse
 
-PREFIXES = ("screening:", "adjudication:", "table-number-review:", "structured-gt:")
+PREFIXES = ("screening:", "adjudication:", "table-number-review:", "structured-gt:", "keyword-occurrence:")
 MAX_BODY = 64 * 1024 * 1024
 BACKUP_EVERY_SECONDS = 300
 BACKUPS_KEPT = 50
@@ -62,15 +62,20 @@ AUTOSAVE_SCRIPT = MARKER + """
     request.send();
     if (request.status === 200) saved = JSON.parse(request.responseText).states || {};
   } catch (e) {}
-  const score = value => {
-    try { const s = JSON.parse(value); const d = s.decisions || s.labels || {};
-          return Object.keys(d).length * 1e6 + Object.values(s.revisions || {}).reduce((a, b) => a + Number(b || 0), 0); }
+  const score = (key, value) => {
+    try {
+      const s = JSON.parse(value);
+      const revisions = Object.values(s.revisions || {}).reduce((a, b) => a + Number(b || 0), 0);
+      if (key.startsWith("keyword-occurrence:")) return revisions;
+      const decisions = s.decisions || s.labels || {};
+      return Object.keys(decisions).length * 1e6 + revisions;
+    }
     catch (e) { return -1; }
   };
   const proto = Storage.prototype, getItem = proto.getItem, setItem = proto.setItem;
   proto.getItem = function (key) {
     const local = getItem.call(this, key);
-    if (this === window.localStorage && tracked(key) && key in saved && score(saved[key]) > score(local)) return saved[key];
+    if (this === window.localStorage && tracked(key) && key in saved && score(key, saved[key]) > score(key, local)) return saved[key];
     return local;
   };
   const pending = {};

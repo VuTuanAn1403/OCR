@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duyệt occurrence keyword</title>
+<style>
+body{font:16px system-ui,sans-serif;margin:0;background:#f2f5f7;color:#192735}header{padding:18px 24px;background:#152f46;color:white}h1{font-size:22px;margin:0 0 8px}main{padding:20px;display:grid;grid-template-columns:minmax(320px,1fr) minmax(380px,1.4fr);gap:20px}.panel{background:white;padding:18px;border-radius:10px}label{display:block;margin:12px 0 6px}input,select,textarea,button{font:inherit;box-sizing:border-box}input,select,textarea{width:100%;padding:9px;border:1px solid #9fadb8;border-radius:4px}button{padding:9px 14px;margin:8px 6px 8px 0;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f6f8;padding:12px}#image-wrap{position:relative}img{display:block;width:100%}#box{position:absolute;border:2px solid #d72339;box-sizing:border-box;pointer-events:none}#notice{color:#8b1717;min-height:24px}.small{font-size:14px}#progress{margin-top:10px}summary{cursor:pointer}@media(max-width:850px){main{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>Đối chiếu occurrence keyword</h1><div>Đọc ảnh nguồn rồi liên kết từng lần xuất hiện với GT đã chốt. Mục chưa duyệt được giữ trống.</div></header>
+<main><section class="panel">
+<p class="small" id="review-scope"></p>
+<label for="reviewer">Người duyệt</label><input id="reviewer" autocomplete="off">
+<div id="progress"></div><button id="prev">← Trước</button><button id="next">Sau →</button>
+<h2 id="keyword"></h2><pre id="context"></pre>
+<label for="unit">Vùng nguồn để xem / gán</label><select id="unit"></select>
+<label for="choice">Kết luận cho occurrence hiện tại</label><select id="choice"></select>
+<label for="reason">Lý do nếu ngoài phạm vi GT</label><textarea id="reason" rows="2"></textarea>
+<button id="save">Lưu quyết định</button><button id="clear">Bỏ quyết định hiện tại</button>
+<div id="notice" role="status"></div><button id="download">Tải quyết định JSON</button>
+<label for="restore">Nạp bản quyết định đã lưu</label><input id="restore" type="file" accept=".json,application/json">
+<p class="small">Mở bằng serve_review_sheets.py để có bản lưu trên đĩa. Bản tải JSON là đầu vào lệnh export.</p>
+<details><summary>GT trong phạm vi (kể cả occurrence chưa có dự đoán)</summary><pre id="references"></pre></details>
+</section><section class="panel"><h2 id="source-title">Ảnh nguồn</h2><div id="image-wrap"><img id="source" alt="Trang PDF nguồn"><div id="box"></div></div><h3>Bản chép đã chốt của vùng</h3><pre id="transcription"></pre></section></main>
+<script>
+"use strict";
+const SHEET = /*__SHEET__*/null;
+const key = "keyword-occurrence:" + SHEET.sheet_id;
+const $ = id => document.getElementById(id);
+const pending = SHEET.schema_version === "ocr-keyword-pending-review-v1";
+const streams = {alias: "Alias chờ duyệt", confusable: "Ứng viên O/0", retained_line: "Dòng OCR bị loại"};
+$('review-scope').textContent = pending
+  ? "Đối chiếu ứng viên chờ duyệt với GT đã chốt. Kết quả chỉ ghi độ bao phủ trên mẫu đã duyệt."
+  : "Đối chiếu literal_v1 với GT đã chốt và xuất phiếu liên kết occurrence.";
+let state = {sheet_id:SHEET.sheet_id,reviewer:"",decisions:{},revisions:{},cursor:0};
+try { const saved=JSON.parse(localStorage.getItem(key)); if(saved && saved.sheet_id===SHEET.sheet_id) state=saved; } catch(e) {}
+const units=new Map(SHEET.units.map(u=>[u.unit_id,u]));
+const keywords=new Map(SHEET.observed.keywords.map(k=>[k.id,k.keyword]));
+const option=(value,label)=>{const o=document.createElement("option");o.value=value;o.textContent=label;return o;};
+function persist(){state.reviewer=$("reviewer").value;localStorage.setItem(key,JSON.stringify(state));}
+function current(){return SHEET.occurrences[state.cursor];}
+function showSource(){const u=units.get($("unit").value);if(!u){$("source").removeAttribute("src");$("source").hidden=true;$("source-title").textContent="Ảnh nguồn";$("box").hidden=true;$("transcription").textContent="Chọn một vùng nguồn để xem.";return;}
+ const p=SHEET.pages[u.physical_page];$("source").hidden=false;$("source").src=p.image;$("source-title").textContent=`Trang ${u.physical_page} · ${u.unit_id}`;
+ const [x0,y0,x1,y1]=u.bbox;Object.assign($("box").style,{left:100*x0/p.width+"%",top:100*y0/p.height+"%",width:100*(x1-x0)/p.width+"%",height:100*(y1-y0)/p.height+"%"});$("box").hidden=false;$("transcription").textContent=u.transcription===null?"Chưa có nhãn":u.transcription;
+}
+function choices(selected=""){const c=$("choice");c.replaceChildren(option("","— Chưa duyệt —"),option("outside","Ngoài phạm vi GT (cần lý do)"));const u=units.get($("unit").value);if(u){c.append(option("extra","Dự đoán thừa trong vùng này"));for(const ref of u.keyword_occurrences||[])if(ref.keyword_id===current()?.keyword_id)c.append(option("ref:"+ref.id,`Khớp ${ref.id} [${ref.start}, ${ref.end})`));}c.value=selected;}
+function render(){state.cursor=Math.max(0,Math.min(state.cursor,SHEET.occurrences.length-1));$("reviewer").value=state.reviewer||"";const r=current();$("progress").textContent=`Đã duyệt ${Object.keys(state.decisions).length}/${SHEET.occurrences.length} · Mục ${r?state.cursor+1:0}`;
+ $("unit").replaceChildren(option("","— Chọn vùng nguồn —"),...SHEET.units.map(u=>option(u.unit_id,`Trang ${u.physical_page} · ${u.unit_id}`)));
+ $("references").textContent=SHEET.units.map(u=>`${u.unit_id} · trang ${u.physical_page}\n`+(u.keyword_occurrences===null?"CHƯA CÓ NHÃN":(u.keyword_occurrences||[]).map(ref=>`${ref.id}: ${keywords.get(ref.keyword_id)} [${ref.start}, ${ref.end})`).join("\n")||"Đã gán nhãn: không có keyword")).join("\n\n");
+ $("save").disabled=$("clear").disabled=!r;
+ $("keyword").textContent = r ? `${keywords.get(r.keyword_id)} · [${r.start}, ${r.end})` : "Không có occurrence trong phiếu";
+ if (r?.stream) $("keyword").textContent += ` · ${streams[r.stream]}${r.page ? ` · Trang ${r.page}` : ""}`;
+ if(r){const mark=document.createElement("mark");mark.textContent=r.observed_text;$("context").replaceChildren(document.createTextNode(r.context_before),mark,document.createTextNode(r.context_after));}
+ else $("context").textContent="GT vẫn có thể có occurrence bị bỏ sót; xem danh sách GT rồi xuất phiếu.";
+ const d=r?state.decisions[r.id]:null;$("unit").value=d?.unit_id||"";$("reason").value=d?.outside_scope_reason||"";choices(d?(d.reference_id?"ref:"+d.reference_id:d.unit_id?"extra":"outside"):"");showSource();$("notice").textContent="";
+}
+$("unit").onchange=()=>{choices();showSource();};
+$("reviewer").onchange=persist;
+$("prev").onclick=()=>{state.cursor--;render();persist();};$("next").onclick=()=>{state.cursor++;render();persist();};
+$("save").onclick=()=>{const r=current(),c=$("choice").value,u=$("unit").value,reason=$("reason").value.trim();if(!$("reviewer").value.trim()||!c||(c!=="outside"&&!u)||(c==="outside"&&!reason)){$("notice").textContent="Điền người duyệt, kết luận và vùng/lý do tương ứng.";return;}
+ state.decisions[r.id]={occurrence_id:r.id,unit_id:c==="outside"?null:u,reference_id:c.startsWith("ref:")?c.slice(4):null,outside_scope_reason:c==="outside"?reason:null};state.revisions[r.id]=(state.revisions[r.id]||0)+1;persist();render();$("notice").textContent="Đã lưu quyết định.";};
+$("clear").onclick=()=>{const id=current().id;delete state.decisions[id];state.revisions[id]=(state.revisions[id]||0)+1;persist();render();};
+$("download").onclick=()=>{persist();const url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download="keyword-occurrence-"+SHEET.sheet_id.slice(0,16)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+$("restore").onchange=async e=>{try{const s=JSON.parse(await e.target.files[0].text());if(s.sheet_id!==SHEET.sheet_id||!s.decisions||typeof s.decisions!=="object"||Array.isArray(s.decisions))throw new Error("Sai phiếu");state=s;render();persist();}catch(err){$("notice").textContent="Không nạp được bản quyết định: "+err.message;}};
+render();
+</script></body></html>

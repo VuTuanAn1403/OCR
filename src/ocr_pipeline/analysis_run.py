@@ -210,7 +210,8 @@ class AnalysisProcessor:
         directory = Path(output) / record["id"]
         expected = self._two_tier(read(directory / "keyword_counts.json"), snapshot,
                                   (directory / "result.md").read_text(encoding="utf-8"),
-                                  self.citation_source_directory(record, directory) if self.rules_snapshot is not None else None)
+                                  # Same verified extraction as the writer: the retained-line column reads it.
+                                  self.citation_source_directory(record, directory))
         actual = read(directory / "keyword_two_tier.json")
         expected.pop("reconciled_at_utc")
         actual.pop("reconciled_at_utc", None)

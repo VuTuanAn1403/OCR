@@ -6,6 +6,7 @@ from ocr_keywords.alias_map import (SINGLE_WORD_VARIANT_POLICY, _candidate_id, f
                                     find_single_word_variants, reconcile_keyword_tiers)
 from ocr_keywords.citations import _context
 from ocr_keywords.global_rules import match_rule, validate_frozen_rules
+from ocr_keywords.review_evidence import CONFUSABLE_POLICY, find_confusable_candidates, retained_line_keywords
 
 
 def build_tiered_report(report, dictionary, text, *, decisions=None, decision_snapshot=None, rules=None, source_dir=None):
@@ -17,6 +18,10 @@ def build_tiered_report(report, dictionary, text, *, decisions=None, decision_sn
     variants = find_single_word_variants(clean, dictionary)
     result.update(single_word_variant_policy=SINGLE_WORD_VARIANT_POLICY, single_word_variants=variants,
                   single_word_variant_occurrences=sum(row["occurrences"] for row in variants))
+    # V8-100 (reviewer decisions Q7 A, Q6 B): review-only evidence, never counted.
+    confusables = find_confusable_candidates(clean, dictionary)
+    result.update(confusable_candidate_policy=CONFUSABLE_POLICY, confusable_candidates=confusables,
+                  confusable_candidate_occurrences=len(confusables), **retained_line_keywords(source_dir, dictionary))
     if rules is None:
         return result
     validate_frozen_rules(rules, dictionary)

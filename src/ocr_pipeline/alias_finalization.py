@@ -21,11 +21,20 @@ def selected_rules_path(path, disabled, keywords_path):
 def analytics_projection(companion, dictionary, checksum):
     if companion.get("schema_version") != "keyword-two-tier-v3":
         raise ValueError("Global alias analytics requires a v3 companion")
+    keys = dictionary["display_to_canonical"]
+    retained = companion.get("retained_line_counts")
+    confusable = companion.get("confusable_candidates")
+    per_key = {}
+    for row in confusable or []:
+        per_key[row["keyword_id"]] = per_key.get(row["keyword_id"], 0) + 1
     return {"companion_sha256": checksum, "alias_rules_sha256": companion["alias_rules_sha256"],
             "alias_rules_snapshot_sha256": companion["alias_rules_snapshot_sha256"],
-            "tier2_counts": [companion["tier2_reviewed_counts"][key] for key in dictionary["display_to_canonical"]],
-            "pending_counts": [companion["pending_counts"][key] for key in dictionary["display_to_canonical"]],
-            "total_tier2_canonical": companion["tier2_total_reviewed"], "total_pending_canonical": companion["total_pending"]}
+            "tier2_counts": [companion["tier2_reviewed_counts"][key] for key in keys],
+            "pending_counts": [companion["pending_counts"][key] for key in keys],
+            "total_tier2_canonical": companion["tier2_total_reviewed"], "total_pending_canonical": companion["total_pending"],
+            # V8-100 review-only columns (Q6 B, Q7 A); null when the companion predates them.
+            "retained_line_counts": None if retained is None else [retained[key] for key in keys],
+            "confusable_counts": None if confusable is None else [per_key.get(key, 0) for key in keys]}
 
 
 def publication_material(records, dictionary, config, batch_id, revision):

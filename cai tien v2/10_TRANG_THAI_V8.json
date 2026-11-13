@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
   "pipeline_version": "7.0.0",
-  "verified_head": "8e4d342d3b315fb936f732efc20ffe62306dd353",
-  "last_verified": "2026-11-13",
-  "verified_scope": "HEAD 8e4d342: §4.1, bảng heuristic, upscale tắt; khóa đo v8 (ƣ→ư). Hồi quy CPU 2693 passed. Arena detector 1536 MB (4274a49). Khóa hiện hành BASELINE-V8-20261113-001 (9/9 MATCH); 20261113-002 là candidate ×2; khóa cũ cho so sánh. Quality = NOT_EVALUATED.",
+  "verified_head": "a8c01b1e9373ba34cda6b79ddab8619b07c38e9f",
+  "last_verified": "2026-11-14",
+  "verified_scope": "HEAD a8c01b1, working tree có công cụ tiếp quản. CPU 2.720 đạt/1 skip trước sửa cuối (scratch/runs/20261113-235601-2dec66fb). Dev 006: 9/9 MATCH khóa 001. Holdout h01: 6/6 MATCH runtime. h02 ×2 khóa 002 còn chạy lúc kiểm. Xem HANDOFF.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
@@ -105,7 +105,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Ngoại lệ do người dùng quyết ngày 09/11: production thay PP-OCRv4 bằng PP-OCRv6_medium_det (BGR, threshold 0.2/0.45) khi chưa so trên GT, trái nguyên tắc challenger của 00/03. Khóa 002 và V8-006 là v4; khóa 003 (fingerprint extraction ccdbe84a3691d645) là v6. EXP-V8-DET-20261109-002: 9/9 PDF, 938 trang; đồng thuận IoU 0,811; so text layer chưa xác minh (653 trang) v6 Hmean 0,838, v4 0,825; AAA hết arena ONNX dưới v6 ở 1/2 lần chạy. INCONCLUSIVE vì chưa có GT detection."
+      "note": "Người duyệt chọn PP-OCRv6_medium_det cho production ngày 09/11 trước khi có GT detection. Khóa 20261109-002 dùng v4, 20261109-003 dùng v6. Baseline hiện hành 20261113-001 dùng v6, arena 1536 MB. So v4/v6 ở V8-060: INCONCLUSIVE."
     },
     {
       "id": "L3",
@@ -134,7 +134,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Retry dấu hỗ trợ extra_phrases từ từ điển keyword hoặc cấu hình (V8-030)."
+      "note": "Retry dấu nhận extra_phrases (V8-030). Q12 chọn thử VietOCR vgg_transformer trước (V8-065), preflight CPU đạt tại 480285b, chờ smoke GPU."
     },
     {
       "id": "L4",
@@ -212,7 +212,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Ownership bảng còn mở (DC-01, TAB_05); nối bảng vẫn cần review."
+      "note": "Ownership và nối bảng còn review. V8-085 đã chuẩn bị 1.660 nhãn display trên 223 trang OmniDocBench dev, chờ OCR/CDM."
     },
     {
       "id": "L7",
@@ -281,7 +281,7 @@
           "symbol": "compare_text"
         }
       ],
-      "note": "Sản phẩm: literal_v1 (chuỗi con). Challenger literal_v2 (ranh giới từ) ngoài CLI; V8-006: 164 so với 154 (B2B/B2C trong B2B2C). Keyword một từ sai dấu vào single_word_variants, không cộng."
+      "note": "Production dùng literal_v1, đối chứng literal_v2 ở V8-032. Q6/Q7 đã kiểm hai sheet pending trên worktree 3d44756. Phiếu occurrence chờ GT ở V8-100."
     },
     {
       "id": "L9",
@@ -375,7 +375,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Có baseline/candidate, fix/harm, HTML report, khóa BASELINE-V8-20261109-002, experiment_id, manifest, output canonical, contract challengers/v8-runners; chưa có adapter tầng."
+      "note": "Có lock, experiment_id, manifest, fix/harm và output canonical. Khóa hiện hành BASELINE-V8-20261113-001. So cặp holdout cần receipt hợp lệ, seal ACCEPTED và khóa đo."
     },
     {
       "id": "G02",
@@ -437,7 +437,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Có schema, CLI intake/seal và GT tổng hợp chỉ cho stress test (V8-010); chưa có GT độc lập cho 9 PDF; nhãn 0/38, keyword 0/12, L5 0/13, công thức 0/3; công cụ gán nhãn trực quan V8-150 có từ 09/11, chưa có nhãn thật. 09/11: nguồn (b) và người duyệt đã chọn (V8-013); quy trình text layer LOCKED v1, 9 PDF là development, chưa trang nào được xác minh nên chưa là GT. 09/11 đêm: có phiếu sàng lọc, phân xử mù A/B và lọc glyph hiển thị cho text layer (protocol §7.5)."
+      "note": "Nguồn born-digital theo protocol §7. 7 PDF dev sàng lọc ACCEPTED, kiểm lại mù từ 17/11; phân xử v8 còn 4.474 mục. Holdout chờ 6 phiếu và thêm PDF. GT cấu trúc và keyword chờ người duyệt."
     },
     {
       "id": "G03",
@@ -519,7 +519,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "10/11: adapter VLM challenger, chọn trang theo chẩn đoán và cổng catalog (V8-090); chưa ghim model nào nên chưa chạy. Production không có đường gọi VLM; PaddleOCR-VL-1.6 trước đây chỉ ở Doi_Chieu/ (Git bỏ qua)."
+      "note": "Vintern đạt gate bảo toàn trên 137 trang, PP-StructureV3 chạy 35 trang giả thuyết. P7 chờ GT để chấm chất lượng."
     },
     {
       "id": "G06",
@@ -579,7 +579,7 @@
           "symbol": "upper_bound_gate"
         }
       ],
-      "note": "Bootstrap cụm công ty, Holm, noninferiority đã có. Từ 09/11 (V8-021/022): 0 lỗi dùng cận Clopper-Pearson trên N_eff khi design effect đã khóa; cổng dấu OCR dùng cận trên, đếm DSER_strict từ 10/11. Chưa có rho."
+      "note": "Có bootstrap cụm công ty, Holm và noninferiority. Cổng dấu dùng cận trên DSER_strict; 0 lỗi dùng Clopper-Pearson trên N_eff. ρ_U dev khoảng 0,025, chờ xác minh holdout (V8-012)."
     },
     {
       "id": "G08",
@@ -671,7 +671,7 @@
   "diacritic_gate": {
     "target": "99,99%",
     "status": "NOT_EVALUATED",
-    "blocker": "Chưa có GT độc lập: cần N_eff >= 29.956 slot với 0 lỗi (95%), mới đếm được 1.788. Nguồn (b): quy trình LOCKED v1 (GROUND_TRUTH_PROTOCOL §7); 9 PDF inputs là development. 7 PDF dev sàng lọc ACCEPTED 10/11 (kiểm lại mù từ 17/11). Khóa đo v8 (ƣ→ư): dev 006 13.777/346.393 trước phân xử, phiếu v8 còn 4.474 mục; rho_U 0,025; OCR còn xa 99,99%. Holdout 13 PDF khóa 13/11, 163.662 slot: thiếu slot, chờ thêm PDF.",
+    "blocker": "Q11 giữ 99,99%. Cần N_eff ≥ 29.956 slot với 0 lỗi (95%). Holdout đã khóa 13 PDF, 6 chờ sàng lọc, 163.662 slot ứng viên. Cần thêm PDF, seal và khóa đo. ρ_U dev khoảng 0,025; holdout hiện cần ρ_U ≤ 0,0046 để đủ N_eff. Q10 B cho chạy so cặp 6 PDF, chờ GT để đo.",
     "candidate_text_layer_slots": {
       "value": 345687,
       "scope": "scripts/inventory_text_layers.py trên 9 PDF inputs/ ngày 2026-11-09 tại 2af5454: 720/938 trang CANDIDATE; ứng viên chưa xác minh, không phải GT"
@@ -722,7 +722,7 @@
     {
       "id": "R1",
       "title": "Tài liệu nền, bản đồ kiến thức, skill",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "check_knowledge_map exit 0; hồi quy không có lỗi mới",
       "backlog": [
         "V8-002",
@@ -840,7 +840,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "452ab49a8ac4b4bc5aaff5bba40a1fb57424e2a526e91ce923b98fad93bd73a1",
+      "sha256": "2b12bedf82d5128d4d8d73cb818bf9de94a8e1a3ad3ded216a58c47eb841fa57",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -856,7 +856,7 @@
         },
         {
           "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
-          "sha256": "a805bf94cb2dbe79c0d6214ec6434301dab44afa76b90f7df5ea8a9e803e4ca5"
+          "sha256": "3c0e9f6e497a5fe8db640806d05e2f5a0d8480224d9aeb48cb740d04389089b0"
         },
         {
           "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
@@ -892,7 +892,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "613aedb009ec10353df0f0e9417a13a6d9605377a4abd13ca5aaff4f50e9df48"
+          "sha256": "2d54fbab3e2ee3ff518c919b0292efd32b6fb29ab67ad07206559acb7864b109"
         }
       ]
     }

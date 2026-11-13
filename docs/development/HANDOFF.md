@@ -1,43 +1,24 @@
 # Bàn giao
 
-Cập nhật 13/11/2026 23:30, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, PR [#1](https://github.com/VuTuanAn1403/OCR/pull/1), chưa push. Khóa hiện hành `BASELINE-V8-20261113-001` (output `v8_006_arena1536_20261112`). Trạng thái: `scripts/check_knowledge_map.py --summary`. [Gói duyệt Q1–Q10](../../cai%20tien%20v2/bao_cao/GOI_DUYET_V8_20261113.md).
+Cập nhật 14/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-challenger`, HEAD `a8c01b1`, [PR #1](https://github.com/VuTuanAn1403/OCR/pull/1). Khóa baseline `BASELINE-V8-20261113-001`, output dev `v8_006_arena1536_20261112`. Đọc trạng thái bằng `scripts/check_knowledge_map.py --summary`. Phạm vi phát hành và các cổng ở [bàn giao chi tiết](BAN_GIAO_CHI_TIET_20261113.md). Lệnh và bằng chứng phiên ở [nhật ký tiếp quản](../../scratch/dev_sessions/20261113-codex-takeover/session.md).
 
-## 13/11 tối — người duyệt trả lời Q1–Q10
+## Quyết định của người duyệt
 
-- Quyết định: baseline 006; chưa PROMOTE, chưa nâng 8.0.0 (Q2 B); ×2 đo holdout; Vintern giữ baseline; tải OmniDocBench (đo nội bộ) và 3 ứng viên REC; holdout so cặp trên 6 PDF kèm ghi độ lệch §7.3 mục 5, và bổ sung PDF.
-- **Q6 B, Q7 A** (đổi `src/`, worktree `C:\kk_2\OCR_pdf_wt_v8int`, nhánh `v8-integration-keyword-pending`, chưa merge): `src/ocr_keywords/review_evidence.py` thêm vào `keyword_two_tier.json` ứng viên `020`↔`O2O` và keyword trong dòng bị A1 loại. Excel thêm sheet `Cho_duyet_dong_bi_loai`, `Ung_vien_chu_so`; không cộng vào `Tong_sau_duyet`. Trên 006: VIC 6 ứng viên, 1 keyword (`Số hóa` tr.95); mọi khóa cũ không đổi. Merge sau khi batch GPU holdout xong (identity).
-- **Tự động hóa:** `scripts/run_v8_evidence_chain.py` báo tiến độ các phiếu. Với `--run`, nó seal phiếu sàng lọc/phân xử đã có quyết định và chấm GT đã export. Bước cần người duyệt (ngưỡng export, khóa đo holdout) chỉ in lệnh.
-- Phiên "OCR PDF v8 exit gates": OCR holdout, Q9 (`5de92d0`), Q8.
+- Q1–Q10 theo [gói duyệt](../../cai%20tien%20v2/bao_cao/GOI_DUYET_V8_20261113.md). Baseline 006, chưa PROMOTE. ×2 đo so cặp trên 6 PDF holdout, Vintern giữ baseline. Q6 B/Q7 A thêm cột chờ duyệt dòng bị loại và O/0. Q8 cho phép OmniDocBench nội bộ. Q9 đã ghim và đo 3 ứng viên REC.
+- Q11 giữ cổng dấu 99,99% và báo đúng PASS/FAIL. Q12 chọn VietOCR `vgg_transformer` trước. Q13 chưa cần nâng ngân sách. Q14 chờ kết quả giai đoạn 1 để duyệt push.
 
-## 13/11 — ƣ→ư, holdout, gói duyệt
+## Đã kiểm và đang chạy
 
-- **V8-011:** khóa đo v8 (`a474cf1`) đọc `ƣ`/`Ƣ` thành `ư`/`Ư` (chỉ ASM có). Dev 006: 13.777/346.393. Phiếu v8 `scratch/v8/adjudication/v8_011_dev_006_v8_20261113/` nhận 5.011 quyết định từ v7 (`959c003`); còn 4.474 mục.
-- **Holdout:** 13 PDF khóa; BCE, BHN 2022 trùng byte `inputs/` nên bị loại. 6 PDF cần sàng lọc (`scratch/v8/holdout/screening/`, cấu hình `holdout-screening-sheets`), 163.662 slot. Cổng cần ρ_U ≤ 0,0046, dev đo khoảng 0,025: thiếu slot. Chưa chạy OCR (protocol §7.3 mục 5).
-- **V8-100:** challenger `benchmark/challengers/keyword_confusables.py` (`O2O` đọc thành `020`). Trên 718 trang dev, tham chiếu text layer: thiếu 28 → 14 nếu nhận mọi ứng viên chờ duyệt, 0 ứng viên confusable sai.
-- **V8-065:** 6 ứng viên đọc tiếng Việt vào `model_catalog.json`, cổng tải đóng. **V8-085:** OmniDocBench đủ tiêu chí nhưng licence chỉ nghiên cứu (Q8).
-- Hai phiên chạy song song. Phiên "OCR PDF v8 exit gates" chạy thử chấm 4 lô bằng nhãn tổng hợp, không phải GT: export 4/4, chấm 10/10, delta 7/7 (`scratch/v8/review_packages/scoring_dryrun_20261113/README.md`). Nhật ký: [gói duyệt](../../scratch/dev_sessions/20261113-v8-review-package/session.md), [exit gates và báo cáo CHỜ](../../scratch/dev_sessions/20261113-v8-exit-gates-cho/session.md).
+- Holdout h01 đủ **6 PDF, 468 trang**, `MATCH` khóa 001 theo runtime, audit `NEEDS_REVIEW` 6/6. h02 ×2 khóa 002 báo thành công **5/6** lúc 01:05 ngày 14/11, tiến trình còn chạy. Q10 B cho chạy so cặp trước khi đủ slot theo protocol §7.3 mục 5. Đo sau khi seal đủ phiếu và khóa đo được duyệt. Cổng dấu `NOT_EVALUATED`. [Log h02](../../scratch/dev_sessions/20261113-codex-takeover/h02_batch.log) · [audit h01](../../scratch/dev_sessions/20261113-codex-takeover/h01_audit.json) · [identity h01](../../scratch/dev_sessions/20261113-codex-takeover/h01_identity.json) · [exposure](../../scratch/dev_sessions/20261113-codex-takeover/holdout-operations.json).
+- R1 `DONE`, P7 chờ GT. Cập nhật [PROJECT_MAP](PROJECT_MAP.md), registry và bằng chứng backlog, đồng bộ hash nguồn Word. `check_knowledge_map.py --check --require-fresh` đạt, 51 test bản đồ/ngữ cảnh/Word đạt. [Nhật ký](../../scratch/dev_sessions/20261114-project-map-refresh/session.md) · [kiểm bản đồ](../../scratch/dev_sessions/20261114-project-map-refresh/map-verified.json) · [test](../../scratch/runs/20261114-010457-671d35e9/run.json).
+- Đã thêm kiểm baseline trên input mới và phiếu đối chiếu keyword literal/pending sau khi có GT. OmniDocBench đã chuẩn bị 1.660 nhãn display trên 223 trang, CDM render đủ 3 ca đối chứng có/không có số phương trình. Điểm công thức chờ OCR. TEXT CER và inline thiếu nhãn phù hợp. [Công cụ tiếp quản](TAKEOVER_TOOLS.md).
+- VietOCR `vgg_transformer` ở worktree `C:\Users\ASUS\.codex\worktrees\v8-vietocr-transformer\OCR_pdf` (`480285b`). Test sát thay đổi 230 đạt, preflight CPU xác minh ba file model. Chờ GPU để smoke rồi chạy 9 PDF dev.
+- Q6/Q7 ở `v8-integration-keyword-pending` (`3d44756`). Phân tích lại từ 006 trong worktree riêng đạt 9/9, giữ số đếm baseline, thêm 6 ứng viên O/0 và 1 occurrence dòng bị loại. Merge sau h02 và audit. [Báo cáo Excel/SQLite](../../scratch/dev_sessions/20261113-codex-takeover/keyword_analysis_r2_audit.json).
 
-## 12/11 (tóm tắt)
+## Công việc cần người duyệt
 
-- Batch 004: giữ dòng A1 bị loại (`rejected_ocr_lines`); ô heuristic mang bbox dòng nguồn; bảng model nhận dòng chồng bảng heuristic. Dòng mất 3.652→0, ô số không truy được 292→2. [Hồ sơ candidate](../../cai%20tien%20v2/bao_cao/CANDIDATE_SELECTION_DOSSIER.md).
-- ×2 (V8-050): dev DSER 13.751→11.647; 1.781 sửa / 306 sai; keyword 3/0. Vintern: đề xuất KEEP BASELINE. V8-095 `DONE`.
-- Crop cố định 3.000 dòng (`scratch/v8/recognition_crops/v8_065_dev_004_3000_20261112/`): `upscale2` 132 sửa / 13 sai; V8-030 16 / 0.
+1. [Sàng lọc 6 PDF holdout](http://127.0.0.1:8769/) rồi báo để chạy chuỗi seal. Thêm PDF born-digital từ công ty mới, ghi manifest trước OCR. Hiện 163.662 slot ứng viên, ρ_U dev khoảng 0,025. Tính lại cỡ mẫu sau phân xử.
+2. [Phân xử dấu](http://127.0.0.1:8767/v8_011_dev_006_v8_20261113/), nạp `migrated-d613bd4747c8289f.jsonl` rồi chấm 4.474 mục còn lại. Bộ kiểm lại mù 1.552 mục sàng lọc dev ở `scratch/v8/screening/recheck/`, làm từ 17/11.
+3. [GT cấu trúc](http://127.0.0.1:8768/) theo 4 lô, chọn ngưỡng khi export. Chọn phạm vi GT keyword và dùng quy trình A/B/C. Các link local dùng `scripts/serve_review_sheets.py` để lưu quyết định xuống đĩa.
 
-## Phát hiện còn mở
-
-- **Chỉ mở phiếu qua `scripts/serve_review_sheets.py`.** Khung trình duyệt của app làm mất localStorage.
-- Ô rỗng của bảng ảnh mang bbox cấp bảng, nên audit báo 45 số "vắng"; không mất chữ.
-- `verified_head` còn ở `bcb5be4` cho đến khi chạy xong hồi quy trên HEAD mới.
-
-## Bước kế tiếp (cần người dùng)
-
-1. Trả lời Q1–Q10 trong gói duyệt.
-2. Phiếu v8 (cổng 8767): nạp `migrated-d613bd4747c8289f.jsonl`, chấm 4.474 mục, rồi `seal`. Kiểm lại mù sàng lọc từ 17/11.
-3. Sàng lọc 6 PDF holdout (cổng 8769). Thêm PDF born-digital của công ty mới cho đủ slot.
-4. Gán nhãn GT cấu trúc theo 4 lô trong gói duyệt (cổng 8768). Nhãn nháp AAA ở `autosave/` (chỉ trang 2 đã rà).
-5. Push khi muốn.
-
-## Tiếp quản và bài báo 13/11
-
-- 48 test map, reading order và keyword đạt. Audit 006/007 ghi `NEEDS_REVIEW` cho 9/9 PDF mỗi lượt. [Nhật ký tiếp quản](../../scratch/dev_sessions/20261113-project-takeover/session.md). PP-StructureV3 smoke GPU đạt ([lệnh](../../scratch/v8/ppstructurev3-install/session.md)).
-- 5 bài mẫu → [bản thảo OCR](../../research_notes/BAI_BAO_OCR_PDF.md). Bản nộp cần GT độc lập. [Lệnh và bằng chứng](../../scratch/dev_sessions/20261113-baibao/session.md).
+`scripts/run_v8_evidence_chain.py` báo tiến độ và chạy các bước tất định sau khi có quyết định. Bản thảo bài báo chờ GT độc lập. [Nhật ký gói duyệt](../../scratch/dev_sessions/20261113-v8-review-package/session.md) · [exit gates](../../scratch/dev_sessions/20261113-v8-exit-gates-cho/session.md) · [bản thảo](../../research_notes/BAI_BAO_OCR_PDF.md).

@@ -3,7 +3,11 @@ import json
 
 from openpyxl.cell import WriteOnlyCell
 
-TIER_SHEETS = ("Dem_Tier2", "Cho_duyet", "Tong_sau_duyet", "Trich_dan_chi_tiet", "Trich_dan_Tier2")
+TIER_SHEETS = ("Dem_Tier2", "Cho_duyet", "Tong_sau_duyet", "Cho_duyet_dong_bi_loai", "Ung_vien_chu_so",
+               "Trich_dan_chi_tiet", "Trich_dan_Tier2")
+# V8-100 review-only columns: keywords in OCR lines the A1 gate kept out (Q6 B) and alphanumeric
+# look-alike candidates such as 020 for O2O (Q7 A). Never added to Tong_sau_duyet.
+REVIEW_ONLY_SHEETS = (("Cho_duyet_dong_bi_loai", "retained_line_counts"), ("Ung_vien_chu_so", "confusable_counts"))
 LITERAL_HEADERS = ["Document ID", "Keyword", "Page", "Page status", "Start", "End", "Citation"]
 ALIAS_HEADERS = ["Document ID", "Keyword", "Page", "Page status", "Start NFC", "End NFC", "Observed", "Source", "Rule ID", "Decision ID", "Context"]
 
@@ -11,10 +15,13 @@ ALIAS_HEADERS = ["Document ID", "Keyword", "Page", "Page status", "Start NFC", "
 def tiered_rows(records, dictionary):
     header = ["Tệp PDF", *dictionary["display_columns"]]
     columns = len(dictionary["display_columns"])
-    for name, key in (("Dem_Tier2", "tier2_counts"), ("Cho_duyet", "pending_counts"), ("Tong_sau_duyet", None)):
+    for name, key in (("Dem_Tier2", "tier2_counts"), ("Cho_duyet", "pending_counts"), ("Tong_sau_duyet", None),
+                      *REVIEW_ONLY_SHEETS):
         rows, totals, known = [header], [0] * columns, [True] * columns
         for record in records:
             projection = record.get("alias_analytics")
+            if projection is not None and key and projection.get(key) is None:
+                projection = None  # a companion without this column: unknown, never zero
             values = ([None] * columns if projection is None else projection[key] if key else
                       [literal + accepted if pending == 0 else None for literal, accepted, pending in
                        zip(record["counts"], projection["tier2_counts"], projection["pending_counts"])])

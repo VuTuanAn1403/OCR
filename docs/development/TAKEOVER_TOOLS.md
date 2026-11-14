@@ -61,3 +61,16 @@ Chế độ này so snapshot code, config đã resolve, hash model/lock, đườ
 Kiểm identity không chứng minh nguồn GT độc lập, đúng protocol hoặc accuracy. Chỉ đo holdout khi đủ phiếu sàng lọc ACCEPTED và khóa đo được duyệt.
 
 Khi có hai báo cáo `MATCH`, truyền `--baseline-identity` và `--candidate-identity` cho `scripts/compare_text_layer_runs.py` cùng hai output, khóa và seal. So cặp kiểm đủ cùng cohort, cùng reference và receipt hiện tại. Báo cáo holdout chỉ giữ số tổng hợp. CER đo trên các đơn vị chung của phép đo dấu và giữ tử số, mẫu số.
+
+## Kiểm lại mù các quyết định phân xử dấu
+
+Dùng phiếu gốc và `seal.json` của phân xử lần đầu. Theo §7.4 D, công cụ lấy 10% quyết định theo seed, tối thiểu 50 nếu đủ mục. Phiếu dùng ảnh gốc đã xác minh và một ID lưu riêng. Đọc mốc `review_not_before` trước khi giao người duyệt.
+
+```powershell
+.venv/Scripts/python.exe -B scripts/recheck_diacritic_adjudication.py build `
+  --sheet <phieu-goc> --sealed <seal.json> --out <phieu-kiem-lai-moi>
+.venv/Scripts/python.exe -B scripts/recheck_diacritic_adjudication.py resolve `
+  --sheet <phieu-goc> --sealed <seal.json> --recheck-decisions <lan-2.jsonl> --out <ket-qua-moi>
+```
+
+`agreement.json` ghi tỷ lệ đồng thuận và hash đầu vào. Nếu có mục lệch, output có phiếu lần ba. Chạy lại `resolve` với `--third-decisions <lan-3.jsonl>` và output mới. Mục vẫn lệch chuyển `UNRESOLVED`. Dùng `decisions-reconciled.jsonl` để chạy `adjudicate_text_layer_diacritics.py seal` vào thư mục mới. Giữ cả phiếu, quyết định và seal ban đầu để truy lại. Dữ liệu sau bước này vẫn cần áp dụng cổng 99,99% theo protocol.

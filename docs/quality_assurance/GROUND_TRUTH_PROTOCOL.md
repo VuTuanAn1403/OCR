@@ -180,6 +180,7 @@ Công cụ đã có từ 09/11 (chỉ chạy CPU, không đọc output OCR trư�
 | Khóa v2 các lựa chọn §7.6 và ghim công cụ | `scripts/lock_text_layer_measurement.py` |
 | Đo OCR so với text layer đã chấp nhận, ghép theo bbox (§7.3 mục 7) | `scripts/measure_text_layer_diacritics.py` |
 | Phân xử mù A/B (C) | `scripts/adjudicate_text_layer_diacritics.py build`, `seal` |
+| Kiểm lại mù phân xử (D) | `scripts/recheck_diacritic_adjudication.py build`, `resolve` |
 | Mở phiếu và tự lưu từng quyết định ra `<phiếu>/autosave/` | `scripts/serve_review_sheets.py` |
 | ρ và cận trên, DEFF holdout | `benchmark/scientific_evaluation/cluster_correlation.py` |
 

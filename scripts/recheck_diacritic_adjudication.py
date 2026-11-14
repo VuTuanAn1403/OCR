@@ -74,7 +74,7 @@ def _locked_sample(sheet_dir, seal_path):
     selected = [item for item in sheet["items"] if previous.get(item["item_id"], {}).get("decision_id") in chosen]
     if len(selected) != len(chosen):
         raise ValueError("Recheck sample differs from the original decisions")
-    return sheet, seal, selected, previous, sha256_bytes(seal_bytes)
+    return sheet, selected, previous, sha256_bytes(seal_bytes)
 
 
 def _review_manifest(sheet, seal_hash, selected, stage):
@@ -108,9 +108,9 @@ def _build_sheet(sheet_dir, out, manifest):
 
 
 def build_recheck(sheet_dir, seal_path, out):
-    sheet, seal, selected, previous, seal_hash = _locked_sample(sheet_dir, seal_path)
+    sheet, selected, previous, seal_hash = _locked_sample(sheet_dir, seal_path)
     manifest = _review_manifest(sheet, seal_hash, selected, 2)
-    manifest["review_not_before"] = _recheck_earliest(seal, previous).isoformat()
+    manifest["review_not_before"] = _recheck_earliest(selected, previous).isoformat()
     _build_sheet(sheet_dir, out, manifest)
     return manifest
 
@@ -126,9 +126,8 @@ def _check_answers(manifest, path, earliest):
     return {record["item_id"]: record for record in records}, digest
 
 
-def _recheck_earliest(seal, previous):
-    return max(_timestamp(seal["sealed_at"]),
-               max(_timestamp(record["decided_at"]) for record in previous.values())) + timedelta(days=7)
+def _recheck_earliest(selected, previous):
+    return max(_timestamp(previous[item["item_id"]]["decided_at"]) for item in selected) + timedelta(days=7)
 
 
 def _verdict(record):
@@ -138,9 +137,9 @@ def _verdict(record):
 
 
 def resolve_recheck(sheet_dir, seal_path, recheck_path, out, *, third_path=None):
-    sheet, seal, selected, first, seal_hash = _locked_sample(sheet_dir, seal_path)
+    sheet, selected, first, seal_hash = _locked_sample(sheet_dir, seal_path)
     review = _review_manifest(sheet, seal_hash, selected, 2)
-    earliest = _recheck_earliest(seal, first)
+    earliest = _recheck_earliest(selected, first)
     second, second_hash = _check_answers(review, recheck_path, earliest)
     differences = [item for item in selected if _verdict(first[item["item_id"]]) != _verdict(second[item["item_id"]])]
     report = {"schema_version": "ocr-v8-diacritic-adjudication-recheck-v1", "parent_seal_sha256": seal_hash,

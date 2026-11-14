@@ -35,7 +35,8 @@ def rounds(tmp_path):
     first = _records(path.parent / sealed["sealed_file"])
     reviewed = tmp_path / "blind"
     subset = recheck.build_recheck(source, path, reviewed)
-    earliest = datetime.fromisoformat(sealed["sealed_at"]) + timedelta(days=7)
+    earliest = max(datetime.fromisoformat(row["decided_at"]) for row in first) + timedelta(days=7)
+    assert subset["review_not_before"] == earliest.isoformat()
     return source, path, manifest, first, reviewed, subset, earliest
 
 

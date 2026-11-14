@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
   "pipeline_version": "7.0.0",
-  "verified_head": "a8c01b1e9373ba34cda6b79ddab8619b07c38e9f",
+  "verified_head": "fb085b7814dbdca8962329b959df2cfee0e3b3a0",
   "last_verified": "2026-11-14",
-  "verified_scope": "HEAD a8c01b1, working tree có công cụ tiếp quản. CPU 2.720 đạt/1 skip trước sửa cuối (scratch/runs/20261113-235601-2dec66fb). Dev 006: 9/9 MATCH khóa 001. Holdout h01: 6/6 MATCH runtime. h02 ×2 khóa 002 còn chạy lúc kiểm. Xem HANDOFF.",
+  "verified_scope": "HEAD fb085b7. CPU 2.745 đạt/1 skip Linux (scratch/runs/20261114-231551-d0160591); 21 import contract đạt. Baseline 006 (9/9), h01/h02 (6/6, 468p MATCH), V8-085 223p CDM, V8-065 dev vgg_transformer & V8-100 analysis 9/9 đã kiểm; chi tiết ở HANDOFF.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
@@ -134,7 +134,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Retry dấu nhận extra_phrases (V8-030). Q12 chọn thử VietOCR vgg_transformer trước (V8-065), preflight CPU đạt tại 480285b, chờ smoke GPU."
+      "note": "Retry dấu nhận extra_phrases (V8-030). V8-065 VietOCR vgg_transformer (worktree 480285b): dev 9/9 PDF audit exit 0; khóa v8/7 PDF giảm DSER 13.007→4.994 (3.412 sửa/790 hại), CER 78.130→46.571, keyword 157→170/183; NOT_EVALUATED."
     },
     {
       "id": "L4",
@@ -212,7 +212,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Ownership và nối bảng còn review. V8-085 đã chuẩn bị 1.660 nhãn display trên 223 trang OmniDocBench dev, chờ OCR/CDM."
+      "note": "Ownership và nối bảng còn review. V8-085 OmniDocBench 223/223 r2 đạt audit; TP 557/1.660 (recall 0,3355); CDM LuaLaTeX 1.203/1.660 đo được (tb nhánh đo 0,2760; NOT_EVALUATED); fix projection fb085b7."
     },
     {
       "id": "L7",
@@ -281,7 +281,7 @@
           "symbol": "compare_text"
         }
       ],
-      "note": "Production dùng literal_v1, đối chứng literal_v2 ở V8-032. Q6/Q7 đã kiểm hai sheet pending trên worktree 3d44756. Phiếu occurrence chờ GT ở V8-100."
+      "note": "Production dùng literal_v1. Q6 B/Q7 A merge 1ab4736 (3d44756), CPU analysis output/v8_100_006_analysis_pending_20261114 đạt 9/9 (12 sheet gồm Cho_duyet_dong_bi_loai & Ung_vien_chu_so); chờ GT V8-100."
     },
     {
       "id": "L9",
@@ -435,9 +435,14 @@
           "path": "scripts/label_structured_gt.py",
           "symbol": "export",
           "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/recheck_diacritic_adjudication.py",
+          "symbol": "build_recheck",
+          "label": "VERIFIED"
         }
       ],
-      "note": "Nguồn born-digital theo protocol §7. 7 PDF dev sàng lọc ACCEPTED, kiểm lại mù từ 17/11; phân xử v8 còn 4.474 mục. Holdout chờ 6 phiếu và thêm PDF. GT cấu trúc và keyword chờ người duyệt."
+      "note": "Nguồn born-digital theo protocol §7. 7 PDF dev sàng lọc ACCEPTED, có công cụ kiểm lại mù (từ 17/11); phân xử v8 còn 4.474 mục. Holdout h01/h02 cùng 6 PDF/468p chờ 6 phiếu seal và thêm PDF. GT cấu trúc và keyword chờ duyệt."
     },
     {
       "id": "G03",
@@ -840,7 +845,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "2b12bedf82d5128d4d8d73cb818bf9de94a8e1a3ad3ded216a58c47eb841fa57",
+      "sha256": "00f7df569c2fe2fb0a303bf83cc58da53c415d593d65961e2aea922e0145cc67",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -892,7 +897,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "2d54fbab3e2ee3ff518c919b0292efd32b6fb29ab67ad07206559acb7864b109"
+          "sha256": "72a7de14c7196971c9a42be5d9b6dc262907b6e04975d43b86175d1144b0df4c"
         }
       ]
     }

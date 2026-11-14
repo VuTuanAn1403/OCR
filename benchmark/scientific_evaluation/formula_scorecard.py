@@ -111,9 +111,23 @@ def _load_run(alignment_path, pairs_path, critical_path, cdm_dir, sample, sample
                  "Pair evidence supplied for an empty formula pair universe")
         _require(not any(page.get("references") for doc in documents.values() for page in doc["pages"]),
                  "Formula references exist outside the declared pair universe")
+    if alignment["localization_scope"] == formula_alignment.LOCALIZATION_SCOPE:
+        for document_pages in pages.values():
+            for page in document_pages.values():
+                _check_formula_projections(page)
+    else:
+        _require(not any(page.get("formula_projections") for document_pages in pages.values()
+                         for page in document_pages.values()), "Formula projections require the current localization scope")
     return {"documents": documents, "pages": pages, "pairs": pairs, "content": content, "cdm": cdm,
             "iou_threshold": alignment["iou_threshold"], "localization_scope": alignment["localization_scope"],
             "evidence": evidence}
+
+
+def _check_formula_projections(page):
+    candidates = _index(page["candidates"], "id")
+    projections = _index(page.get("formula_projections", []), "projection_id")
+    _require({key: row["formula_id"] for key, row in projections.items()} == formula_alignment._formula_projections(candidates),
+             "Formula projection identities differ from their canonical items")
 
 
 def _localization(page):
@@ -130,6 +144,7 @@ def _localization(page):
     visible = {key for key, row in candidates.items() if row["visibility"] != "suppressed"}
     predictions = ([row["prediction_id"] for row in matched.values()] + page["spurious"]
                    + [row["prediction_id"] for row in (*page["duplicates"], *page["ignored"])])
+    visible.difference_update(row["projection_id"] for row in page.get("formula_projections", []))
     _require(len(predictions) == len(visible) == page["prediction_count"] and set(predictions) == visible,
              "Formula matching must partition visible prediction IDs")
     counts = {"tp": len(matched), "fp": len(page["spurious"]) + len(page["duplicates"]), "fn": len(missed)}

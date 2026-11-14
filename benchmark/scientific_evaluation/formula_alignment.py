@@ -17,6 +17,7 @@ from .spatial_matching import bbox_iou, match_tables
 ANNOTATION_SCHEMA = "ocr-formula-page-annotations-v1"
 REPORT_SCHEMA = "ocr-formula-source-alignment-v1"
 EMBEDDED_SCHEMA = "ocr-formula-embedded-spans-v1"
+LOCALIZATION_SCOPE = "EXTRACTION_FORMULA_ITEMS_AND_INDEPENDENT_FORMULA_TEXT_BLOCKS"
 FRAMES = ("pdf_points_top_left", "pdf_points_top_left_rotated")
 PLACEMENTS = ("inline", "display")
 FORMATS = ("LATEX", "TEXT", "MATHML")
@@ -75,6 +76,10 @@ def _formula_text(item):
     return item["kind"] == "b" and (item.get("role_final") or item.get("block_type")) == "formula"
 
 
+def _projection_key(item):
+    return item["engine"], item["device"], tuple(item["bbox"]), item["content_raw"]
+
+
 def _predictions(page):
     rows = []
     for item in page["items"]:
@@ -94,6 +99,24 @@ def _predictions(page):
                      "placement": "display" if is_formula else "unknown",
                      "visibility": item.get("visibility", "visible")})
     return _index(rows, "id", "formula predictions")
+
+
+def _formula_projections(candidates):
+    """Pair the export's Docling text representations with visible formula items."""
+    originals = {}
+    for row in candidates.values():
+        if (row.get("format") == "LATEX" and row["source"] == row["engine"] == "docling_codeformula"
+                and _box(row.get("bbox"))
+                and row["visibility"] != "suppressed"):
+            originals.setdefault(_projection_key(row), []).append(row["id"])
+    projections = {}
+    for row in candidates.values():
+        if (row.get("format") == "TEXT" and row["source"] == "docling" and _box(row.get("bbox"))
+                and row["visibility"] != "suppressed"):
+            matching = originals.get(_projection_key(row))
+            if matching:
+                projections[row["id"]] = matching.pop()
+    return projections
 
 
 def _embedded_owner(items, locator):
@@ -179,11 +202,16 @@ def _reference_regions(annotation, page):
 
 def _align_page(document_id, page, annotation, threshold, embedded_spans=()):
     candidates = _predictions(page)
-    predictions = [row for row in candidates.values() if row["visibility"] != "suppressed"]
+    projections = _formula_projections(candidates)
+    predictions = [row for row in candidates.values()
+                   if row["visibility"] != "suppressed" and row["id"] not in projections]
     references, ignores, annotated = _reference_regions(annotation, page)
     evidence, linked = _embedded_evidence(page, embedded_spans, references)
     result = {"page": page["page"], "coordinate_space": page["coordinate_space"], "annotated": annotated,
               "prediction_count": len(predictions), "candidates": list(candidates.values()), "counts": None}
+    if projections:
+        result["formula_projections"] = [{"projection_id": key, "formula_id": value}
+                                         for key, value in projections.items()]
     if evidence:
         result["embedded_spans"] = evidence
     if not annotated:
@@ -318,7 +346,7 @@ def _align_publication(publication, annotations, annotations_hash, iou_threshold
     labelled = [page for page in pages if page["annotated"]]
     counts = {key: sum(page["counts"][key] for page in labelled) for key in ("tp", "fp", "fn")} if labelled else None
     report = {"schema_version": REPORT_SCHEMA, "status": "ALIGNMENT_PREPARED" if labelled else "NOT_EVALUATED",
-              "localization_scope": "EXTRACTION_FORMULA_ITEMS_AND_FORMULA_TEXT_BLOCKS",
+              "localization_scope": LOCALIZATION_SCOPE,
               "iou_threshold": iou_threshold, "annotation_sha256": annotations_hash,
               "independent_ground_truth_verified": False, "acceptance_status": "NOT_EVALUATED",
               "critical_symbol_status": "NOT_EVALUATED", "cdm_status": "NOT_EVALUATED",

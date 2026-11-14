@@ -5,6 +5,7 @@ import json
 import pytest
 
 from benchmark.scientific_evaluation import formula_alignment as alignment
+from benchmark.scientific_evaluation import formula_scorecard
 
 
 FRAME = {"coordinate_space": "pdf_points_top_left", "width": 400, "height": 200, "transforms": []}
@@ -56,6 +57,28 @@ def test_missing_annotation_and_annotated_negative_have_different_counts():
     empty, pairs = alignment._align_page("doc", page, {**FRAME, "formulas": []}, .5)
     assert missing == null and missing["counts"] is None
     assert empty["counts"] == {"tp": 0, "fp": 1, "fn": 0} and pairs == []
+
+
+def test_docling_formula_projection_uses_latex_and_counts_true_duplicates():
+    engine = "docling_codeformula"
+    formula = predicted("display", BOX, source=engine, engine=engine, device="cuda")
+    projection = predicted("projection", BOX, kind="b", source="docling", engine=engine, device="cuda")
+    duplicate = {**formula, "id": "second-formula", "bbox": [11, 11, 30, 30]}
+    unrelated = predicted("phase-a-formula", BOX, kind="b", source="primary_ocr", engine=engine, device="cuda")
+    extra_projection = {**projection, "id": "second-projection"}
+    page = {**FRAME, "page": 1, "items": [projection, formula, duplicate, unrelated, extra_projection]}
+    annotation = {**FRAME, "page": 1, "formulas": [labelled("ref", BOX, "display")]}
+    result, pairs = alignment._align_page("doc", page, annotation, .5)
+    assert result["formula_projections"] == [{"projection_id": "projection", "formula_id": "display"}]
+    assert {row["id"] for row in result["candidates"]} == {row["id"] for row in page["items"]}
+    assert result["counts"] == {"tp": 1, "fp": 3, "fn": 0}
+    assert result["matches"][0]["prediction_id"] == "display"
+    assert pairs[0]["prediction_format"] == "LATEX"
+    formula_scorecard._check_formula_projections(result)
+    assert formula_scorecard._localization(result) == result["counts"]
+    result["formula_projections"] = []
+    with pytest.raises(ValueError, match="projection identities"):
+        formula_scorecard._check_formula_projections(result)
 
 
 def test_alignment_rejects_changed_frame_and_duplicate_reference_ids():

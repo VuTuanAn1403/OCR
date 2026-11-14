@@ -10,6 +10,8 @@ import re
 
 from src.ocr.collect.catalog import file_sha256, read_sources
 
+from .formula_alignment import LOCALIZATION_SCOPE
+
 POLICY_KEY = "evaluation.formula_policy_sha256"
 SAMPLE_KEY = "data.formula_holdout_sample_sha256"
 PARITY_KEY = "evaluation.formula_renderer_validation_sha256"
@@ -23,7 +25,7 @@ STATS_KEYS = ("statistics.multiple_comparison_family_sha256", "thresholds.subgro
               "thresholds.baseline_noninferiority_margins_sha256", "statistics.sample_size_and_precision_plan_sha256")
 FIXED_RULES = {"missing_gt": "BLOCK_MEASUREMENT", "missing_prediction": "KEEP_AND_PENALIZE",
                "unsupported_representation": "BLOCK_ACCEPTANCE", "annotation_custody": "TWO_INDEPENDENT_HUMANS_AND_ADJUDICATOR",
-               "localization_scope": "EXTRACTION_FORMULA_ITEMS_AND_FORMULA_TEXT_BLOCKS",
+               "localization_scope": LOCALIZATION_SCOPE,
                "reviewed_span_credit": "CONTENT_ONLY", "critical_scope": "ALL_SEVEN_CATEGORIES_PER_FORMULA",
                "zero_denominator": "NOT_EVALUATED", "paired_bootstrap": "COMPANY_CLUSTER"}
 

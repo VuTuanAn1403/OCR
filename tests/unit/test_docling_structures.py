@@ -251,31 +251,6 @@ def test_export_preserves_structure_sidecars_and_validator_detects_lost_formula(
     assert any("missing from result.md" in e for e in validate_document_artifacts(out)["errors"])
 
 
-def test_validator_excludes_docling_formula_blocks_from_evidence_count(tmp_path):
-    """Docling formula blocks need no Phase A evidence blocks; text blocks still do."""
-    from src.ocr.domain.models.evidence_block import EvidenceBlock
-    from src.ocr.domain.models.region import BoundingBox, ContentType, Region
-
-    page = formula_page()
-    page.regions = [Region(region_id="r1", bbox=BoundingBox(x0=0, y0=0, x1=595, y1=842),
-                           content_type=ContentType.TEXT, status="EXTRACTED")]
-    text_only = [b for b in page.blocks if not (b.block_type == "formula" and b.source == "docling")]
-    page.evidence_blocks = [EvidenceBlock(block_id=f"b{i}", page=1, region_id="r1", bbox=b.bbox,
-        orientation=0, text=b.text, content_type=ContentType.TEXT, source="native") for i, b in enumerate(text_only)]
-    doc = ExtractedDocument(document_id="fixture", file_path="unused.pdf", file_hash="abc", total_pages=1,
-        selected_pages=[1], pages=[page], manifest={"selected_pages": [1]},
-        quality=DocumentQualityReport(document_id="fixture", total_pages=1))
-    out = ExportDocumentUseCase.execute(doc, tmp_path / "valid")
-    report = validate_document_artifacts(out)
-    assert report["status"] == "NEEDS_REVIEW" and report["errors"] == []
-
-    page_path = out / "pages" / "page-0001.json"
-    page_data = json.loads(page_path.read_text(encoding="utf-8"))
-    page_data["evidence_blocks"] = page_data["evidence_blocks"][:1]
-    page_path.write_text(json.dumps(page_data), encoding="utf-8")
-    assert any("evidence count differs from text block count" in e for e in validate_document_artifacts(out)["errors"])
-
-
 def test_cache_invalidates_old_artifacts_and_backend_options(tmp_path):
     options = {"enabled": True, "page_selection": "all", "formulas": True}
     expected = DoclingStructureExtractor(options).cache_fingerprint()

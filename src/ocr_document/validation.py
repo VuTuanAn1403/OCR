@@ -9,12 +9,13 @@ import json
 import hashlib
 import re
 import unicodedata
+from collections import Counter
 from zipfile import BadZipFile
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping
 
 from ocr_contracts.table import TableStructure
-from ocr_contracts.region import Region
+from ocr_contracts.region import ContentType, Region
 from ocr_document.markdown_exporter import ASSET_MODES, MarkdownExporter
 from ocr_document.output_contract import OUTPUT_MODES, RESULT_INDEX_SCHEMA
 from ocr_document.result_reader import load_document_json
@@ -30,6 +31,33 @@ _HTML_TABLE = re.compile(r"</?(?:table|thead|tbody|tr|td|th)\b", re.IGNORECASE)
 # document validator knows the names, never the rules: a declared group must
 # be checked by a supplied validator, otherwise validation fails.
 ARTIFACT_GROUPS = ("keyword_contract",)
+
+
+def _blocks_requiring_text_evidence(page_data: dict, regions: list[dict], evidence_blocks: list[dict]) -> int:
+    """A Docling display formula can back one matching text projection."""
+    blocks = page_data.get("blocks") or []
+    if not page_data.get("formulas"):
+        return len(blocks)
+    evidence_regions = {block.get("region_id") for block in evidence_blocks}
+    formula_regions = {region["region_id"] for region in regions if region.get("content_type") == ContentType.FORMULA}
+    page_num = page_data["page_num"]
+    formulas = Counter(
+        (formula.get("engine"), formula.get("latex"), tuple(formula.get("bbox") or ()))
+        for formula in page_data["formulas"]
+        if formula.get("page") == page_num and formula.get("latex") and formula.get("bbox")
+    )
+    used_regions = set()
+    for block in blocks:
+        region_id = block.get("region_id")
+        if (block.get("source") != "docling" or block.get("block_type") != "formula"
+                or block.get("page") != page_num or region_id not in formula_regions
+                or region_id in evidence_regions or region_id in used_regions):
+            continue
+        key = (block.get("engine"), block.get("text"), tuple(block.get("bbox") or ()))
+        if formulas[key]:
+            formulas[key] -= 1
+            used_regions.add(region_id)
+    return len(blocks) - len(used_regions)
 
 
 def validate_document(
@@ -243,13 +271,7 @@ def _validate_document_artifacts(
         regions = page_data.get("regions") or []
         region_ids = {region.get("region_id") for region in regions}
         evidence_blocks = page_data.get("evidence_blocks") or []
-        # Docling formula blocks are emitted alongside sidecar formulas without
-        # Phase A evidence blocks, so only non-formula text blocks need backing.
-        text_blocks = [
-            block for block in (page_data.get("blocks") or [])
-            if not (block.get("block_type") == "formula" and block.get("source") == "docling")
-        ]
-        if len(evidence_blocks) < len(text_blocks):
+        if len(evidence_blocks) < _blocks_requiring_text_evidence(page_data, regions, evidence_blocks):
             errors.append(f"Page {page_num}: evidence count differs from text block count")
         for region in regions:
             if not region.get("status"):

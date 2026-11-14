@@ -27,7 +27,7 @@ def prepared(tmp_path):
     gt_path = dataset / "gt.json"
     gt_hash = write(gt_path, gt)
     inputs = tmp_path / "prepared-inputs"
-    corpus.prepare_corpus(gt_path, gt_hash, dataset, ".", "CONTROL_NOT_GT", "a" * 40, inputs, dpi=144)
+    corpus.prepare_corpus(gt_path, gt_hash, dataset, ".", "CONTROL_NOT_GT", "a" * 40, inputs, dpi=216)
     plan = inputs / "export-plan.json"
     output = tmp_path / "labels"
     formula.prepare(plan, sha256_file(plan), dataset, inputs / "inputs", output)
@@ -35,11 +35,16 @@ def prepared(tmp_path):
 
 
 def test_preparation_preserves_raw_latex_and_source_geometry(prepared):
-    _, _, output = prepared
+    _, inputs, output = prepared
     labels = json.loads((output / "annotations.json").read_text())
     page = labels["documents"][0]["pages"][0]
     row = page["formulas"][0]
-    assert row["bbox"] == [5, 5, 20, 15]
+    with pymupdf.open(next((inputs / "inputs").glob("*.pdf"))) as pdf:
+        rect = pdf[0].rect
+        assert (rect.width, rect.height) != (page["width"], page["height"])
+        assert (page["width"], page["height"]) == (round(rect.width, 2), round(rect.height, 2))
+    assert row["bbox"] == pytest.approx([page["width"] * .1, page["height"] * .125,
+                                         page["width"] * .4, page["height"] * .375])
     assert row["content_raw"] == "$$x_{020}$$" and row["format"] == "LATEX"
     assert row["source_anno_id"] == "original-id" and row["equation_label"] is None
     report = json.loads((output / "prepared.json").read_text())

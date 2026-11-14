@@ -115,7 +115,10 @@ def prepare(plan_path, plan_hash, dataset_root, inputs, output):
         _require((gt["page_info"]["width"], gt["page_info"]["height"])
                  == (proof["image_width"], proof["image_height"]), "GT dimensions differ from image")
         with pymupdf.open(pdf) as doc:
-            page, omitted = _page_labels(gt, doc[0].rect.width, doc[0].rect.height)
+            rect = doc[0].rect
+            # Match the frame serialized by ocr_pdf_io.pdf_inspector. Polygon
+            # coordinates and the original image geometry remain available.
+            page, omitted = _page_labels(gt, round(rect.width, 2), round(rect.height, 2))
         excluded.update(omitted)
         documents.append({"document_id": source["document_id"], "pdf_sha256": source["pdf_sha256"],
                           "total_pages": 1, "pages": [page], "source_image": name})
@@ -139,7 +142,7 @@ def prepare(plan_path, plan_hash, dataset_root, inputs, output):
               "status": "PREPARED", "quality_acceptance": "NOT_EVALUATED", "plan_sha256": plan_hash,
               "dataset_revision": plan["dataset_revision"], "ground_truth_sha256": plan["ground_truth"]["sha256"],
               "documents": len(documents), "formula_references": dict(counts), "excluded_categories": dict(excluded),
-              "geometry_method": "source_polygon_axis_aligned_envelope_scaled_to_pdf_points",
+              "geometry_method": "source_polygon_axis_aligned_envelope_scaled_to_exported_pdf_points",
               "source_images": proofs, "adapter_sha256": sha256_file(Path(__file__)),
               "limitations": ["Development external dataset; not a release holdout or official OmniDocBench score",
                               "LaTeX references cannot establish TEXT CER", "No independent critical-symbol review",

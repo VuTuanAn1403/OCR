@@ -243,7 +243,13 @@ def _validate_document_artifacts(
         regions = page_data.get("regions") or []
         region_ids = {region.get("region_id") for region in regions}
         evidence_blocks = page_data.get("evidence_blocks") or []
-        if len(evidence_blocks) < len(page_data.get("blocks") or []):
+        # Docling formula blocks are emitted alongside sidecar formulas without
+        # Phase A evidence blocks, so only non-formula text blocks need backing.
+        text_blocks = [
+            block for block in (page_data.get("blocks") or [])
+            if not (block.get("block_type") == "formula" and block.get("source") == "docling")
+        ]
+        if len(evidence_blocks) < len(text_blocks):
             errors.append(f"Page {page_num}: evidence count differs from text block count")
         for region in regions:
             if not region.get("status"):

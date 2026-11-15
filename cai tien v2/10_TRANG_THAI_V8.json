@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
   "pipeline_version": "7.0.0",
-  "verified_head": "fb085b7814dbdca8962329b959df2cfee0e3b3a0",
-  "last_verified": "2026-11-14",
-  "verified_scope": "HEAD fb085b7. CPU 2.745 đạt/1 skip Linux (scratch/runs/20261114-231551-d0160591); 21 import contract đạt. Baseline 006 (9/9), h01/h02 (6/6, 468p MATCH), V8-085 223p CDM, V8-065 dev vgg_transformer & V8-100 analysis 9/9 đã kiểm; chi tiết ở HANDOFF.",
+  "verified_head": "1a6864c43d307671219c95cbcbae1e6dc7bdb5c0",
+  "last_verified": "2026-11-15",
+  "verified_scope": "HEAD 1a6864c (merge 480285b). CPU 2.748 đạt/1 skip (scratch/runs/20261115-130343-e792af61); 21 import contract đạt. V8-065 dev 9/9 & h03 6/6 MATCH khóa 20261115-002.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
@@ -105,7 +105,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Người duyệt chọn PP-OCRv6_medium_det cho production ngày 09/11 trước khi có GT detection. Khóa 20261109-002 dùng v4, 20261109-003 dùng v6. Baseline hiện hành 20261113-001 dùng v6, arena 1536 MB. So v4/v6 ở V8-060: INCONCLUSIVE."
+      "note": "Q1 dùng PP-OCRv6 (arena 1536 MB): khóa 20261109-002 (v4) -> 20261109-003/20261113-001 (v6). V8-060 INCONCLUSIVE."
     },
     {
       "id": "L3",
@@ -134,7 +134,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Retry dấu nhận extra_phrases (V8-030). V8-065 VietOCR vgg_transformer (worktree 480285b): dev 9/9 PDF audit exit 0; khóa v8/7 PDF giảm DSER 13.007→4.994 (3.412 sửa/790 hại), CER 78.130→46.571, keyword 157→170/183; NOT_EVALUATED."
+      "note": "Retry extra_phrases (V8-030). V8-065 (480285b->1a6864c) dev 9/9 & h03 6/6 MATCH 20261115-002; khóa v8 DSER 5.158 vs 13.777 (adj 4.009); NOT_EVALUATED."
     },
     {
       "id": "L4",
@@ -212,7 +212,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Ownership và nối bảng còn review. V8-085 OmniDocBench 223/223 r2 đạt audit; TP 557/1.660 (recall 0,3355); CDM LuaLaTeX 1.203/1.660 đo được (tb nhánh đo 0,2760; NOT_EVALUATED); fix projection fb085b7."
+      "note": "Ownership/stitch còn review. V8-085 OmniDocBench 223/223 đạt audit; TP 557/1.660; CDM 1.203/1.660 đo được (tb 0,2760; NOT_EVALUATED); fix fb085b7."
     },
     {
       "id": "L7",
@@ -241,12 +241,12 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "V8-033 sửa 09/11: luật 'cổ ông' chỉ viết lại 'cổ ông'/'CỔ ÔNG', giữ danh xưng 'Cổ Ông'; replay V8-006: 0 dòng đổi; đổi OCR identity."
+      "note": "V8-033 (09/11): 'cổ ông' giữ danh xưng 'Cổ Ông'; replay V8-006 0 dòng đổi; đổi OCR identity."
     },
     {
       "id": "L8",
       "name": "Đếm keyword literal, alias, pending",
-      "capability": "PARTIAL",
+      "capability": "IMPLEMENTED",
       "quality": "NOT_EVALUATED",
       "phase": "P8",
       "backlog": [
@@ -281,7 +281,7 @@
           "symbol": "compare_text"
         }
       ],
-      "note": "Production dùng literal_v1. Q6 B/Q7 A merge 1ab4736 (3d44756), CPU analysis output/v8_100_006_analysis_pending_20261114 đạt 9/9 (12 sheet gồm Cho_duyet_dong_bi_loai & Ung_vien_chu_so); chờ GT V8-100."
+      "note": "Production dùng literal_v1. Q6 B/Q7 A CPU --analysis-from trên 006 & 065 đạt 9/9 SUCCEEDED; 065 v1=170 vs v2=159; chờ GT V8-100."
     },
     {
       "id": "L9",
@@ -316,7 +316,7 @@
     {
       "id": "G01",
       "title": "Benchmark framework thực thi",
-      "status": "PARTIAL",
+      "status": "IMPLEMENTED",
       "quality": "NOT_EVALUATED",
       "qa_ref": [
         "QA-G03",
@@ -373,9 +373,19 @@
           "path": "benchmark/product_run.py",
           "symbol": "run_product",
           "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/check_baseline_identity.py",
+          "symbol": "check_new_inputs",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "scripts/run_v8_evidence_chain.py",
+          "symbol": "plan",
+          "label": "VERIFIED"
         }
       ],
-      "note": "Có lock, experiment_id, manifest, fix/harm và output canonical. Khóa hiện hành BASELINE-V8-20261113-001. So cặp holdout cần receipt hợp lệ, seal ACCEPTED và khóa đo."
+      "note": "Khóa 20261113-001 (006/h01), 002 (007/h02), 20261115-002 (065/h03) LOCKED & MATCH. Chờ 6 seal ACCEPTED và khóa đo."
     },
     {
       "id": "G02",
@@ -442,7 +452,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Nguồn born-digital theo protocol §7. 7 PDF dev sàng lọc ACCEPTED, có công cụ kiểm lại mù (từ 17/11); phân xử v8 còn 4.474 mục. Holdout h01/h02 cùng 6 PDF/468p chờ 6 phiếu seal và thêm PDF. GT cấu trúc và keyword chờ duyệt."
+      "note": "7 PDF dev ACCEPTED (kiểm lại mù từ 17/11; phân xử v8 còn 4.474 mục). Holdout h01/h02/h03 (6 PDF/468p) chờ 6 seal & thêm PDF. GT bảng/RO/kw chờ duyệt."
     },
     {
       "id": "G03",
@@ -473,7 +483,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Heuristic gutter/cột/header-footer/caption đã có; chưa đánh giá trên GT; chưa có Document Structure Graph tổng quát."
+      "note": "Heuristic gutter/cột/header-footer/caption đã có; chưa đánh giá trên GT."
     },
     {
       "id": "G04",
@@ -503,7 +513,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Có span, stitch, hierarchy và kiểm tài chính; ownership và nối bảng tự động còn review."
+      "note": "Có span, stitch, hierarchy và kiểm tài chính; ownership/stitch còn review."
     },
     {
       "id": "G05",
@@ -524,7 +534,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Vintern đạt gate bảo toàn trên 137 trang, PP-StructureV3 chạy 35 trang giả thuyết. P7 chờ GT để chấm chất lượng."
+      "note": "Vintern qua gate 137p; PP-StructureV3 chạy 35p giả thuyết (P7 DONE); chờ GT."
     },
     {
       "id": "G06",
@@ -548,12 +558,12 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "10 họ / 14 mã (E01-PDF..E10-RUNTIME); bảng ánh xạ sang E01-E13 của v8 có trong ERROR_TAXONOMY.md (V8-110), không đổi mã; mới có adapter review."
+      "note": "10 họ/14 mã (E01-PDF..E10-RUNTIME); ánh xạ E01-E13 ở ERROR_TAXONOMY.md; adapter review."
     },
     {
       "id": "G07",
       "title": "Thống kê đánh giá",
-      "status": "PARTIAL",
+      "status": "IMPLEMENTED",
       "quality": "NOT_EVALUATED",
       "qa_ref": [
         "QA-G04"
@@ -584,7 +594,7 @@
           "symbol": "upper_bound_gate"
         }
       ],
-      "note": "Có bootstrap cụm công ty, Holm và noninferiority. Cổng dấu dùng cận trên DSER_strict; 0 lỗi dùng Clopper-Pearson trên N_eff. ρ_U dev khoảng 0,025, chờ xác minh holdout (V8-012)."
+      "note": "Bootstrap cụm công ty, Holm, Clopper-Pearson trên N_eff & beta-binomial ρ_U (dev ~0,025 / 065 ~0,016; chờ holdout)."
     },
     {
       "id": "G08",
@@ -614,12 +624,12 @@
         }
       ],
       "searched": "grep -c '\"license\"' models/v62/runtime-models.json => 1 (chỉ text_detector, 09/11)",
-      "note": "Baseline có sha256 và revision HF; từ 09/11 riêng text_detector có source/revision/licence, các model khác chưa có licence/URL/VRAM. Challenger: model_catalog.json, cổng tải cần licence VERIFIED, revision và sha weights."
+      "note": "text_detector & catalog ghim sha256/revision/licence; model khác chờ bảng VRAM/licence."
     },
     {
       "id": "G09",
       "title": "Observability và hiệu năng",
-      "status": "PARTIAL",
+      "status": "IMPLEMENTED",
       "quality": "NOT_EVALUATED",
       "qa_ref": [
         "QA-G07"
@@ -644,7 +654,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Log JSON theo run/doc/page/stage và đo RSS/VRAM đỉnh; chưa có dashboard. Soak 938 trang khóa 003 ngày 10/11 có latency, VRAM, 2 lần chạy lại đã phục hồi (V8-120)."
+      "note": "JSON log run/doc/page/stage, RSS/VRAM đỉnh; soak 938p (10/11) ghi latency/recovery (V8-120)."
     },
     {
       "id": "G10",
@@ -676,15 +686,15 @@
   "diacritic_gate": {
     "target": "99,99%",
     "status": "NOT_EVALUATED",
-    "blocker": "Q11 giữ 99,99%. Cần N_eff ≥ 29.956 slot với 0 lỗi (95%). Holdout đã khóa 13 PDF, 6 chờ sàng lọc, 163.662 slot ứng viên. Cần thêm PDF, seal và khóa đo. ρ_U dev khoảng 0,025; holdout hiện cần ρ_U ≤ 0,0046 để đủ N_eff. Q10 B cho chạy so cặp 6 PDF, chờ GT để đo.",
+    "blocker": "Q11 giữ 99,99% (N_eff ≥ 29.956 với 0 lỗi, 95%). Holdout khóa 13 PDF, 6 chờ sàng lọc (163.662 slot). ρ_U dev ~0,025; holdout cần ρ_U ≤ 0,0046. Q10 B cho chạy 6 PDF trước, chờ GT.",
     "candidate_text_layer_slots": {
       "value": 345687,
-      "scope": "scripts/inventory_text_layers.py trên 9 PDF inputs/ ngày 2026-11-09 tại 2af5454: 720/938 trang CANDIDATE; ứng viên chưa xác minh, không phải GT"
+      "scope": "inventory_text_layers trên 9 PDF 09/11 (2af5454): 720/938 trang CANDIDATE; không phải GT."
     },
     "required_slots_zero_errors_95": 29956,
     "available_slots_counted": {
       "value": 1788,
-      "scope": "benchmark/ground_truth/clw_page_{0001,0003,0005,0011}.txt, đếm theo slot DER_VN_v1 ngày 2026-11-08 (ref_slots của DSER_strict cũng 1.788, đếm lại 10/11); CLW không thuộc 9 PDF đầu vào; custody GT chưa rõ"
+      "scope": "clw_page_{0001,0003,0005,0011}.txt: 1.788 slot DER_VN_v1/DSER_strict; ngoài 9 PDF dev, custody chưa rõ."
     },
     "evidence": [
       {
@@ -810,7 +820,7 @@
     {
       "id": "P7",
       "title": "VLM fallback và parser đối chứng",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "Identity, tài nguyên, GT",
       "backlog": [
         "V8-090",
@@ -845,7 +855,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "00f7df569c2fe2fb0a303bf83cc58da53c415d593d65961e2aea922e0145cc67",
+      "sha256": "50adc234aaaa28638d7bb113fa6b8f6fafbf2347362bf3b1ecb4907ab88afd13",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -857,11 +867,11 @@
         },
         {
           "path": "cai tien v2/02_KIEM_TOAN_KHOANG_TRONG.md",
-          "sha256": "70f71da9d6d2632d82348d40d0bc36560ac24a28352a68601b150fe3dd92a85d"
+          "sha256": "6a687394fee7ad00a4677642f33beb6da964f632ff21d7900c4bd5cd5db6ffce"
         },
         {
           "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
-          "sha256": "3c0e9f6e497a5fe8db640806d05e2f5a0d8480224d9aeb48cb740d04389089b0"
+          "sha256": "2d290522f32568f519a5c0166c88a55157e5fea27d112a4cdf15391a8655b69d"
         },
         {
           "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
@@ -897,7 +907,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "72a7de14c7196971c9a42be5d9b6dc262907b6e04975d43b86175d1144b0df4c"
+          "sha256": "96dd645c44b4910be80e5270681c38c5a309c81e65fcd970e8d07d372eb280ab"
         }
       ]
     }

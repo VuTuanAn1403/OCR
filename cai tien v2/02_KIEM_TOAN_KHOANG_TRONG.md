@@ -12,15 +12,15 @@ Mốc kiểm toán: HEAD `08f7602`, ngày 08/11/2026. Nguồn trạng thái duy 
 <!-- v8-status:gaps:begin -->
 | Nhóm | Năng lực | Chất lượng | Bằng chứng chính | QA | Backlog |
 | --- | --- | --- | --- | --- | --- |
-| G01 Benchmark framework thực thi | PARTIAL | NOT_EVALUATED | `benchmark/scientific_evaluation/release_gate.py::run_gate`; `benchmark/qa/paired_effects.py::summarize` | QA-G03, QA-G04 | V8-001, V8-006, V8-040, V8-041, V8-042 |
+| G01 Benchmark framework thực thi | IMPLEMENTED | NOT_EVALUATED | `benchmark/scientific_evaluation/release_gate.py::run_gate`; `benchmark/qa/paired_effects.py::summarize` | QA-G03, QA-G04 | V8-001, V8-006, V8-040, V8-041, V8-042 |
 | G02 Ground Truth và annotation | PARTIAL | NOT_EVALUATED | `benchmark/ground_truth_tools/human_annotations.py::seal_submissions`; `docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md` | QA-G01 | V8-010, V8-011, V8-012, V8-013, V8-150 |
 | G03 Layout intelligence và reading order | PARTIAL | NOT_EVALUATED | `src/ocr_document/region_tree.py::infer_region_tree`; `src/ocr_document/document_furniture.py::DocumentFurnitureResolver` | QA-G05 | V8-070, V8-071 |
 | G04 Tái tạo bảng | PARTIAL | NOT_EVALUATED | `src/ocr_contracts/table.py::TableCell`; `src/ocr_document/table_stitch.py::project_table` | QA-G08 | V8-080 |
 | G05 VLM và Hybrid Document AI | PARTIAL | NOT_EVALUATED | `benchmark/challengers/vlm/adapter.py::run` | QA-G08 | V8-090, V8-095 |
 | G06 Error taxonomy và registry | IMPLEMENTED | NOT_EVALUATED | `benchmark/qa/error_registry.py::ERROR_CODES`; `docs/quality_assurance/ERROR_TAXONOMY.md` | QA-G02 | V8-110 |
-| G07 Thống kê đánh giá | PARTIAL | NOT_EVALUATED | `benchmark/scientific_evaluation/cluster_statistics.py::company_cluster_bootstrap`; `benchmark/scientific_evaluation/stratified_scorecard.py::_error_rate_interval` | QA-G04 | V8-021, V8-022 |
+| G07 Thống kê đánh giá | IMPLEMENTED | NOT_EVALUATED | `benchmark/scientific_evaluation/cluster_statistics.py::company_cluster_bootstrap`; `benchmark/scientific_evaluation/stratified_scorecard.py::_error_rate_interval` | QA-G04 | V8-021, V8-022 |
 | G08 Vòng đời model và registry | PARTIAL | NOT_EVALUATED | `models/v62/runtime-models.json::sha256`; `src/ocr_runtime/model_registry.py::validate_registry` | — | V8-043, V8-160 |
-| G09 Observability và hiệu năng | PARTIAL | NOT_EVALUATED | `src/ocr_runtime/structured_logging.py::JsonFormatter`; `benchmark/scientific_evaluation/measure_operations.py::measure` | QA-G07 | V8-120 |
+| G09 Observability và hiệu năng | IMPLEMENTED | NOT_EVALUATED | `src/ocr_runtime/structured_logging.py::JsonFormatter`; `benchmark/scientific_evaluation/measure_operations.py::measure` | QA-G07 | V8-120 |
 | G10 Tái tạo tài liệu và export | PARTIAL | NOT_EVALUATED | `src/ocr_document/export.py::DocumentExporter`; `src/ocr_document/contract_schema.py::DocumentContract` | QA-G08 | V8-130 |
 <!-- v8-status:gaps:end -->
 

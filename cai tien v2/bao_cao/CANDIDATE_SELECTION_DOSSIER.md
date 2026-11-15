@@ -1,6 +1,6 @@
-# Hồ sơ chọn candidate V8-140 (bản 1, 12/11/2026)
+# Hồ sơ chọn candidate V8-140 (bản 2, 15/11/2026)
 
-Hồ sơ này so một candidate end-to-end với baseline theo hợp đồng `05_HOP_DONG_BENCHMARK_ADAPTER.md` §5. Operator đề xuất; người duyệt (VuTuanAn1403) quyết. Mọi chất lượng giữ `NOT_EVALUATED`, vì chưa có GT độc lập (holdout).
+Hồ sơ này so từng candidate end-to-end với baseline theo hợp đồng `05_HOP_DONG_BENCHMARK_ADAPTER.md` §5. Operator đề xuất; người duyệt (VuTuanAn1403) quyết. Mọi chất lượng giữ `NOT_EVALUATED` ở nơi chưa có GT độc lập (holdout chưa seal, phân xử chưa xong).
 
 ## Identity
 
@@ -90,8 +90,29 @@ Nâng giới hạn không đổi kết quả của baseline. So 004 với 006: p
 - 2 trang lặp lại prompt. Trên 90 trang có text layer đã sàng lọc: DSER của VLM 4.647, của production 1.606; VLM tốt hơn ở 33 trang, kém hơn ở 43, ngang ở 14 (`scratch/v8/v8_090_vintern_pages_004_20261112.json`). Thang đo cấp trang chịu ảnh hưởng thứ tự đọc nên chỉ là chẩn đoán.
 - Đề xuất của operator: `KEEP BASELINE` (không cải thiện, có harm). Người duyệt quyết.
 
+## Candidate 4: VietOCR `vgg_transformer` (V8-065, 15/11)
+
+| | Baseline (`006`) | Candidate (`V8-065`) |
+| --- | --- | --- |
+| Dev (9 PDF, 938p) | `output/v8_006_arena1536_20261112` | `output/v8_065_vgg_transformer_dev_20261114` (audit 9/9 `SUCCEEDED`) |
+| Holdout `h03` (6 PDF, 468p) | `output/v8_h01_baseline_pairs6_20261113` | `output/v8_h03_vgg_transformer_pairs6_20261115` (`v8_h03_vgg_transformer_audit_20261115.json`) |
+| Mã & cấu hình | `c681e87`, `config/profiles.yaml` | Merge `480285b->1a6864c`, `v8_065_vgg_transformer.yaml`, `runtime-models-v8-065-vgg-transformer.json` |
+| Khóa & identity | `BASELINE-V8-20261113-001` | `BASELINE-V8-20261115-002` (LOCKED); dev 9/9 & `h03` 6/6 `MATCH` (`v8_065_vgg_transformer_dev_identity_20261115.json`, `v8_h03_vgg_transformer_identity_20261115.json`) |
+
+| Thước đo (dev, chưa phải GT; chất lượng `NOT_EVALUATED`) | `006` | `V8-065` | Hiện vật (`scratch/v8/…`) |
+| --- | ---: | ---: | --- |
+| `V8-011` `DSER_strict` (khóa `v8`, 7 PDF, `346.393` slot) | `13.777` | `5.158` | `v8_011_measurement_dev_065_vgg_transformer_v8_20261115.json` |
+| `V8-011` `der_vn_v1` / đơn vị phân xử / `rho` | `18.426` / `6.306` / `0,0222` | `9.937` / `4.009` / `0,0139` | như trên |
+| `V8-030` Acronym challenger | — | `5.158 -> 4.800` (`271` sửa / `2` sai) | `v8_030_acronym_textlayer_v8_065_vgg_transformer_20261115.json` |
+| `V8-080` Phiếu 72 số (`in_table`/`visible`/`absent`) | `6 / 52 / 0` | `24 / 22 / 12` | `v8_080_table_numbers_065_vgg_transformer_20261115.json` |
+| `V8-140` `EXTRACTED` / `LOW_CONF` / `HALLUCINATION` | `10.497 / 3.005 / 647` | `27.017 / 849 / 867` | `v8_065_vgg_transformer_invariants_006_vs_dev_20261115.json` |
+| `V8-140` Thiếu bảng / ô thiếu số / `untraced` / kw | `67 / 620 / 2 / 156` | `207 / 992 / 4 / 170` | như trên (`14` keyword đổi) |
+| `V8-071` Thứ tự đọc (938p, tất định, 0 vi phạm) | `mean 0,951` | `mean 0,951247` (`150`p `<0,9`) | `v8_071_reading_order_065_vgg_transformer_20261115.json` |
+| `V8-032` & `V8-100` Policy / `--analysis-from` CPU | `156` | `v1=170` vs `v2=159`; `9/9` | `v8_032_keyword_policy_diff_065_vgg_transformer_20261115.json`, `v8_100_065_analysis_pending_audit_20261115.json` |
+
+Đề xuất: `INCONCLUSIVE` / `NOT_EVALUATED` (`065` giảm `dser_errors` dev và tăng `in_table`, nhưng tăng `absent=12` và `numbers_missing_from_table=207`). Chờ seal 6 phiếu holdout `ACCEPTED` để đo `h03`.
+
 ## Còn thiếu cho V8-140
 
-- V8-060, V8-065 và V8-080 (GT bảng, phiếu 72 số) chưa xong.
-- Chưa có holdout.
-- Cần quyết định chính sách cho dòng confidence thấp mà có chữ thật. Ví dụ VIC tr.95 "số hóa tài liệu đào tạo…" (confidence 0,535) chứa keyword "Số hóa" nhưng nằm ngoài `result.md` (`scratch/v8/v8_100_retained_line_keywords_004_20261112.json`).
+- Seal 6 phiếu holdout (`pairs6`), khóa đo holdout và đo cặp `h01`/`h02`/`h03`; phân xử dấu dev, kiểm lại mù (`V8-011`) và GT bảng/RO/keyword (`V8-071`, `V8-080`, `V8-100`).
+- Chốt chính sách dòng confidence thấp có chữ thật (VD `VIC` tr.95 `"số hóa tài liệu đào tạo…"`, conf `0,535`, `v8_100_retained_line_keywords_004_20261112.json`).

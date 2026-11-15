@@ -4,55 +4,21 @@ Mã khóa `BASELINE-V8-20261108-001`, chụp lúc 2026-11-08 13:51:55 UTC. Trạ
 
 Manifest đầy đủ nằm ở `scratch/benchmarks/BASELINE-V8-20261108-001/baseline_lock.json` (chỉ có ở máy local; sha256 `d3276479c549ece023ce13e5dfa491a8324928814c5d485b9d6fd8247d2b28bc`). Lệnh tạo: `.venv/Scripts/python.exe -B scripts/lock_baseline.py`.
 
-## Khóa hiện hành: `BASELINE-V8-20261109-003` (09/11, HEAD `20207a2`)
+## Các khóa baseline và ứng viên hiện hành (`V8-001`)
 
-Khóa 003 chụp sau khi tích hợp PP-OCRv6 text detector, diacritic retry từ điển keyword (V8-030) và các sửa lỗi review.
+| Lock ID | Mốc mã / cấu hình | Thời gian UTC | `portable_identity` / sha manifest | Output đã `MATCH` |
+| --- | --- | --- | --- | --- |
+| `BASELINE-V8-20261113-001` (baseline Q1) | `c681e87`, `config/profiles.yaml` (`4d867edbd1b55c23…`), extraction `a58d78d21ad45c97` | 2026-11-12 17:33:03 | `fa44665e0f7df3fb…` / `e2a048b11323b8ff…` | Dev `006` (9/9, `938`p); holdout `v8_h01_baseline_pairs6_20261113` (6/6, `468`p) |
+| `BASELINE-V8-20261113-002` (ứng viên `×2`) | `c681e87`, `config/candidates/v8_050_line_upscale2.yaml` (`09008d18a0f9c718…`) | 2026-11-12 17:33:25 | `00c327d6a44684a1…` / `73c03802a6466df6…` | Dev `007` (9/9, `938`p); holdout `v8_h02_upscale2_pairs6_20261113` (6/6, `468`p) |
+| `BASELINE-V8-20261115-002` (ứng viên `V8-065`) | `480285b` (merge `1a6864c`), `config/candidates/v8_065_vgg_transformer.yaml` (`15a7612f02f53e62…`), extraction `8d87703c93149dbe` | 2026-11-14 17:43:06 | `414243ec6ab373b0…` / `2f9e71d302be1dc2…` | Dev `v8_065_vgg_transformer_dev_20261114` (9/9, `938`p); holdout `v8_h03_vgg_transformer_pairs6_20261115` (6/6, `468`p) |
 
-| Mục | Giá trị |
-| --- | --- |
-| Trạng thái | **LOCKED**, `problems` rỗng; chụp lúc 2026-11-09 07:40:13 UTC |
-| Manifest | `scratch/benchmarks/BASELINE-V8-20261109-003/baseline_lock.json`, sha256 `fbd278b8b5bcc525cc0089c7c392b9967f448ea209d4191cb7398cb0faf8fded` |
-| Fingerprint extraction / analysis / publication | `ccdbe84a3691d645` / `556a9a221118acfe` / `d4fac3a93338c2ed` |
-| `portable_identity` | `9ca57543016d9c6811890fc6ed8cfbb4338efe8edfa1307e261104a6e88c2e40` |
-| Thay đổi mã nguồn ghi nhận | `models/v62/runtime-models.json`, `src/ocr_recognition/{text_detector,diacritic_retry}.py`, `src/ocr_text/vietnamese_diacritics.py` |
+Khóa `20261115-002` dùng `--env-root .venv-v62`, registry `models/v62/runtime-models-v8-065-vgg-transformer.json` (sha `db43ebfa5dc74354…`) và trọng số `vgg_transformer.pth` (sha `380512193a8b6cbf…`). `check_baseline_identity.py --new-inputs --root` xác minh holdout `h03` khớp trọn bộ runtime của khóa.
 
-## Khóa trước: `BASELINE-V8-20261109-002` (09/11, HEAD `24a5558`)
+## Lịch sử khóa ban đầu (`001`–`003`, 08–09/11)
 
-## Prediction baseline V8-006
-
-| Mục | Kết quả |
-| --- | --- |
-| Output | `output/v8_baseline_20261109_r2`: 9/9 PDF `SUCCEEDED`, 938/938 trang CUDA, exit 0 |
-| Audit `--validate` | exit 0, `scratch/v8/v8_006_audit_r2_20261109.json`; validation `NEEDS_REVIEW` 0 lỗi |
-| Identity | `check_baseline_identity.py` **MATCH** 9/9 với khóa 002, `scratch/v8/v8_006_identity_r2_20261109.json` |
-| Keyword `literal_v1` | 164 lượt, trùng `keyword_counts.json`; quality `NOT_EVALUATED` |
-| Docling fallback | 3/938 trang `FAILED_FALLBACK` (AAA, ACL, ASM: worker exited). Trang ACL 22 thành công ở 5 lần chạy sau; log pha bị ghi đè nên chưa rõ nguyên nhân |
-
-Lần 1 (`output/v8_baseline_20261109`) dừng với `IdentityMismatch` vì `src/` bị sửa khi batch chạy; giữ làm bằng chứng.
-
-Khóa trung gian `BASELINE-V8-20261109-001` (analysis `3c33830f271e1c29`, manifest sha256 `80a68553…`) đã cũ về analysis; chi tiết ở bản tại `24a5558`.
-
-## LOCKED nghĩa là gì
-
-- `ocr_pipeline.backend.prepare_backend`, đúng bước preflight mà CLI chạy trước mỗi batch, đã chấp nhận cấu hình: profile hợp lệ, mọi file model khớp sha trong registry, hai interpreter worker tồn tại, phép thử CUDA qua được dưới GPU lease.
-- Hai dependency lock được kiểm **bên trong** interpreter tương ứng (`ocr_runtime.dependency_lock.verify_installed_lock`).
-- 9 PDF được kiểm kê bằng `ocr_pipeline.batch.input_snapshot`. `ocr_identity` của từng PDF tính bằng `GPUProcessor.request_for` với tham số mặc định của CLI (`assets=png`, `output_mode=compact`).
-
-LOCKED **không** có nghĩa là đã chạy OCR. Inference: `NOT_RUN`. Chất lượng: `NOT_EVALUATED`. Chưa có prediction baseline nào cho P3/P4.
-
-## Mã nguồn
-
-| Mục | Giá trị |
-| --- | --- |
-| HEAD | `08f7602ea8bd7fa4db0775924f47ac9960306e58` (nhánh `main`) |
-| Working tree | Có thay đổi chưa commit (79 bản ghi); sha diff toàn bộ `a7d1dfa416ea615a…` |
-| Thay đổi trong phạm vi mã | `M src/ocr_keywords/README.md`; sha diff `52e81568df5b5962…` |
-| `PIPELINE_VERSION` | `7.0.0` |
-| Fingerprint extraction / analysis / publication | `20e15efae22917bd` / `c4ad6f5589213bf7` / `fddd16ef5acbb002` |
-| Profile | `unified_gpu_full_ocr` trong `config/profiles.yaml` (sha256 `4d867edbd1b55c23143cfb336ddbc8bfe9542f0f626ec703a30a81bd9de74505`) |
-| Digest profile đã chuẩn hóa | `b9633069c5c173e79f41be734f45f6b557609069703d4cd3713fa7b4d25e4525` |
-
-Phạm vi mã gồm `src`, `config`, `models`, `requirements`, `scripts/docling_structure_worker.py` và `pyproject.toml`. Thay đổi duy nhất trong phạm vi này là một README; fingerprint chỉ băm `src/**/*.py`, nên identity OCR bằng với HEAD.
+- `BASELINE-V8-20261108-001` (HEAD `08f7602`, `PIPELINE_VERSION 7.0.0`, `portable_identity` `77c03ad9104287c5…`, diff sạch chỉ `README`): `NOT_RUN` / `NOT_EVALUATED`.
+- `BASELINE-V8-20261109-002` (`24a5558`) & `BASELINE-V8-20261109-003` (`20207a2`, sha `fbd278b8b5bcc525…`, `portable_identity` `9ca57543016d9c68…`, extraction `ccdbe84a3691d645`): bật PP-OCRv6 det + retry dấu `V8-030`; `output/v8_baseline_20261109_r2` `SUCCEEDED` 9/9 (`938`p, 3 trang fallback Docling).
+- `LOCKED` chỉ xác nhận preflight `ocr_pipeline.backend.prepare_backend`, lock cài trong từng venv worker và snapshot 9 PDF đầu vào; mọi chất lượng giữ `NOT_EVALUATED` khi chưa có GT độc lập.
 
 ## Model (36 file đã kiểm sha)
 
@@ -98,13 +64,13 @@ Danh sách đủ 36 file nằm trong manifest (`models.sha256`). Revision snapsh
 
 ## Identity dùng để so sánh
 
-- `portable_identity` = `77c03ad9104287c57428a8ba4c43d84115666b3f2b0ceee8fe1277d3f57269e7`. Digest này gồm fingerprint mã, sha profile, sha model và sha lock, không gồm đường dẫn tuyệt đối, nên dùng được để so baseline giữa các máy.
-- `ocr_identity` của từng PDF thì chứa cả đường dẫn tuyệt đối của model và interpreter (`OCR_IDENTITY_KEYS`), nên chỉ đúng trên máy này. Đây là khóa mà receipt `ocr_receipt.json` dùng để quyết định có OCR lại hay không.
-- Output OCR có sẵn: tìm `output/*/*/ocr_receipt.json` không có receipt nào khớp; `output/` đang trống. Vì vậy chưa có extraction baseline nào để tái dùng.
+- `portable_identity` gồm fingerprint mã, sha profile, sha model và sha lock (không chứa đường dẫn tuyệt đối) để đối chiếu khóa giữa các môi trường.
+- `ocr_identity` của từng PDF chứa đường dẫn tuyệt đối của model và interpreter (`OCR_IDENTITY_KEYS`), dùng trong `ocr_receipt.json` để quyết định có OCR lại hay không.
+- Các output đã `MATCH` hiện có ở máy local: dev `006`, `007`, `v8_065_vgg_transformer_dev_20261114` (`9/9`); holdout `h01`, `h02`, `v8_h03_vgg_transformer_pairs6_20261115` (`6/6`).
 
 ## Giới hạn
 
-- Prediction baseline V8-006 có ở `output/v8_baseline_20261109_r2` (chỉ máy local). Challenger P3/P4 so với output này theo `ocr_identity`.
-- Khóa mất hiệu lực khi đổi bất kỳ thứ nào sau: `src/**/*.py`, `config/profiles.yaml`, registry hoặc file model, lock, gói trong venv worker, PDF đầu vào. Khi đó chạy lại `scripts/lock_baseline.py` để tạo khóa mới; không sửa khóa cũ.
-- GPU có 4 GB VRAM. Đây là ràng buộc khi chọn challenger: VLM từ vài tỷ tham số trở lên ở [01](../01_RADAR_CONG_NGHE_THEO_TANG.md) có thể không chạy được trên máy này (`HYPOTHESIS`, cần đo ở P7).
-- Driver CUDA và cấu hình phần cứng được ghi lại, nhưng không nằm trong `ocr_identity`.
+- Prediction baseline V8-006 ở `output/v8_006_arena1536_20261112` (dev) và `output/v8_h01_baseline_pairs6_20261113` (holdout `pairs6`).
+- Khóa mất hiệu lực khi đổi `src/**/*.py`, `config/profiles.yaml` (hoặc config candidate), registry/model, lock, gói venv worker hoặc PDF đầu vào. Khi đó chạy lại `scripts/lock_baseline.py` để tạo khóa mới; không sửa khóa cũ.
+- GPU RTX 2050 có 4 GB VRAM; VLM/candidate vượt arena bị từ chối ở preflight/runtime (`KEEP BASELINE` ở P7).
+- Driver CUDA và cấu hình phần cứng được ghi lại trong lock, nhưng không nằm trong `ocr_identity`.

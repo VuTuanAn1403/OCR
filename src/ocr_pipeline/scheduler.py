@@ -28,7 +28,8 @@ from ocr_artifacts.atomic_io import atomic_write_json, replace
 from ocr_artifacts.digest import sha256_json_ascii
 from ocr_artifacts.hashing import sha256_file as sha256
 from ocr_runtime.gpu_lease import GPULease, gpu_snapshot, lease_for_gpu  # re-exported
-from ocr_runtime.paths import PROJECT_ROOT, absolute_path_env, v63_cache_root, worker_pythonpath
+from ocr_runtime.paths import (PROJECT_ROOT, absolute_path_env, registry_model_path, v63_cache_root,
+                               vietocr_registry_files, worker_pythonpath)
 from ocr_runtime.process_tree import supervised_run
 
 ROOT = PROJECT_ROOT
@@ -58,12 +59,14 @@ def stage_models(phase, models, config):
     layout = path_of(config.get("layout_model", {}).get("model_path"))
     font = path_of(config.get("bridge_font"))
     registry = path_of(ROOT / config["model_registry"]) if config.get("model_registry") else None
+    vietocr_files = {registry_model_path(name).resolve()
+                     for name in vietocr_registry_files(config.get("vietocr_variant", "vgg_seq2seq"))}
     selected = {}
     for name, digest in models.items():
         path = Path(name).resolve()
         if layout and (path == layout or layout in path.parents):
             owners = ("text", "structure")
-        elif path == detector or "vietocr" in path.parts:
+        elif path == detector or path in vietocr_files or "vietocr" in path.parts:
             owners = ("text",)
         elif "docling" in path.parts or path in (font, registry):
             owners = ("structure",)

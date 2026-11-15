@@ -86,6 +86,37 @@ def test_pinned_paths_are_the_files_the_phases_load(project):
         project.files[f"{LAYOUT}/model.safetensors"].parent.resolve()
 
 
+def test_transformer_pins_and_hashes_the_same_files_as_the_text_phase(project):
+    config = yaml.safe_load(project.config.read_bytes())
+    config["profiles"]["unified_gpu_full_ocr"]["vietocr_variant"] = "vgg_transformer"
+    project.config.write_text(yaml.safe_dump(config, allow_unicode=True), encoding="utf-8")
+    with pytest.raises(IdentityMismatch, match="MODEL_SELECTION_CHANGED"):
+        project.prepare()
+
+    registry = json.loads(project.registry.read_bytes())
+    registry["vietocr_variant"] = "vgg_transformer"
+    registry["files"] = {name: digest for name, digest in registry["files"].items()
+                         if not name.startswith("models/vietocr/")}
+    for name in paths.VIETOCR_TRANSFORMER_FILES:
+        model_path = paths.registry_model_path(name)
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        model_path.write_text(name, encoding="utf-8")
+        registry["files"][name] = scheduler.sha256(model_path)
+    project.registry.write_text(json.dumps(registry), encoding="utf-8")
+    prepared = project.prepare()
+    for name in paths.VIETOCR_TRANSFORMER_FILES:
+        path = str(paths.registry_model_path(name).resolve())
+        assert prepared["model_selection"][name] == path
+        assert path in scheduler.stage_models("text", prepared["model_hashes"], prepared["config"])
+        assert path not in scheduler.stage_models("structure", prepared["model_hashes"], prepared["config"])
+
+    missing = paths.VIETOCR_TRANSFORMER_FILES[-1]
+    del registry["files"][missing]
+    project.registry.write_text(json.dumps(registry), encoding="utf-8")
+    with pytest.raises(IdentityMismatch, match="not pinned"):
+        project.prepare()
+
+
 @pytest.mark.parametrize("name", ["models/vietocr/vgg_seq2seq.pth", TABLE])
 def test_new_content_at_the_same_path_is_refused(project, name):
     before = project.prepare()

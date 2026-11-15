@@ -37,7 +37,7 @@ def prepare_backend(config_path, profile, env_root, *, preflight=True):
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
     # Pin the files the phases will load, located like the engines locate
     # them (F06); a missing file fails here, before any model import.
-    selection = validate_registry(registry)
+    selection = validate_registry(registry, vietocr_variant=config.get("vietocr_variant", "vgg_seq2seq"))
     models = {selection[name]:checksum for name,checksum in registry["files"].items()}
     for name, checksum in models.items():
         if not Path(name).is_file():
@@ -114,7 +114,8 @@ def verify_runtime(backend):
             raise IdentityMismatch(f"MODEL_SELECTION_CHANGED: the environment now selects {moved[0]} "
                                    f"from {current[moved[0]]}, not the pinned {backend['model_selection'][moved[0]]}")
     if backend.get("model_registry_path"):
-        validate_registry(json.loads(Path(backend["model_registry_path"]).read_text(encoding="utf-8")))
+        registry = json.loads(Path(backend["model_registry_path"]).read_text(encoding="utf-8"))
+        validate_registry(registry, vietocr_variant=backend["config"].get("vietocr_variant", "vgg_seq2seq"))
 
 
 # Exit codes other than 0 after which a written result may still be accepted.

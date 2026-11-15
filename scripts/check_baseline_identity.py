@@ -121,14 +121,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--report", type=Path, required=True, help="New JSON report (never overwritten)")
     parser.add_argument("--new-inputs", action="store_true",
                         help="Check a disjoint input batch against the baseline's frozen runtime/config/model identity")
+    parser.add_argument("--root", type=Path, default=ROOT,
+                        help="Checkout root used when the baseline lock was captured")
     args = parser.parse_args(argv)
     try:
         if args.report.exists():
             raise FileExistsError(f"Report exists: {args.report}")
         if args.report.resolve().is_relative_to(args.output.resolve()):
             raise ValueError("Write the identity report outside the batch output")
-        checker = check_new_inputs if args.new_inputs else check_run
-        report = checker(_read(args.lock), args.output)
+        report = (check_new_inputs(_read(args.lock), args.output, root=args.root)
+                  if args.new_inputs else check_run(_read(args.lock), args.output))
         report.update(created_at=dt.datetime.now(dt.timezone.utc).isoformat(), lock_path=str(args.lock),
                       output=str(args.output))
         args.report.parent.mkdir(parents=True, exist_ok=True)

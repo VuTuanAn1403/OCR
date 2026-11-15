@@ -140,7 +140,14 @@ def matching_receipts(rows: list[dict], output_root: Path, root: Path) -> dict:
             "note": "A match only means an existing extraction has the same identity; it is not re-validated here."}
 
 
-def build_lock(root: Path, input_dir: Path, output_root: Path, *, gpu_preflight: bool = True) -> dict:
+def build_lock(
+    root: Path,
+    input_dir: Path,
+    output_root: Path,
+    *,
+    gpu_preflight: bool = True,
+    env_root: Path | None = None,
+) -> dict:
     from ocr_runtime.config import resolve_config_path
     from ocr_runtime.version import PIPELINE_VERSION
     lock = {"schema_version": SCHEMA, "captured_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -150,7 +157,12 @@ def build_lock(root: Path, input_dir: Path, output_root: Path, *, gpu_preflight:
     try:
         from ocr_pipeline.backend import prepare_backend
         config_path = resolve_config_path(None)
-        backend = prepare_backend(config_path, PROFILE, root / ".venv-v62", preflight=gpu_preflight)
+        backend = prepare_backend(
+            config_path,
+            PROFILE,
+            env_root or (root / ".venv-v62"),
+            preflight=gpu_preflight,
+        )
     except Exception as exc:  # the production preflight decides; record why it refused
         lock.update(status="FAILED", error=f"{type(exc).__name__}: {exc}")
         return lock
@@ -208,12 +220,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--input", type=Path, default=ROOT / "inputs", help="folder of input PDFs")
     parser.add_argument("--output-root", type=Path, default=ROOT / "output", help="where existing receipts live")
+    parser.add_argument("--env-root", type=Path, default=ROOT / ".venv-v62", help="worker venv root directory")
     parser.add_argument("--no-gpu-preflight", action="store_true", help="CPU-only check; the lock stays INCOMPLETE")
     args = parser.parse_args(argv)
     try:
         lock_id = next_lock_id(ROOT, dt.date.today().strftime("%Y%m%d"))
         lock = {"lock_id": lock_id, **build_lock(ROOT, args.input, args.output_root,
-                                                  gpu_preflight=not args.no_gpu_preflight)}
+                                                  gpu_preflight=not args.no_gpu_preflight,
+                                                  env_root=args.env_root)}
         target = dev_context.write_snapshot(ROOT, f"scratch/benchmarks/{lock_id}/baseline_lock.json",
                                             json.dumps(lock, ensure_ascii=False, indent=2) + "\n")
     except (OSError, ValueError, subprocess.SubprocessError) as exc:

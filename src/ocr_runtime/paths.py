@@ -122,6 +122,19 @@ def models_dir() -> Path:
 
 # Files the VietOCR engine loads from `vietocr_model_dir()`.
 VIETOCR_FILES = ("base.yml", "vgg-seq2seq.yml", "vgg_seq2seq.pth")
+VIETOCR_TRANSFORMER_FILES = tuple(
+    f"models/v8/vietocr-vgg-transformer/{name}"
+    for name in ("base.yml", "vgg-transformer.yml", "vgg_transformer.pth")
+)
+
+
+def vietocr_registry_files(variant: str) -> tuple[str, ...]:
+    """Canonical registry names for the files actually loaded by VietOCR."""
+    if variant == "vgg_seq2seq":
+        return tuple(f"models/vietocr/{name}" for name in VIETOCR_FILES)
+    if variant == "vgg_transformer":
+        return VIETOCR_TRANSFORMER_FILES
+    raise ValueError(f"Unsupported VietOCR variant: {variant!r}")
 
 
 def vietocr_model_dir() -> Path:

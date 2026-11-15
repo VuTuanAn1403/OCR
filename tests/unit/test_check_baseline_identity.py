@@ -95,3 +95,18 @@ def test_new_input_checks_reject_runtime_drift_or_leakage(new_input_batch, tmp_p
     else:
         lock["inputs"][0]["pdf_sha256"] = record["pdf_sha256"]
     assert check.check_new_inputs(lock, tmp_path, root=tmp_path, valid_ocr=_valid)["status"] == "MISMATCH"
+
+
+def test_main_new_inputs_accepts_custom_lock_root(new_input_batch, tmp_path, monkeypatch):
+    lock, _, _ = new_input_batch
+    lock_path = tmp_path / "lock.json"
+    report_path = tmp_path.with_name(f"{tmp_path.name}_identity.json")
+    lock_path.write_text(json.dumps(lock), encoding="utf-8")
+    monkeypatch.setattr("ocr_pipeline.document.valid_ocr", _valid)
+    exit_code = check.main([
+        "--new-inputs", "--root", str(tmp_path), "--lock", str(lock_path),
+        "--output", str(tmp_path), "--report", str(report_path),
+    ])
+    assert exit_code == 0
+    saved = json.loads(report_path.read_text(encoding="utf-8"))
+    assert saved["status"] == "MATCH" and all(saved["baseline_checks"].values())

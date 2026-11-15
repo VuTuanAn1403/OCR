@@ -43,4 +43,8 @@ def test_synthetic_gt_is_never_scored(tmp_path):
     (paths["structured_gt"] / "ABT_Baocaothuongnien_2020.structure.json").write_text("{}", encoding="utf-8")
     steps = chain.plan(chain.collect_status(paths), paths, tmp_path / "out")
     scored = [s["step"] for s in steps if s["step"].startswith("score ")]
-    assert scored == ["score ABT_Baocaothuongnien_2020 on baseline", "score ABT_Baocaothuongnien_2020 on candidate"]
+    assert scored == [
+        "score ABT_Baocaothuongnien_2020 on baseline",
+        "score ABT_Baocaothuongnien_2020 on candidate",
+        "score ABT_Baocaothuongnien_2020 on candidate_rec",
+    ]

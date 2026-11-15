@@ -46,6 +46,7 @@ DEFAULTS = {
     "structured_sheets": "scratch/gt/structured_dev_004_20261112",
     "baseline": "output/v8_006_arena1536_20261112",
     "candidate": "output/v8_007_arena1536_upscale2_20261112",
+    "candidate_rec": "output/v8_065_vgg_transformer_dev_20261114",
     "layout_candidate": "scratch/v8/v8_070_doclayout_gt44_20261112.jsonl",
 }
 
@@ -108,7 +109,7 @@ def plan(status: Dict, paths: Dict[str, Path], out: Path) -> List[Dict]:
     gts = status["structured_gt_exports"]
     for gt in gts:
         doc = Path(gt).name.split(".structure.json")[0]
-        for side in ("baseline", "candidate"):
+        for side in ("baseline", "candidate", "candidate_rec"):
             prediction = paths[side] / doc
             target = out / "structured" / f"{side}_{doc}"
             steps.append({"step": f"score {doc} on {side}", "run": prediction.is_dir(), "out": target.as_posix(),

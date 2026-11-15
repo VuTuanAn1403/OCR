@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Mapping, Optional
 
 from ocr_artifacts.digest import sha256_json_unicode
-from ocr_runtime.paths import models_dir, vietocr_model_dir
+from ocr_runtime.paths import models_dir, registry_model_path, vietocr_model_dir, vietocr_registry_files
 
 _MODEL_SUFFIXES = {".onnx", ".pth", ".pt", ".bin", ".safetensors", ".model",
                    ".json", ".yaml", ".yml", ".txt", ".tiktoken"}
@@ -68,9 +68,13 @@ def model_hashes(profile_config: Optional[Mapping[str, Any]] = None) -> dict[str
     hashes: dict[str, Optional[str]] = {}
     root = models_dir()
     if profile_config is None or profile_config.get("primary_engine", "vietocr") == "vietocr":
-        vietocr = vietocr_model_dir()
-        hashes.update(_tree_hashes(vietocr, "vietocr"))
-        hashes.setdefault("vietocr/vgg_seq2seq.pth", None)
+        variant = (profile_config or {}).get("vietocr_variant", "vgg_seq2seq")
+        if variant == "vgg_seq2seq":
+            hashes.update(_tree_hashes(vietocr_model_dir(), "vietocr"))
+            hashes.setdefault("vietocr/vgg_seq2seq.pth", None)
+        else:
+            for name in vietocr_registry_files(variant):
+                hashes[name.removeprefix("models/")] = model_file_sha256(registry_model_path(name))
     rapidocr = _rapidocr_models_dir()
     if rapidocr is not None:
         hashes.update(_tree_hashes(rapidocr, "rapidocr"))

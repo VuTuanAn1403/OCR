@@ -136,3 +136,11 @@ def test_lock_ids_increment_and_files_are_never_overwritten(tmp_path):
     context.write_snapshot(tmp_path, f"scratch/benchmarks/{first}/baseline_lock.json", "{}")
     with pytest.raises(FileExistsError):
         context.write_snapshot(tmp_path, f"scratch/benchmarks/{first}/baseline_lock.json", "{}")
+
+
+def test_env_root_option_forwards_custom_venv_directory(env, monkeypatch, tmp_path):
+    root, calls = env
+    custom_env = tmp_path / "shared-venv-v62"
+    monkeypatch.setattr(lb, "ROOT", root)
+    assert lb.main(["--env-root", str(custom_env)]) == 0
+    assert calls["env_root"] == custom_env

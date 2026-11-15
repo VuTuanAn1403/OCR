@@ -1,5 +1,6 @@
 """Invariants of the one supported pipeline; no model imports."""
 from ocr_runtime.config import ConfigError, document_layout_settings, furniture_settings, table_stitch_settings
+from ocr_runtime.paths import vietocr_registry_files
 from ocr_runtime.version import PIPELINE
 PROFILE = "unified_gpu_full_ocr"
 BACKEND = "gpu_two_phase"
@@ -25,6 +26,10 @@ def validate_profile(config, *, phase=None):
     if wrong or config.get("fallback_only_on_review"):
         raise ConfigError(f"Unified pipeline requires CUDA, native_first=false, all_pages and {SOURCE_POLICY}; "
                           f"unsupported settings: {wrong}")
+    try:
+        vietocr_registry_files(config.get("vietocr_variant", "vgg_seq2seq"))
+    except ValueError as exc:
+        raise ConfigError(str(exc)) from exc
     runtime = config.get("runtime", {})
     if not isinstance(runtime, dict) or runtime.get("scheduler") != "document_two_phase_v1":
         raise ConfigError("Unified pipeline requires document_two_phase_v1")

@@ -56,7 +56,8 @@ def main():
                                f"{registry_model_path(name).resolve()}, not the pinned {path}")
     if request.get("model_registry_path"):
         from ocr_runtime.model_registry import validate_registry
-        validate_registry(read(Path(request["model_registry_path"])))
+        validate_registry(read(Path(request["model_registry_path"])),
+                          vietocr_variant=request["config"].get("vietocr_variant", "vgg_seq2seq"))
     getattr(importlib.import_module(PHASE_MODULES[args.phase]), f"run_{args.phase}")(request)
     # Everything the phase imported must be inside the fingerprinted files and
     # inside this phase's own closure, or its stage key could miss a change.

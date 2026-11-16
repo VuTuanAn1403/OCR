@@ -114,5 +114,6 @@ Nâng giới hạn không đổi kết quả của baseline. So 004 với 006: p
 
 ## Còn thiếu cho V8-140
 
-- Seal 6 phiếu holdout (`pairs6`), khóa đo holdout và đo cặp `h01`/`h02`/`h03`; phân xử dấu dev, kiểm lại mù (`V8-011`) và GT bảng/RO/keyword (`V8-071`, `V8-080`, `V8-100`).
+- **Phân xử dấu dev `v8` (16/11):** đã seal đủ `9.485/9.485` (7/7 PDF `fully_adjudicated`, `41905355…`): `TEXT_LAYER=9.172`, `OCR=107`, `BOTH_WRONG=205`, `UNRESOLVED=1` (`gt_error_items=312`); `006` `DSER_strict=13.802/346.465` (`0,039837`, `rho=0,023166`); tạo phiếu kiểm lại mù `949` mục từ `23/11`.
+- Còn thiếu: seal 6 phiếu holdout (`pairs6`), khóa đo holdout và đo cặp `h01`/`h02`/`h03`; kiểm lại mù (`V8-011`) và GT bảng/RO/keyword (`V8-071`, `V8-080`, `V8-100`).
 - Chốt chính sách dòng confidence thấp có chữ thật (VD `VIC` tr.95 `"số hóa tài liệu đào tạo…"`, conf `0,535`, `v8_100_retained_line_keywords_004_20261112.json`).

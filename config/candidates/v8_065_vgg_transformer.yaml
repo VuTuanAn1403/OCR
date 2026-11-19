@@ -1,6 +1,6 @@
 # V8-065 development challenger. Only the VietOCR model selection changes.
 config_schema: ocr-profiles-v1
-pipeline: v7.0
+pipeline: v8.0
 profiles:
   unified_gpu_full_ocr:
     profile: unified_gpu_full_ocr

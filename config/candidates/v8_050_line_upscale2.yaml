@@ -1,6 +1,6 @@
 # Canonical configuration of the one supported pipeline; versioned files are aliases.
 config_schema: ocr-profiles-v1
-pipeline: v7.0
+pipeline: v8.0
 profiles:
   unified_gpu_full_ocr:
     profile: unified_gpu_full_ocr

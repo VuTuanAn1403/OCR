@@ -70,7 +70,10 @@ def run_text(request):
                 # Blank inputs need no fictitious recognizer inference.
                 recognition_workload = "document_no_recognition_regions"
             observed["workload"] = recognition_workload
-            layout = processor.content_analyzer.dla_engine._torch_layout.placement
+            dla_engine = processor.content_analyzer.dla_engine
+            layout = getattr(dla_engine, "placement", None) or (
+                dla_engine._torch_layout.placement if hasattr(dla_engine, "_torch_layout") else None
+            )
             if not layout:
                 raise RuntimeError("Layout model inference was never exercised")
             write_receipt(request, "text", files, total_pages=len(doc), selected_pages=sorted(set(pages)),

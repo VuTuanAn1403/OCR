@@ -65,7 +65,10 @@ def test_model_config_checkout_bytes_match_registry_with_linux_git_settings():
     registry = json.loads((ROOT / "models/v62/runtime-models.json").read_text(encoding="utf-8"))
     for name in ("models/vietocr/base.yml", "models/vietocr/vgg-seq2seq.yml"):
         data = subprocess.check_output(["git", "-c", "core.autocrlf=false", "cat-file", "--filters", "HEAD:" + name], cwd=ROOT)
-        assert hashlib.sha256(data).hexdigest() == registry["files"][name]
+        assert b"\r\n" in data and data == (ROOT / name).read_bytes()
+    for name, digest in registry["files"].items():
+        if name.endswith(".yml"):
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
 
 
 @pytest.mark.parametrize("exit_code", [0, 7])

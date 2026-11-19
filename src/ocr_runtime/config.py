@@ -29,7 +29,7 @@ class ConfigError(ValueError):
 
 
 CONFIG_SCHEMA = "ocr-profiles-v1"
-UNIFIED_PIPELINES = (PIPELINE, "v6.3")
+UNIFIED_PIPELINES = (PIPELINE, "v7.0", "v6.3")
 PIPELINES = (*UNIFIED_PIPELINES, "v6.2", "legacy")
 
 
@@ -65,7 +65,7 @@ def _profile_source(path: Path) -> Tuple[Path, Dict[str, Any]]:
         if "profiles_file" not in data:
             final = declarations[-1]
             if any(any(final.get(k) != value
-                       and not (k == "pipeline" and value == "v6.3" and final.get(k) == PIPELINE)
+                       and not (k == "pipeline" and value in ("v6.3", "v7.0") and final.get(k) == PIPELINE)
                        for k, value in declaration.items())
                    for declaration in declarations[:-1]):
                 raise ConfigError(f"Profile config reference has conflicting declaration: {path}")

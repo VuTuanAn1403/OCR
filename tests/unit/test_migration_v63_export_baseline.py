@@ -43,8 +43,8 @@ def digests(output):
     for name in STABLE:
         raw = (output / name).read_bytes()
         if name == "extraction.json":
-            assert json.loads(raw)["pipeline_version"] == "7.0.0"
-            version_field = b'"pipeline_version": "7.0.0"'
+            assert json.loads(raw)["pipeline_version"] == "8.0.0"
+            version_field = b'"pipeline_version": "8.0.0"'
             assert raw.count(version_field) == 1
             raw = raw.replace(version_field, b'"pipeline_version": "6.3.0.dev1"', 1)
         result[name] = hashlib.sha256(raw).hexdigest()
@@ -55,5 +55,5 @@ def digests(output):
 def test_export_reproduces_baseline(tmp_path, assets):
     output = export(tmp_path, assets)
     assert digests(output) == EXPECTED[assets]
-    assert json.loads((output / "manifest.json").read_text(encoding="utf-8"))["pipeline_version"] == "7.0.0"
+    assert json.loads((output / "manifest.json").read_text(encoding="utf-8"))["pipeline_version"] == "8.0.0"
     assert json.loads((output / "validation.json").read_text(encoding="utf-8"))["status"] == "NEEDS_REVIEW"

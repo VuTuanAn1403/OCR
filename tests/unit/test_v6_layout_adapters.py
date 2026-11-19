@@ -11,7 +11,7 @@ from src.ocr.application.process_page import ProcessPageUseCase
 from src.ocr.domain.models.text_block import TextBlock
 from src.ocr.infrastructure.layout.dla_engine import DLAEngine
 from src.ocr.infrastructure.layout.model_adapters import (
-    RTDetrLayoutAdapter, YoloLayoutAdapter, build_adapter, image_box_to_pdf,
+    PaddleDetrLayoutAdapter, RTDetrLayoutAdapter, YoloLayoutAdapter, build_adapter, image_box_to_pdf,
 )
 
 
@@ -119,3 +119,62 @@ def test_cuda_provider_fallback_is_reported_instead_of_claiming_gpu(tmp_path, mo
     engine = DLAEngine(model_path=str(model), device="cuda")
     assert engine._session is None
     assert "fell back to CPU" in engine.last_error
+
+
+def test_paddle_detr_adapter_and_engine_multi_input():
+    image = np.zeros((400, 200, 3), dtype=np.uint8)
+    image[:, :, 2] = 255
+    adapter = build_adapter("paddle_detr", 20, {"input_size": 800, "threshold": 0.5})
+    assert isinstance(adapter, PaddleDetrLayoutAdapter)
+    feed, geometry = adapter.prepare(image)
+    assert set(feed) == {"image", "im_shape", "scale_factor"}
+    assert feed["image"].shape == (1, 3, 800, 800)
+    assert feed["image"][0, 0].min() == pytest.approx(1.0) and feed["image"][0, 2].max() == pytest.approx(0.0)
+    assert feed["im_shape"].tolist() == [[800.0, 800.0]]
+    assert feed["scale_factor"].tolist() == [[2.0, 4.0]]
+
+    # Filter below threshold (0.4), out-of-range class (20), and clip box overflowing (w, h).
+    raw = np.array([
+        [0, 0.9, 10.0, 20.0, 250.0, 420.0],
+        [5, 0.4, 10.0, 20.0, 100.0, 100.0],
+        [20, 0.95, 10.0, 20.0, 100.0, 100.0],
+    ], dtype=np.float32)
+    detections = adapter.decode({"fetch_name_0": raw, "fetch_name_1": np.array([1], dtype=np.int32)}, geometry)
+    assert len(detections) == 1
+    assert detections[0].class_id == 0
+    assert detections[0].bbox == pytest.approx([10.0, 20.0, 200.0, 400.0])
+
+    engine = DLAEngine(
+        use_onnx=False,
+        model_config={
+            "adapter": "paddle_detr",
+            "input_size": 800,
+            "threshold": 0.5,
+            "class_names": ["paragraph_title", "content"],
+            "label_map": {"paragraph_title": "section_header", "content": "document_index"},
+        },
+        device="cpu",
+    )
+    engine._session = Mock()
+    engine._session.get_inputs.return_value = [
+        SimpleNamespace(name="im_shape"),
+        SimpleNamespace(name="image"),
+        SimpleNamespace(name="scale_factor"),
+    ]
+    engine._session.get_outputs.return_value = [
+        SimpleNamespace(name="fetch_name_0"),
+        SimpleNamespace(name="fetch_name_1"),
+    ]
+    engine._session.run.return_value = [
+        np.array([[1, 0.85, 20.0, 40.0, 120.0, 200.0]], dtype=np.float32),
+        np.array([1], dtype=np.int32),
+    ]
+    with pymupdf.open() as doc:
+        page = doc.new_page(width=100, height=200)
+        region = engine._run_onnx_dla(image, page, 1)[0]
+    assert region.label == "document_index"
+    assert region.content_type.value == "TEXT"
+    assert region.bbox.to_list() == pytest.approx([10.0, 20.0, 60.0, 100.0])
+    assert engine.placement is not None
+    assert engine.placement["status"] == "VERIFIED_INFERENCE"
+    assert engine.placement["backend"] == "onnx-paddle_detr"

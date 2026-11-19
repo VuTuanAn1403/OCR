@@ -54,6 +54,8 @@ CLASS_TO_CONTENT_TYPE = {
     "title": ContentType.TITLE,
     "section_header": ContentType.SECTION_HEADER,
     "text": ContentType.TEXT,
+    "document_index": ContentType.TEXT,
+    "footnote": ContentType.TEXT,
     "header": ContentType.HEADER,
     "footer": ContentType.FOOTER,
     "page_number": ContentType.PAGE_NUMBER,
@@ -89,6 +91,8 @@ class HeuristicLayoutClassifier:
         self.iou_threshold = iou_threshold
         self.use_onnx = use_onnx
         self._session = None
+        self.placement: Optional[Dict[str, Any]] = None
+        self.inference_calls: int = 0
         options = dict(model_config or {})
         self.adapter_kind = options.get("adapter", "yolo")
         self.strict = options.get("on_error") == "raise"
@@ -117,7 +121,10 @@ class HeuristicLayoutClassifier:
     def _init_onnx_session(self) -> None:
         """Initializes ONNX Runtime session with CPU / CUDA ExecutionProvider."""
         try:
+            import sys
             import onnxruntime as ort
+            if self.device == "cuda" and hasattr(ort, "preload_dlls") and "torch" not in sys.modules:
+                ort.preload_dlls()
             providers = ["CPUExecutionProvider"]
             if self.device == "cuda" and "CUDAExecutionProvider" in ort.get_available_providers():
                 providers.insert(0, "CUDAExecutionProvider")
@@ -165,12 +172,34 @@ class HeuristicLayoutClassifier:
     ) -> List[Region]:
         """Run the configured export contract and convert pixels to PDF points."""
         if hasattr(self, "_torch_layout"):
-            return self._torch_layout.predict(image, page, page_num)
+            regions = self._torch_layout.predict(image, page, page_num)
+            self.placement = self._torch_layout.placement
+            return regions
         tensor, geometry = self.adapter.prepare(image)
         inputs = self._session.get_inputs()
-        if len(inputs) != 1:
-            raise ValueError("Layout export requires an adapter for its extra input tensors")
-        values = self._session.run(None, {inputs[0].name: tensor})
+        if isinstance(tensor, dict):
+            input_names = {inp.name for inp in inputs}
+            if input_names and set(tensor) != input_names:
+                raise ValueError("Layout adapter feed keys do not match ONNX session inputs")
+            feed = tensor
+        else:
+            if len(inputs) != 1:
+                raise ValueError("Layout export requires an adapter for its extra input tensors")
+            feed = {inputs[0].name: tensor}
+        values = self._session.run(None, feed)
+        self.inference_calls += 1
+        raw_providers = self._session.get_providers() if hasattr(self._session, "get_providers") else []
+        providers = list(raw_providers) if isinstance(raw_providers, (list, tuple)) else []
+        expected_provider = "CUDAExecutionProvider" if self.device == "cuda" else "CPUExecutionProvider"
+        if self.device == "cuda" and providers and providers[0] != "CUDAExecutionProvider":
+            raise RuntimeError("GPU_BACKEND_UNAVAILABLE: layout session did not run on CUDAExecutionProvider")
+        self.placement = {
+            "status": "VERIFIED_INFERENCE",
+            "backend": f"onnx-{self.adapter_kind}",
+            "expected_provider": expected_provider,
+            "providers": providers,
+            "inference_calls": self.inference_calls,
+        }
         outputs = {output.name: value for output, value in zip(self._session.get_outputs(), values)}
         detections = self.adapter.decode(outputs, geometry)
         regions = []

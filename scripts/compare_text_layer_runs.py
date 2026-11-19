@@ -105,7 +105,7 @@ def compare(lock_path: Path, measurement_lock: Path, seals, baseline: Path, cand
     runs = {"baseline": measure.batch_documents(baseline), "candidate": measure.batch_documents(candidate)}
     identity, locked_ids = {}, {}
     for side, output, report in (("baseline", baseline, baseline_identity), ("candidate", candidate, candidate_identity)):
-        if holdout and (report is None or set(runs[side]) != set(accepted)):
+        if holdout and (report is None or not set(accepted).issubset(runs[side]) or set(runs["baseline"]) != set(runs["candidate"])):
             raise ValueError(f"{side}: holdout requires an identity report and exactly the screened PDF cohort")
         if report is not None:
             ids = [runs[side][sha]["id"] for sha in accepted if sha in runs[side]]

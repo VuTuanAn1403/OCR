@@ -39,8 +39,8 @@ def registry_fixture(root):
     registry.parent.mkdir(parents=True)
     files = {}
     repos = {"layout": "docling-layout-heron", "table": "docling-models", "formula": "CodeFormulaV2"}
-    for name in ("models/vietocr/base.yml", "models/vietocr/vgg-seq2seq.yml",
-                 "models/vietocr/vgg_seq2seq.pth", "models/detector.onnx", "models/layout/config.json",
+    for name in ("models/v8/vietocr-vgg-transformer/base.yml", "models/v8/vietocr-vgg-transformer/vgg-transformer.yml",
+                 "models/v8/vietocr-vgg-transformer/vgg_transformer.pth", "models/detector.onnx", "models/layout/config.json",
                  *(f"models/docling/huggingface/hub/models--docling-project--{repo}/snapshots/r/config.json"
                    for repo in repos.values())):
         path = root / name
@@ -54,7 +54,7 @@ def registry_fixture(root):
         path.write_text("r", encoding="utf-8")
         files[name] = sha256_file(path)
     snapshots = {role: {"repo": f"docling-project/{repo}", "revision": "r"} for role, repo in repos.items()}
-    registry.write_text(json.dumps({"files": files, "snapshots": snapshots,
+    registry.write_text(json.dumps({"vietocr_variant": "vgg_transformer", "files": files, "snapshots": snapshots,
                                     "text_detector": {"model_path": "models/detector.onnx"},
                                     "layout_model": {"model_path": "models/layout"}}), encoding="utf-8")
     locks = root / "requirements/v62"

@@ -1,7 +1,8 @@
 {
   "schema_version": "v62-runtime-models-v1",
   "quality_acceptance": "NOT_EVALUATED",
-  "purpose": "GPU integration candidate; model selection on GT remains pending",
+  "purpose": "Production v8.0.0 model registry (Q17 A: VietOCR vgg_transformer; Q18 A: PP-DocLayout_plus-L ONNX; Docling Heron retained for Phase B).",
+  "vietocr_variant": "vgg_transformer",
   "snapshots": {
     "layout": {
       "repo": "docling-project/docling-layout-heron",
@@ -41,16 +42,76 @@
     }
   },
   "layout_model": {
-    "adapter": "hf_rtdetr_torch",
-    "model_path": "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8",
+    "adapter": "paddle_detr",
+    "model_path": "models/v8/pp-doclayout-plus-l/inference.onnx",
+    "sha256": "77afb2caa74dd13240d087d2eced91d7fcd2caebd16006a0a66162fc8707ff0e",
+    "input_size": 800,
+    "threshold": 0.5,
     "on_error": "raise",
-    "render_dpi": 144
+    "render_dpi": 144,
+    "class_names": [
+      "paragraph_title",
+      "image",
+      "text",
+      "number",
+      "abstract",
+      "content",
+      "figure_title",
+      "formula",
+      "table",
+      "reference",
+      "doc_title",
+      "footnote",
+      "header",
+      "algorithm",
+      "footer",
+      "seal",
+      "chart",
+      "formula_number",
+      "aside_text",
+      "reference_content"
+    ],
+    "label_map": {
+      "paragraph_title": "section_header",
+      "image": "figure",
+      "text": "text",
+      "number": "page_number",
+      "abstract": "text",
+      "content": "document_index",
+      "figure_title": "caption",
+      "formula": "formula",
+      "table": "table",
+      "reference": "text",
+      "doc_title": "title",
+      "footnote": "text",
+      "header": "header",
+      "algorithm": "text",
+      "footer": "footer",
+      "seal": "figure",
+      "chart": "figure",
+      "formula_number": "text",
+      "aside_text": "text",
+      "reference_content": "text"
+    },
+    "source": {
+      "repo": "PaddlePaddle/PP-DocLayout_plus-L_onnx",
+      "revision": "feb74619326f634e0e883218598096a3733ad9f7",
+      "file": "inference.onnx",
+      "license": "apache-2.0",
+      "config": "models/v8/pp-doclayout-plus-l/inference.yml",
+      "replaces": {
+        "adapter": "hf_rtdetr_torch",
+        "model_path": "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8"
+      },
+      "decision": "user, 2026-11-19 (V8-070, Q18 A)"
+    }
   },
   "files": {
     "models/v62/PP-OCRv6_medium_det/inference.onnx": "eb13b44b25bb36f89528b68720af8a61d9cf381176107f465db1757b65d086e1",
-    "models/vietocr/base.yml": "42511ad7fc72b4e69c8583e78046c6e41c83f3c2ad8eb85a942532acfca9d94a",
-    "models/vietocr/vgg-seq2seq.yml": "1aaae4bbd7601ce465ffb7894c0f570cbf687d2d97979e054e2cbb40edd97a9a",
-    "models/vietocr/vgg_seq2seq.pth": "0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db",
+    "models/v8/pp-doclayout-plus-l/inference.onnx": "77afb2caa74dd13240d087d2eced91d7fcd2caebd16006a0a66162fc8707ff0e",
+    "models/v8/vietocr-vgg-transformer/base.yml": "9c8283fadb950f06f5d3400475f80d5355700ff315c9c48b7875e6ea66647d1c",
+    "models/v8/vietocr-vgg-transformer/vgg-transformer.yml": "0df9feee197754c7381871e5dfd07c6f3e292a4853eece6f1af240923e57c907",
+    "models/v8/vietocr-vgg-transformer/vgg_transformer.pth": "380512193a8b6cbf6fad80deacdc9b6939d10d473d199892fc6408d13775ea59",
     "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/.gitattributes": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361",
     "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/config.json": "fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d",
     "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/docling_heron_400.png": "e7f78610372b32a7938e480d2c7fa1c3037ee170bd82282a5bd026232f6e6f9e",

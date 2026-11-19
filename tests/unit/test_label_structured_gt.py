@@ -112,3 +112,27 @@ def test_pages_with_transforms_cannot_be_exported(tmp_path):
     assert sheet["pages"][0]["supported_frame"] is False
     with pytest.raises(ValueError, match="only unrotated"):
         _export(tmp_path, sheet, _page())
+
+
+def test_export_derives_numeric_cells_from_table_html_with_spans(tmp_path):
+    sheet = _fixture(tmp_path)
+    html = (
+        "<table>"
+        "<tr><th rowspan='2'>Chỉ tiêu</th><th colspan='2'>Năm 2025</th></tr>"
+        "<tr><th>Kế hoạch</th><th>Thực hiện</th></tr>"
+        "<tr><td>Doanh thu</td><td>1.234</td><td>1.567</td></tr>"
+        "</table>"
+    )
+    page = _page(
+        tables=[{"id": "tb-0001", "bbox": [10, 60, 290, 190], "html": html}],
+        numeric_cells_complete=True,
+    )
+    _export(tmp_path, sheet, page, name="spanned.json")
+    gt = json.loads((tmp_path / "spanned.json").read_text(encoding="utf-8"))
+    cells = gt["pages"][0]["tables"][0]["numeric_cells"]
+    assert cells == [
+        {"row": 0, "col": 1, "value": "Năm 2025"},
+        {"row": 2, "col": 1, "value": "1.234"},
+        {"row": 2, "col": 2, "value": "1.567"},
+    ]
+    assert gt["pages"][0]["numeric_cells_complete"] is True

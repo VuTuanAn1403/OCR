@@ -107,6 +107,33 @@ def build_sheet(pdf_root: Path, pdf_name: str, pages: Sequence[int], run_doc: Pa
     return manifest
 
 
+def html_numeric_cells(html: str) -> List[Dict]:
+    """Deterministically derive zero-based digit-bearing cells from hand-labelled GT table HTML."""
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html or "", "html.parser")
+    table = soup.find("table")
+    if not table:
+        return []
+    occupied = set()
+    cells: List[Dict] = []
+    for r_idx, tr in enumerate(table.find_all("tr")):
+        c_idx = 0
+        for td in tr.find_all(["td", "th"]):
+            while (r_idx, c_idx) in occupied:
+                c_idx += 1
+            rs = max(1, int(td.get("rowspan") or 1))
+            cs = max(1, int(td.get("colspan") or 1))
+            for dr in range(rs):
+                for dc in range(cs):
+                    occupied.add((r_idx + dr, c_idx + dc))
+            val = " ".join(td.get_text(" ", strip=True).split())
+            if any(ch.isdecimal() for ch in val):
+                cells.append({"row": r_idx, "col": c_idx, "value": val})
+            c_idx += cs
+    return cells
+
+
 def _check_page(sheet_page: Dict, labels: Dict) -> Dict:
     """One GT page in structured-page-gt-v1, validated by the scorers' own readers."""
     number = sheet_page["page"]
@@ -164,8 +191,10 @@ def _check_page(sheet_page: Dict, labels: Dict) -> Dict:
         for row in labels.get("tables") or []:
             table = {"id": row["id"], "bbox": [round(float(v), 3) for v in row["bbox"]], "html": row.get("html", "")}
             if labels.get("numeric_cells_complete"):
+                raw_cells = row.get("numeric_cells")
+                derived = raw_cells if raw_cells else html_numeric_cells(table["html"])
                 table["numeric_cells"] = [{"row": int(c["row"]), "col": int(c["col"]), "value": str(c["value"])}
-                                          for c in row.get("numeric_cells") or []]
+                                          for c in derived]
             tables.append(table)
         inside(tables, "table")
         if any("<table" not in t["html"].lower() for t in tables):

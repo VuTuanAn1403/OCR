@@ -177,6 +177,54 @@ no normalization. Export-specific mean/std and tensor names are configurable.
         return sorted(detections, key=lambda d: (d.bbox[1], d.bbox[0], d.class_id, -d.score))
 
 
+class PaddleDetrLayoutAdapter:
+    """PaddleDetection RT-DETR-L (PP-DocLayout_plus-L) ONNX export: 3 inputs, [N, 6] pixel boxes."""
+
+    def __init__(self, class_count: int, input_size: int = 800, threshold: float = .5):
+        self.class_count = class_count
+        self.input_size = int(input_size)
+        self.threshold = float(threshold)
+        if self.input_size <= 0 or class_count <= 0:
+            raise ValueError("Invalid Paddle DETR layout configuration")
+        if not 0 <= self.threshold <= 1:
+            raise ValueError("Layout threshold must be between 0 and 1")
+
+    def prepare(self, image) -> tuple[dict[str, np.ndarray], tuple[int, int]]:
+        image = _image(image)
+        h, w = image.shape[:2]
+        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        resized = cv2.resize(rgb, (self.input_size, self.input_size), interpolation=cv2.INTER_CUBIC)
+        tensor = np.ascontiguousarray((resized.astype(np.float32) / 255.0).transpose(2, 0, 1)[None])
+        feed = {
+            "image": tensor,
+            "im_shape": np.array([[float(self.input_size), float(self.input_size)]], dtype=np.float32),
+            "scale_factor": np.array([[self.input_size / h, self.input_size / w]], dtype=np.float32),
+        }
+        return feed, (w, h)
+
+    def decode(self, outputs: Mapping[str, np.ndarray], geometry) -> list[Detection]:
+        if not outputs:
+            raise ValueError("Paddle DETR adapter requires at least one output tensor")
+        raw = np.asarray(next(iter(outputs.values())))
+        if raw.ndim == 1 and raw.size == 0:
+            return []
+        if raw.ndim != 2 or raw.shape[1] != 6:
+            raise ValueError(f"Paddle DETR expects [N, 6] boxes output, got shape {raw.shape}")
+        w, h = geometry
+        detections: list[Detection] = []
+        for row in raw:
+            if not np.isfinite(row).all():
+                continue
+            cid = int(row[0])
+            score = float(row[1])
+            if not 0 <= cid < self.class_count or score < self.threshold:
+                continue
+            box = _clipped(row[2:6], w, h)
+            if box:
+                detections.append(Detection(box, score, cid))
+        return sorted(detections, key=lambda d: (d.bbox[1], d.bbox[0], d.class_id, -d.score))
+
+
 def build_adapter(kind: str, class_count: int, options: Mapping):
     if kind == "yolo":
         return YoloLayoutAdapter(class_count, options.get("input_size", 800),
@@ -186,4 +234,7 @@ def build_adapter(kind: str, class_count: int, options: Mapping):
         return RTDetrLayoutAdapter(class_count, options.get("input_size", 640),
                                    options.get("threshold", .35), options.get("mean"), options.get("std"),
                                    options.get("logits_name", "logits"), options.get("boxes_name", "pred_boxes"))
-    raise ValueError(f"Unknown layout adapter {kind!r}; supported: yolo, rtdetr")
+    if kind == "paddle_detr":
+        return PaddleDetrLayoutAdapter(class_count, options.get("input_size", 800),
+                                         options.get("threshold", .5))
+    raise ValueError(f"Unknown layout adapter {kind!r}; supported: yolo, rtdetr, paddle_detr")

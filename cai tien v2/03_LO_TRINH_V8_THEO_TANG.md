@@ -11,15 +11,15 @@ Căn cứ: Kế hoạch Benchmark-first và So sánh công nghệ (hai DOCX lưu
 | --- | --- | --- | --- | --- |
 | R1 | Tài liệu nền, bản đồ kiến thức, skill | DONE | check_knowledge_map exit 0; hồi quy không có lỗi mới | V8-002, V8-003, V8-004, V8-005, V8-170 |
 | P0 | Khóa baseline | DONE | BASELINE_LOCK_REPORT có đủ identity | V8-001, V8-006 |
-| P1 | Ground Truth và protocol | IN_PROGRESS | Protocol LOCKED, GT độc lập đủ cỡ mẫu | V8-010, V8-011, V8-012, V8-013 |
-| P2 | Tiền xử lý ảnh IMG-01..06 | IN_PROGRESS | Paired fix/harm từng biến | V8-050 |
-| P3 | Phát hiện chữ DET-01..07 | IN_PROGRESS | TP/FP/FN cùng snapshot | V8-060 |
-| P4 | Nhận dạng chữ A/B/C/D | IN_PROGRESS | Tách hiệu ứng detector và recognizer | V8-065, V8-030 |
-| P5 | Layout và thứ tự đọc | IN_PROGRESS | Class/region/order scorecard trên GT | V8-070, V8-071 |
-| P6 | Bảng và công thức | IN_PROGRESS | TEDS, numeric cell, ownership | V8-080, V8-085 |
+| P1 | Ground Truth và protocol | DONE | Protocol LOCKED, GT độc lập đủ cỡ mẫu | V8-010, V8-011, V8-012, V8-013 |
+| P2 | Tiền xử lý ảnh IMG-01..06 | DONE | Paired fix/harm từng biến | V8-050 |
+| P3 | Phát hiện chữ DET-01..07 | DONE | TP/FP/FN cùng snapshot | V8-060 |
+| P4 | Nhận dạng chữ A/B/C/D | DONE | Tách hiệu ứng detector và recognizer | V8-065, V8-030 |
+| P5 | Layout và thứ tự đọc | DONE | Class/region/order scorecard trên GT | V8-070, V8-071 |
+| P6 | Bảng và công thức | DONE | TEDS, numeric cell, ownership | V8-080, V8-085 |
 | P7 | VLM fallback và parser đối chứng | DONE | Identity, tài nguyên, GT | V8-090, V8-095 |
-| P8 | Hậu xử lý, dấu, keyword | IN_PROGRESS | Cổng dấu 99,99% và 0 thiếu/thừa occurrence | V8-020, V8-021, V8-022, V8-031, V8-032, V8-100 |
-| P9 | End-to-end và hồ sơ quyết định | IN_PROGRESS | Quyết định thủ công PROMOTE/KEEP/REJECT/INCONCLUSIVE | V8-140, V8-160 |
+| P8 | Hậu xử lý, dấu, keyword | DONE | Cổng dấu 99,99% và 0 thiếu/thừa occurrence | V8-020, V8-021, V8-022, V8-031, V8-032, V8-100 |
+| P9 | End-to-end và hồ sơ quyết định | DONE | Quyết định thủ công PROMOTE/KEEP/REJECT/INCONCLUSIVE | V8-140, V8-160 |
 <!-- v8-status:phases:end -->
 
 ## Nguyên tắc chuyển pha

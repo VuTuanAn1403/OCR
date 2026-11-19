@@ -1,18 +1,18 @@
 # Báo cáo khóa baseline (V8-001)
 
-Mã khóa `BASELINE-V8-20261108-001`, chụp lúc 2026-11-08 13:51:55 UTC. Trạng thái **LOCKED**.
-
-Manifest đầy đủ nằm ở `scratch/benchmarks/BASELINE-V8-20261108-001/baseline_lock.json` (chỉ có ở máy local; sha256 `d3276479c549ece023ce13e5dfa491a8324928814c5d485b9d6fd8247d2b28bc`). Lệnh tạo: `.venv/Scripts/python.exe -B scripts/lock_baseline.py`.
+Mã khóa hiện hành **`BASELINE-V8-20261119-002`** trên commit sạch `7745704`, chụp lúc 2026-11-19 14:03:36 UTC (`PIPELINE_VERSION 8.0.0`, **LOCKED**, `code_scope_changes = []`; sha256 `bef595e86ab7d4f23886f31b6a9840b5a666c38d2cbf7a9e625dc21f384297ae` ở `scratch/benchmarks/BASELINE-V8-20261119-002/baseline_lock.json`). Khóa khởi tạo trước đây: `BASELINE-V8-20261108-001` (`d3276479c549ece0…`). Lệnh tạo: `.venv/Scripts/python.exe -B scripts/lock_baseline.py`.
 
 ## Các khóa baseline và ứng viên hiện hành (`V8-001`)
 
-| Lock ID | Mốc mã / cấu hình | Thời gian UTC | `portable_identity` / sha manifest | Output đã `MATCH` |
+| Lock ID | Mốc mã / cấu hình | Thời gian UTC | `portable_identity` / sha manifest | Output đã `MATCH` / Smoke |
 | --- | --- | --- | --- | --- |
-| `BASELINE-V8-20261113-001` (baseline Q1) | `c681e87`, `config/profiles.yaml` (`4d867edbd1b55c23…`), extraction `a58d78d21ad45c97` | 2026-11-12 17:33:03 | `fa44665e0f7df3fb…` / `e2a048b11323b8ff…` | Dev `006` (9/9, `938`p); holdout `v8_h01_baseline_pairs6_20261113` (6/6, `468`p) |
+| **`BASELINE-V8-20261119-002` (`8.0.0` commit)** | **`7745704`** (`code_scope_changes=[]`), `config/profiles.yaml` (`6a925c31…`), `7a4b0b8ad58d29fc` | 2026-11-19 14:03:36 | `0a07bdfbe80fc725…` / `bef595e86ab7d4f2…` | Kế thừa smoke `output/v8_160_release_800_smoke_20261119` (`20261119-001` cùng `portable_identity`, audit `PASS`) |
+| `BASELINE-V8-20261119-001` (`8.0.0` tiền commit) | `6b21c0a` + tích hợp `Q15–Q19`, `6a925c31…`, `7a4b0b8ad58d29fc` | 2026-11-19 12:36:55 | `0a07bdfbe80fc725…` / `6e43a4e49213bcad…` | Smoke `output/v8_160_release_800_smoke_20261119` (`SUCCEEDED`, audit `PASS`, 0 err) |
+| `BASELINE-V8-20261115-002` (ứng viên `V8-065`) | `480285b` (merge `1a6864c`), `v8_065_vgg_transformer.yaml` (`15a7612f02f53e62…`), extraction `8d87703c93149dbe` | 2026-11-14 17:43:06 | `414243ec6ab373b0…` / `2f9e71d302be1dc2…` | Dev `v8_065_vgg_transformer_dev_20261114` (9/9, `938`p); holdout `h03` (6/6, `468`p) |
 | `BASELINE-V8-20261113-002` (ứng viên `×2`) | `c681e87`, `config/candidates/v8_050_line_upscale2.yaml` (`09008d18a0f9c718…`) | 2026-11-12 17:33:25 | `00c327d6a44684a1…` / `73c03802a6466df6…` | Dev `007` (9/9, `938`p); holdout `v8_h02_upscale2_pairs6_20261113` (6/6, `468`p) |
-| `BASELINE-V8-20261115-002` (ứng viên `V8-065`) | `480285b` (merge `1a6864c`), `config/candidates/v8_065_vgg_transformer.yaml` (`15a7612f02f53e62…`), extraction `8d87703c93149dbe` | 2026-11-14 17:43:06 | `414243ec6ab373b0…` / `2f9e71d302be1dc2…` | Dev `v8_065_vgg_transformer_dev_20261114` (9/9, `938`p); holdout `v8_h03_vgg_transformer_pairs6_20261115` (6/6, `468`p) |
+| `BASELINE-V8-20261113-001` (baseline `006`) | `c681e87`, `config/profiles.yaml` (`4d867edbd1b55c23…`), extraction `a58d78d21ad45c97` | 2026-11-12 17:33:03 | `fa44665e0f7df3fb…` / `e2a048b11323b8ff…` | Dev `006` (9/9, `938`p); holdout `v8_h01_baseline_pairs6_20261113` (6/6, `468`p) |
 
-Khóa `20261115-002` dùng `--env-root .venv-v62`, registry `models/v62/runtime-models-v8-065-vgg-transformer.json` (sha `db43ebfa5dc74354…`) và trọng số `vgg_transformer.pth` (sha `380512193a8b6cbf…`). `check_baseline_identity.py --new-inputs --root` xác minh holdout `h03` khớp trọn bộ runtime của khóa.
+Khóa `20261119-001` ghim `config/profiles.yaml` (`vietocr_variant: vgg_transformer`, giữ tắt `line_upscale`) và registry `models/v62/runtime-models.json` (sha `602e75b77b7840a6…`, **37 file model**: VietOCR `vgg_transformer`, `PP-OCRv6_medium_det` 1536 MB, `PP-DocLayout_plus-L` ONNX ở Pha A, giữ Docling Heron/TableFormer/CodeFormulaV2 ở Pha B). Smoke `runtime-smoke.pdf` (`output/v8_160_release_800_smoke_20261119`) đạt `completion=True`, `gpu_source_gate=PASS`, `validation.errors=0`, `layout.backend=onnx-paddle_detr`.
 
 ## Lịch sử khóa ban đầu (`001`–`003`, 08–09/11)
 
@@ -20,20 +20,21 @@ Khóa `20261115-002` dùng `--env-root .venv-v62`, registry `models/v62/runtime-
 - `BASELINE-V8-20261109-002` (`24a5558`) & `BASELINE-V8-20261109-003` (`20207a2`, sha `fbd278b8b5bcc525…`, `portable_identity` `9ca57543016d9c68…`, extraction `ccdbe84a3691d645`): bật PP-OCRv6 det + retry dấu `V8-030`; `output/v8_baseline_20261109_r2` `SUCCEEDED` 9/9 (`938`p, 3 trang fallback Docling).
 - `LOCKED` chỉ xác nhận preflight `ocr_pipeline.backend.prepare_backend`, lock cài trong từng venv worker và snapshot 9 PDF đầu vào; mọi chất lượng giữ `NOT_EVALUATED` khi chưa có GT độc lập.
 
-## Model (36 file đã kiểm sha)
+## Model (37 file đã kiểm sha ở `8.0.0`)
 
 | Thành phần | File | sha256 |
 | --- | --- | --- |
-| Nhận dạng VietOCR | `models/vietocr/vgg_seq2seq.pth` | `0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db` |
-| Cấu hình VietOCR | `models/vietocr/vgg-seq2seq.yml` | `1aaae4bbd7601ce465ffb7894c0f570cbf687d2d97979e054e2cbb40edd97a9a` |
-| Phát hiện PP-OCRv4 ONNX | `models/v62/ch_PP-OCRv4_det_infer.onnx` | `d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9` |
-| Layout Heron | `8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/model.safetensors` | `00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c` |
+| Nhận dạng VietOCR | `models/v8/vietocr-vgg-transformer/vgg_transformer.pth` | `380512193a8b6cbf6fad80deacdc9b6939d10d473d199892fc6408d13775ea59` |
+| Cấu hình VietOCR | `models/v8/vietocr-vgg-transformer/vgg-transformer.yml` | `0df9feee197754c7381871e5dfd07c6f3e292a4853eece6f1af240923e57c907` |
+| Phát hiện PP-OCRv6 ONNX | `models/v62/PP-OCRv6_medium_det/inference.onnx` | `eb13b44b25bb36f89528b68720af8a61d9cf381176107f465db1757b65d086e1` |
+| Layout Pha A PP-DocLayout+L | `models/v8/pp-doclayout-plus-l/inference.onnx` | `77afb2caa74dd13240d087d2eced91d7fcd2caebd16006a0a66162fc8707ff0e` |
+| Layout Pha B Heron | `8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/model.safetensors` | `00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c` |
 | TableFormer accurate | `fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors` | `2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9` |
 | CodeFormulaV2 | `ecedbe111d15c2dc60bfd4a823cbe80127b58af4/model.safetensors` | `4b04e77af34c4e682a7ab1617628340d658f3c3dcd12456dd2a7fff805cf79d2` |
 | Font OCR bridge | `assets/fonts/NotoSans-Regular.ttf` | `b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5` |
-| Registry model | `models/v62/runtime-models.json` | `1b50ad30b07c59fb872349f2f05020bfa86adde905be01566a2021971f66630a` |
+| Registry model (`8.0.0`) | `models/v62/runtime-models.json` | `602e75b77b7840a69e3272f365be51ba0c9297149914cd377c78dd11b85341af` |
 
-Danh sách đủ 36 file nằm trong manifest (`models.sha256`). Revision snapshot Docling: Heron `8f39ad3c`, docling-models `v2.3.0` (`fc0f2d45`), CodeFormulaV2 `ecedbe11`.
+Danh sách đủ 37 file nằm trong manifest (`models.sha256`). Revision snapshot Docling: Heron `8f39ad3c`, docling-models `v2.3.0` (`fc0f2d45`), CodeFormulaV2 `ecedbe11`. (Trước 19/11 dùng 36 file `vgg_seq2seq` & Heron Pha A, `runtime-models.json` `1b50ad30…`.)
 
 ## Môi trường chạy
 

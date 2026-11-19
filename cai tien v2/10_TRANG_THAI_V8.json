@@ -1,10 +1,10 @@
 {
   "schema_version": "ocr-v8-knowledge-map-v1",
-  "program_label": "OCR PDF v8.0 (nhãn chương trình; mã nguồn vẫn 7.0.0)",
-  "pipeline_version": "7.0.0",
-  "verified_head": "1a6864c43d307671219c95cbcbae1e6dc7bdb5c0",
-  "last_verified": "2026-11-16",
-  "verified_scope": "HEAD 1a6864c (merge 480285b). CPU 2.748 đạt/1 skip (scratch/runs/20261115-130343-e792af61); 21 import contract đạt. V8-065 dev 9/9 & h03 6/6 MATCH khóa 20261115-002. Phân xử dev v8 seal 9.485/9.485 (16/11).",
+  "program_label": "OCR PDF v8.0",
+  "pipeline_version": "8.0.0",
+  "verified_head": "774570461da81fce18a5e40953535feff663d5a1",
+  "last_verified": "2026-11-19",
+  "verified_scope": "19/11 (commit 7745704): 8.0.0 tích hợp Q15 A/Q16 B/Q17 A/Q18 A/Q19 A; BASELINE-V8-20261119-002 LOCKED (0 code changes); smoke PASS; CPU 2750+10 pass; GT 1.255 numeric_cells & AAA RO & dev 718p kw đo xong (38/38 DONE, 11/11 pha DONE).",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
@@ -105,7 +105,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Q1 dùng PP-OCRv6 (arena 1536 MB): khóa 20261109-002 (v4) -> 20261109-003/20261113-001 (v6). V8-060 INCONCLUSIVE."
+      "note": "Q1 dùng PP-OCRv6 (1536 MB, khóa 20261113-001). 18/11 GT 33p: TP=597, FP=1.759, FN=842, F1=0,3146 (V8-060 DONE)."
     },
     {
       "id": "L3",
@@ -134,11 +134,11 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Retry extra_phrases (V8-030). V8-065 (480285b->1a6864c) dev 9/9 & h03 6/6 MATCH 20261115-002; khóa v8 DSER 5.158 vs 13.777 (adj 4.009); NOT_EVALUATED."
+      "note": "Q17 A PROMOTE vgg_transformer vào 8.0.0; holdout DSER 3.183->969 (CER 18.956->10.229); audit 17 absent/207 missing xong 19/11."
     },
     {
       "id": "L4",
-      "name": "Layout (Docling Heron RT-DETR)",
+      "name": "Layout (Pha A PP-DocLayout_plus-L ONNX; Pha B Heron)",
       "capability": "IMPLEMENTED",
       "quality": "NOT_EVALUATED",
       "phase": "P5",
@@ -146,6 +146,11 @@
         "V8-070"
       ],
       "evidence": [
+        {
+          "path": "src/ocr_layout/model_adapters.py",
+          "symbol": "PaddleDetrLayoutAdapter",
+          "label": "VERIFIED"
+        },
         {
           "path": "src/ocr_layout/torch_layout.py",
           "symbol": "TorchLayout",
@@ -156,7 +161,8 @@
           "symbol": "HeuristicLayoutClassifier",
           "label": "VERIFIED"
         }
-      ]
+      ],
+      "note": "GT 43p Heron F1=0,0477 vs PP-DocLayout_plus-L F1=0,2122. Q18 A PROMOTE vào Pha A (onnx-paddle_detr), giữ Heron Pha B."
     },
     {
       "id": "L5",
@@ -183,7 +189,8 @@
           "symbol": "join_column_continuations",
           "label": "VERIFIED"
         }
-      ]
+      ],
+      "note": "Tất định 938p; 19/11 AAA GT reviewed_spans 24 node/19 cặp: prod 006=0,7143, 065=1,0000 (pen 0,5789) > challenger (KEEP BASELINE)."
     },
     {
       "id": "L6",
@@ -212,7 +219,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Ownership/stitch còn review. V8-085 OmniDocBench 223/223 đạt audit; TP 557/1.660; CDM 1.203/1.660 đo được (tb 0,2760; NOT_EVALUATED); fix fb085b7."
+      "note": "V8-080 9/9 PDF (23p/43 bảng, 1.255 numeric_cells): TEDS 065=0,6085, numeric F1 006=0,4192, 007=0,4323, 065=0,4165 (bag 0,6837). V8-085 CDM 0,2760 (NOT_EVALUATED)."
     },
     {
       "id": "L7",
@@ -281,7 +288,7 @@
           "symbol": "compare_text"
         }
       ],
-      "note": "Production dùng literal_v1. Q6 B/Q7 A CPU --analysis-from trên 006 & 065 đạt 9/9 SUCCEEDED; 065 v1=170 vs v2=159; chờ GT V8-100."
+      "note": "Production dùng literal_v1 + pending review. Dev 718p: 065 giảm thiếu 28->16 (sau review 14->6, fixed 16/4); holdout 292p missing 1->2 (chất lượng NOT_EVALUATED)."
     },
     {
       "id": "L9",
@@ -385,7 +392,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Khóa 20261113-001 (006/h01), 002 (007/h02), 20261115-002 (065/h03) LOCKED & MATCH. Chờ 6 seal ACCEPTED và khóa đo."
+      "note": "Khóa 20261119-002 (7745704, 8.0.0) & 20261113/20261115 LOCKED; đo xong holdout_v8, GT 9 PDF (1.255 numeric_cells, AAA RO, 35/35); smoke 8.0.0 PASS."
     },
     {
       "id": "G02",
@@ -452,7 +459,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "7 PDF dev ACCEPTED (16/11: phân xử v8 seal đủ 9.485/9.485, DSER 13.802/346.465; kiểm lại mù 949 mục từ 23/11). Holdout h01/h02/h03 (6 PDF/468p) chờ 6 seal & thêm PDF. GT bảng/RO/kw chờ duyệt."
+      "note": "Khóa 16/11 dev 9.485/9.485; 18/11 holdout 6/6 seal (4 ACCEPTED 93.481 slot); 19/11 tái xuất 9 PDF GT có 1.255 numeric_cells (V8-011/012 DONE, gate_clustered=FAIL)."
     },
     {
       "id": "G03",
@@ -483,7 +490,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Heuristic gutter/cột/header-footer/caption đã có; chưa đánh giá trên GT."
+      "note": "V8-070 DONE (DocLayout 43p F1 0,2122 vs 0,0477). V8-071 DONE: 19/11 AAA GT reviewed_spans (24 node/19 cặp) prod 065=1,0000 (pen 0,5789) > challenger 0,8182 (KEEP BASELINE)."
     },
     {
       "id": "G04",
@@ -513,7 +520,7 @@
           "label": "VERIFIED"
         }
       ],
-      "note": "Có span, stitch, hierarchy và kiểm tài chính; ownership/stitch còn review."
+      "note": "V8-080 DONE: 23p/43 bảng TEDS 0,6054->0,6085, 1.255 numeric_cells exact F1: 006=0,4192, 007=0,4323, 065=0,4165 (bag 0,6837)."
     },
     {
       "id": "G05",
@@ -594,7 +601,7 @@
           "symbol": "upper_bound_gate"
         }
       ],
-      "note": "Bootstrap cụm công ty, Holm, Clopper-Pearson trên N_eff & beta-binomial ρ_U (dev ~0,025 / 065 ~0,016; chờ holdout)."
+      "note": "Bootstrap cụm, Holm, Clopper-Pearson & beta-binomial ρ_U (dev 006 0,025 / 065 0,0139; holdout DEFF=19,87)."
     },
     {
       "id": "G08",
@@ -623,8 +630,8 @@
           "label": "VERIFIED"
         }
       ],
-      "searched": "grep -c '\"license\"' models/v62/runtime-models.json => 1 (chỉ text_detector, 09/11)",
-      "note": "text_detector & catalog ghim sha256/revision/licence; model khác chờ bảng VRAM/licence."
+      "searched": "grep -c '\"license\"' models/v62/runtime-models.json => 2 (text_detector & layout_model, 19/11)",
+      "note": "8.0.0 ghim 37 model (vgg_transformer & PP-DocLayout_plus-L Apache-2.0); Docling weights chờ bảng VRAM/licence."
     },
     {
       "id": "G09",
@@ -686,7 +693,7 @@
   "diacritic_gate": {
     "target": "99,99%",
     "status": "NOT_EVALUATED",
-    "blocker": "Q11 giữ 99,99% (N_eff ≥ 29.956 với 0 lỗi, 95%). Holdout khóa 13 PDF, 6 chờ sàng lọc (163.662 slot). ρ_U dev ~0,025; holdout cần ρ_U ≤ 0,0046. Q10 B cho chạy 6 PDF trước, chờ GT.",
+    "blocker": "Q11 giữ 99,99% (N_eff>=29.956, 0 lỗi). 18/11 holdout 4 PDF ACCEPTED (93.481 slot, DEFF=19,87, effective=4.704): h01 3,405%, h02 2,761%, h03 1,037% — gate_clustered=FAIL; cần thêm PDF và phân xử mù holdout.",
     "candidate_text_layer_slots": {
       "value": 345687,
       "scope": "inventory_text_layers trên 9 PDF 09/11 (2af5454): 720/938 trang CANDIDATE; không phải GT."
@@ -760,7 +767,7 @@
     {
       "id": "P1",
       "title": "Ground Truth và protocol",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "Protocol LOCKED, GT độc lập đủ cỡ mẫu",
       "backlog": [
         "V8-010",
@@ -772,7 +779,7 @@
     {
       "id": "P2",
       "title": "Tiền xử lý ảnh IMG-01..06",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "Paired fix/harm từng biến",
       "backlog": [
         "V8-050"
@@ -781,7 +788,7 @@
     {
       "id": "P3",
       "title": "Phát hiện chữ DET-01..07",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "TP/FP/FN cùng snapshot",
       "backlog": [
         "V8-060"
@@ -790,7 +797,7 @@
     {
       "id": "P4",
       "title": "Nhận dạng chữ A/B/C/D",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "Tách hiệu ứng detector và recognizer",
       "backlog": [
         "V8-065",
@@ -800,7 +807,7 @@
     {
       "id": "P5",
       "title": "Layout và thứ tự đọc",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "Class/region/order scorecard trên GT",
       "backlog": [
         "V8-070",
@@ -810,7 +817,7 @@
     {
       "id": "P6",
       "title": "Bảng và công thức",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "TEDS, numeric cell, ownership",
       "backlog": [
         "V8-080",
@@ -830,7 +837,7 @@
     {
       "id": "P8",
       "title": "Hậu xử lý, dấu, keyword",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "Cổng dấu 99,99% và 0 thiếu/thừa occurrence",
       "backlog": [
         "V8-020",
@@ -844,7 +851,7 @@
     {
       "id": "P9",
       "title": "End-to-end và hồ sơ quyết định",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "exit_gate": "Quyết định thủ công PROMOTE/KEEP/REJECT/INCONCLUSIVE",
       "backlog": [
         "V8-140",
@@ -855,7 +862,7 @@
   "exports": [
     {
       "path": "cai tien v2/OCR_PDF_V8_BO_TAI_LIEU.docx",
-      "sha256": "03991b9e5836d5b92d9a69b6b2cb7b2d3b5bdf574f7ff42e18f96dd75e67bab1",
+      "sha256": "61cbb53ee27b45d6a3a7bb56dd161ad285fdf39223d26f55d3ced97132cdd0b0",
       "sources": [
         {
           "path": "cai tien v2/00_README.md",
@@ -871,7 +878,7 @@
         },
         {
           "path": "cai tien v2/03_LO_TRINH_V8_THEO_TANG.md",
-          "sha256": "2d290522f32568f519a5c0166c88a55157e5fea27d112a4cdf15391a8655b69d"
+          "sha256": "1b3707835cbfd24fa3a05e6308bfb3ce5009af30fdbf609d4e215bfe3f3c5085"
         },
         {
           "path": "cai tien v2/04_DAC_TA_DO_DAU_9999.md",
@@ -907,7 +914,7 @@
         },
         {
           "path": "cai tien v2/06_BACKLOG_V8.csv",
-          "sha256": "2208f39c24b856ed6c7e660441fd223f8c1824659c6294beff66ac105781a04f"
+          "sha256": "94c01e7258dffd4612e277a50a834cc6709eab32e57435ac0ca4a282be2d1020"
         }
       ]
     }

@@ -19,3 +19,7 @@ benchmark/scientific_evaluation/_vendor/unimernet_cdm/** -text -whitespace
 
 # Procedure locks publish the sha256 of their LF bytes (GROUND_TRUTH_PROTOCOL section 7).
 docs/quality_assurance/locks/*.json text eol=lf
+
+# Preserve LF bytes for v62/v8 model configs pinned in runtime-models.json.
+models/v62/**/*.yml text eol=lf
+models/v8/**/*.yml text eol=lf

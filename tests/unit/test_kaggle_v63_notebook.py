@@ -66,6 +66,14 @@ def test_model_config_checkout_bytes_match_registry_with_linux_git_settings():
     for name in ("models/vietocr/base.yml", "models/vietocr/vgg-seq2seq.yml"):
         data = subprocess.check_output(["git", "-c", "core.autocrlf=false", "cat-file", "--filters", "HEAD:" + name], cwd=ROOT)
         assert b"\r\n" in data and data == (ROOT / name).read_bytes()
+    for name in ("models/v8/vietocr-vgg-transformer/base.yml", "models/v8/vietocr-vgg-transformer/vgg-transformer.yml"):
+        target_rev = (
+            "HEAD:" + name
+            if subprocess.run(["git", "cat-file", "-e", "HEAD:" + name], cwd=ROOT).returncode == 0
+            else ":" + name
+        )
+        data = subprocess.check_output(["git", "-c", "core.autocrlf=false", "cat-file", "--filters", target_rev], cwd=ROOT)
+        assert b"\r\n" not in data and data == (ROOT / name).read_bytes()
     for name, digest in registry["files"].items():
         if name.endswith(".yml"):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
@@ -316,3 +324,48 @@ def test_model_download_checks_wheel_and_detector_hash_before_replacement(tmp_pa
     else:
         exec(compile(source, "detector-download", "exec"), {})
         assert target.read_bytes() == detector
+
+
+@pytest.mark.parametrize("damage", [None, "text_detector", "layout_model"])
+def test_model_download_checks_pinned_huggingface_onnx_sources(tmp_path, monkeypatch, damage):
+    _, cells = notebook_cells()
+    det_bytes, layout_bytes = b"pp-ocrv6-medium-det-onnx", b"pp-doclayout-plus-l-onnx"
+    det_target = tmp_path / "models/v62/PP-OCRv6_medium_det/inference.onnx"
+    layout_target = tmp_path / "models/v8/pp-doclayout-plus-l/inference.onnx"
+    for path in (det_target, layout_target):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"existing file")
+    (tmp_path / "models/v62/runtime-models.json").write_text(json.dumps({
+        "text_detector": {
+            "model_path": "models/v62/PP-OCRv6_medium_det/inference.onnx",
+            "sha256": hashlib.sha256(det_bytes).hexdigest(),
+            "source": {"repo": "PaddlePaddle/PP-OCRv6_medium_det_onnx", "revision": "revdet", "file": "inference.onnx"},
+        },
+        "layout_model": {
+            "model_path": "models/v8/pp-doclayout-plus-l/inference.onnx",
+            "sha256": hashlib.sha256(layout_bytes).hexdigest(),
+            "source": {"repo": "PaddlePaddle/PP-DocLayout_plus-L_onnx", "revision": "revlay", "file": "inference.onnx"},
+        },
+    }), encoding="utf-8")
+    urls = {
+        "https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_det_onnx/resolve/revdet/inference.onnx":
+            b"bad det" if damage == "text_detector" else det_bytes,
+        "https://huggingface.co/PaddlePaddle/PP-DocLayout_plus-L_onnx/resolve/revlay/inference.onnx":
+            b"bad layout" if damage == "layout_model" else layout_bytes,
+    }
+    import urllib.request
+    monkeypatch.setattr(urllib.request, "urlopen", lambda url, **kwargs: io.BytesIO(urls[url]))
+    monkeypatch.chdir(tmp_path)
+    source = program("DETECTOR_DOWNLOAD_PROGRAM", cells["models"])
+    if damage:
+        with pytest.raises(ValueError, match="hash registry"):
+            exec(compile(source, "onnx-download", "exec"), {})
+        if damage == "text_detector":
+            assert det_target.read_bytes() == b"existing file"
+        else:
+            assert det_target.read_bytes() == det_bytes
+            assert layout_target.read_bytes() == b"existing file"
+    else:
+        exec(compile(source, "onnx-download", "exec"), {})
+        assert det_target.read_bytes() == det_bytes
+        assert layout_target.read_bytes() == layout_bytes

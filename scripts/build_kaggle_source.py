@@ -18,8 +18,17 @@ def build(output):
         paths.update(p for p in (ROOT / folder).rglob("*") if p.is_file()
                      and "__pycache__" not in p.parts and not p.name.endswith((".pyc", ".pyo"))
                      and ".egg-info" not in str(p.parent))
-    paths.update(ROOT / n for n in ("pyproject.toml", "setup.py", "MANIFEST.in", "README.md", "run_batch.py", "run_ocr.py",
-                                    "models/v62/runtime-models.json", "assets/fonts/NotoSans-Regular.ttf", "assets/fonts/OFL.txt"))
+    paths.update(ROOT / n for n in (
+        "pyproject.toml", "setup.py", "MANIFEST.in", "README.md", "run_batch.py", "run_ocr.py",
+        "models/v62/runtime-models.json",
+        "models/v62/PP-OCRv6_medium_det/inference.yml",
+        "models/v8/vietocr-vgg-transformer/base.yml",
+        "models/v8/vietocr-vgg-transformer/vgg-transformer.yml",
+        "models/v8/pp-doclayout-plus-l/inference.yml",
+        "models/vietocr/base.yml",
+        "models/vietocr/vgg-seq2seq.yml",
+        "assets/fonts/NotoSans-Regular.ttf", "assets/fonts/OFL.txt",
+    ))
     paths = sorted(p for p in paths if p.is_file())
     hashes = {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
     manifest = {"schema_version": "kaggle-source-v1", "git_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),

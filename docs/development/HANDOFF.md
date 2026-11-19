@@ -23,3 +23,4 @@ Cập nhật 19/11/2026, Asia/Bangkok. Nhánh `v8-diacritic-bounds-keyword-chall
 ## Lưu ý vận hành sau v8.0.0
 
 - Khi cần đo accuracy nghiệm thu độc lập (cổng 99,99% hoặc sau bổ sung PDF holdout mới), mở quy trình mới dưới nhánh tiếp theo; không sửa kết quả `NOT_EVALUATED`/`FAIL` đã ghi nhận.
+- Đối chiếu hoàn thiện 19/11 tại HEAD `83fc350`, cây mã sạch trước phiên: `--summary` và `--check` exit 0 (0 lỗi/cảnh báo/stale). 38/38 hạng mục và 11/11 pha DONE là hoàn tất lộ trình kỹ thuật, chưa phải nghiệm thu chất lượng toàn dự án. Đã đọc lại báo cáo holdout h03: DSER 969/93.481, `gate_clustered=FAIL`; registry chất lượng vẫn `NOT_EVALUATED`. Chưa chạy lại OCR/accuracy. Lệnh, giới hạn và bước kế tiếp: [nhật ký đánh giá](../../scratch/dev_sessions/20261119-completion-assessment/session.md).
